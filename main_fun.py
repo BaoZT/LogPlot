@@ -266,10 +266,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             self.sp.axes1.set_xlim(xy_lim[0][0], xy_lim[0][1])
                             self.sp.axes1.set_ylim(xy_lim[1][0], xy_lim[1][1])
                             self.update_up_cure()
-                            print(self.sp.get_track_status())
                             if track_flag == 0:     # 如果之前是锁定的，更新后依然锁定在最新位置
                                 self.sp.set_track_status()
-                                print(self.sp.get_track_status())
                         # 再更新光标
                         self.c_vato.sim_mouse_move(int(info[0]), int(info[1]))  # 其中前两者位置和速度为移动目标
                     elif curve_flag == 1:
@@ -618,7 +616,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         item_value.append(str(int(self.log.targetpos[indx])))
         item_value.append(str(int(self.log.ma[indx])))
         item_value.append(str(int(self.log.stoppos[indx])))
-        item_value.append(str(int(self.log.stoperr)))
+        item_value.append(str(int(self.log.stop_error[indx])))
         item_value.append(str(int(stop_list[0])))
         item_value.append(str(int(stop_list[1])))
         item_value.append(str(int(stop_list[2])))
@@ -658,7 +656,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         item_value.append(str(int(self.log.targetpos[indx])))
         item_value.append(str(int(self.log.ma[indx])))
         item_value.append(str(int(self.log.stoppos[indx])))
-        item_value.append(str(int(self.log.stoperr)))
+        item_value.append(str(int(self.log.stop_error[indx])))
         item_value.append(str(int(stop_list[0])))
         item_value.append(str(int(stop_list[1])))
         item_value.append(str(int(stop_list[2])))
