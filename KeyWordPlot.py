@@ -1,5 +1,8 @@
 import FileProcess
 import matplotlib
+import RealTimeExtension
+import threading
+import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -10,7 +13,7 @@ mpl.rcParams['font.sans-serif'] = ['SimHei']
 
 
 cursor_track_flag = 1   # 1=追踪，0=不追踪
-
+Lock = threading.Lock()
 
 # 光标类定义
 class SnaptoCursor(QtCore.QObject):
@@ -153,7 +156,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         else:
             self.ax1_twin.plot(ob.cycle, ob.level, color='crimson', label='Level', linewidth=0.5)
 
-    # paint the pos-speed axes
+    # 绘制速度坐标轴相关信息
     def plot_cord1(self, ob=FileProcess, cmd=int, x_lim=tuple, y_lim=tuple):
         # paint the speed ruler
         self.axes1.axhline(y=1250, xmin=0, xmax=1, color='k', ls='--',        # xmin and xmax Should be between 0 and 1,
@@ -190,6 +193,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.ax1_twin.legend(loc='upper right')
         self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.049, right=0.969, hspace=0.17, wspace=0.25)
 
+    # 绘制加速度相关信息
     def plotlog_sa(self, ob=FileProcess, cmd=int):
         # V-A 曲线
         if cmd == 0:
@@ -198,6 +202,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             p3 = self.axes1.plot(ob.cycle, ob.a, markersize='0.8', color='darkkhaki', label='Acc')
         self.axes1.set_ylabel('列车加速度')
 
+    # 绘制坡度相关信息
     def plotlog_ramp(self, ob=FileProcess, cmd=int):
         #  S-RAMP 曲线
         if cmd == 0:
@@ -206,7 +211,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.axes1.plot(ob.cycle, ob.ramp, 'c-', label='Ramp', linewidth=0.5)
         self.axes1.set_ylabel('线路坡度')
 
-    # paint the pos-acc axes
+    # 绘制对称坐标相关信息
     def plot_cord2(self, ob=FileProcess, cmd=int):
         if cmd == 0:
             self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])
@@ -275,3 +280,51 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     def set_track_status(self):
         global cursor_track_flag
         cursor_track_flag = 0
+
+
+# 实时画板类定义
+class Figure_Canvas_R(FigureCanvas):
+    def __init__(self, parent=None, width=20, height=10, dpi=100):
+        self.fig = plt.figure(figsize=(width, height), dpi=100, frameon=False)
+        FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
+        self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.040, right=0.96, hspace=0.17, wspace=0.25)
+        self.axes1 = self.fig.add_subplot(111)  # 画速度曲线
+        self.setParent(parent)
+        self.line_list = {}                     # 键值对存储曲线
+        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.ax1_twin = self.axes1.twinx()         # 级位
+        self.choice = [0, 0, 0, 0]                 # 全部绘制
+
+
+    # 更新绘制需求
+    def updatePaintSet(self, ch=list):
+        self.choice[0] = ch[0]
+        self.choice[1] = ch[1]
+        self.choice[2] = ch[2]
+        self.choice[3] = ch[3]
+        print(self.choice)
+
+    # 实时绘制曲线
+    def realTimePlot(self):
+        '''
+        根据指示绘制图，由外界选择
+        :param choice: 1=绘制，0=不绘制 [Vato,Vatocmd,Vatpcmd,Level]
+        :return: None
+        '''
+        self.ax1_twin.clear()
+        self.axes1.clear()
+        Lock.acquire()
+        tmp = np.fliplr(RealTimeExtension.paintList)
+        if self.choice[0] == 1:
+            self.axes1.plot(tmp[0, :], color='deeppink', linewidth=0.8)
+        if self.choice[1] == 1:
+            self.axes1.plot(tmp[1, :], color='green', linewidth=0.8)
+        if self.choice[2] == 1:
+            self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8)
+        if self.choice[3] == 1:
+            self.ax1_twin.plot(tmp[3, :], color='b', linewidth=0.8)
+        Lock.release()
+        self.axes1.set_ylim(0, 10000)
+        self.ax1_twin.set_ylim(-7, 10)
+        self.axes1.legend(['ato',' atocmdv', 'atpcmdv', 'level'])

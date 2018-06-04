@@ -17,9 +17,14 @@
 import re
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
+from ProtocolParse import MVBParse
 import numpy as np
 import threading
 import time
+
+pat_ato_ctrl = ''
+pat_ato_stat = ''
+pat_tcms_stat = ''
 
 
 # 周期类定义
@@ -32,6 +37,13 @@ class CycleLog(object):
         self.ostime_start = 0
         self.ostime_end = 0
         self.duringtime = 0
+        # 主断及分相说明
+        self.break_status = 0
+        self.gfx_flag = 0
+        # mvb消息解析
+        self.ato2tcms_stat = []
+        self.ato2tcms_ctrl = []
+        self.tcms2ato_stat = []
         # 控制信息相关
         self.control = ()
         self.fsm = ()
@@ -52,7 +64,8 @@ class FileProcess(threading.Thread):
         # 线程处理
         threading.Thread.__init__(self)
         self.daemon = True
-        #　序列初始化
+        self.mvbParser = MVBParse()
+        # 序列初始化
         self.cycle = np.array([])
         self.s = np.array([])
         self.v_ato = np.array([])
@@ -78,23 +91,28 @@ class FileProcess(threading.Thread):
         # 文件读取结果
         self.lines = []
         self.cycle_dic = {}
+        # 主断及分相是保持的变化才变
+        self.break_status = 0
+        self.gfx_flag = 0
         # 读取耗时
         self.time_use = []
 
     def run(self):
         iscycleok = 0
         islistok = 1
-        isok = 1
+        isok = 2
         start = time.clock()
         iscycleok = self.create_cycle_dic()                         # 创建了周期字典
         t1 = time.clock() - start
         start = time.clock()                                        # 更新计时起点
         islistok = self.create_ctrl_cycle_list()                    # 解析周期内容
         t2 = time.clock() - start
-        if iscycleok == 0:
+        if iscycleok == 1:
             isok = islistok                # 当解析到周期时，返回实际解析结果, 2=无周期无结果，1=有周期无控车，0=有周期有控车
+        elif iscycleok == 0:
+            isok = 2                       # 当没有周期
         else:
-            isok = iscycleok                # 当出现重新启机时，返回启机行号
+            isok = iscycleok               # 当出现重新启机时，返回启机行号
         self.time_use = [t1, t2, isok]
 
     def get_time_use(self):
@@ -272,9 +290,10 @@ class FileProcess(threading.Thread):
                             else:
                                 self.cycle_dic[c.cycle_num] = c
             elif content_flag == 1:
-                ret = self.match_log_packet_contect(c, line, patlist)
-                if ret == 0:  # 如果不成功，才继续
-                    self.match_log_basic_content(c, line, patlist)
+                ret = 1     # 有周期!!!
+                r = self.match_log_packet_contect(c, line, patlist)
+                if r == 0:  # 如果不成功，才继续
+                    r = self.match_log_basic_content(c, line, patlist)
             else:
                 # 属于记录开始和结尾残损周期，不记录丢弃
                 pass
@@ -313,6 +332,9 @@ class FileProcess(threading.Thread):
     # <输出> ret  解析1=成功，0=失败
     def match_log_packet_contect(self, c=CycleLog, line=str, pat_list=list):
         ret = 1
+        # 先无条件设置状态
+        c.gfx_flag = self.gfx_flag
+        c.break_status = self.break_status
         # ATP->ATO 数据包
         pat_sp0 = pat_list[4]
         pat_sp1 = pat_list[5]
@@ -349,7 +371,16 @@ class FileProcess(threading.Thread):
                 c.cycle_sp_dict[1] = pat_sp1.findall(line)[0]
             elif pat_sp2.findall(line):
                 l = re.split(',', line)
-                c.cycle_sp_dict[2] = tuple(l[1:])
+                c.cycle_sp_dict[2] = tuple(l[1:])       # 保持与其他格式一致，从SP2后截取
+                try:
+                    if int(c.cycle_sp_dict[2][13]) == 1:             # 去除nid——packet是第13个字节
+                        c.gfx_flag = 1
+                        self.gfx_flag = 1
+                    else:
+                        c.gfx_flag = 0
+                        self.gfx_flag = 0
+                except Exception as err:
+                    print('gfx_err ')
             elif pat_sp5.findall(line):
                 c.cycle_sp_dict[5] = pat_sp5.findall(line)[0]
             elif pat_sp6.findall(line):
@@ -390,18 +421,21 @@ class FileProcess(threading.Thread):
                 c.cycle_sp_dict[46] = pat_c46.findall(line)[0]
             elif pat_c45.findall(line):
                 c.cycle_sp_dict[45] = pat_c45.findall(line)[0]
+        elif 'MVB[' in line:
+            self.mvb_research(c, line)
         else:
             ret = 0
         return ret
 
     # 创建构建模板序列
     # <输出> 返回模板列表
-    def create_all_pattern(self):
+    @staticmethod
+    def create_all_pattern():
         pat_list = []
         # 北京时间
         pat_time = re.compile('time:(\d+-\d+-\d+ \d+:\d+:\d+)')
         # ATO模式转换条件
-        pat_fsm = re.compile('FSM{(\d) (\d) (\d) (\d) (\d) (\d)}sg{(\d) (\d) (\d+) (\d+) (\w+) (\w+)}ss{(\d) (\d)}')
+        pat_fsm = re.compile('FSM{(\d) (\d) (\d) (\d) (\d) (\d)}sg{(\d) (\d) (\d+) (\d+) (\w+) (\w+)}ss{(\d+) (\d)}')
         pat_sc = re.compile('SC{(\d+) (\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (\d+) (\d+) (-?\d+) (-?\d+)}t (\d+) (\d+) (\d+)'
                             ' (\d+),(\d+)} f (-?\d+) (\d+) (\d+) (\w+)} p(\d+) (\d+)}CC')
         pat_stop = re.compile('stoppoint:jd=(\d+) ref=(\d+) ma=(\d+)')
@@ -545,6 +579,47 @@ class FileProcess(threading.Thread):
             if c.cycle_num in self.cycle_dic.keys() and self.cycle_dic[c.cycle_num].control and c.control:
                 ret = 1
         return ret
+
+    # 解析MVB数据
+    # 返回解析结果 0=无，1=更新
+    def mvb_research(self, c=CycleLog, line=str):
+        global pat_ato_ctrl
+        global pat_ato_stat
+        global pat_tcms_stat
+        tmp = ''
+        parse_flag = 0
+        try:
+            if pat_ato_ctrl in line:
+                if '@' in line:
+                    pass
+                else:
+                    tmp = line[10:]  # 还有一个冒号需要截掉
+                    c.ato2tcms_ctrl = self.mvbParser.ato_tcms_parse(1025, tmp)
+                    parse_flag = 1
+            elif pat_ato_stat in line:
+                if '@' in line:
+                    pass
+                else:
+                    tmp = line[10:]
+                    c.ato2tcms_stat = self.mvbParser.ato_tcms_parse(1041, tmp)
+                    parse_flag = 1
+            elif pat_tcms_stat in line:
+                if '@' in line:
+                    pass
+                else:
+                    tmp = line[10:]
+                    c.tcms2ato_stat = self.mvbParser.ato_tcms_parse(1032, tmp)
+                    if c.tcms2ato_stat != []:
+                        if c.tcms2ato_stat[14] == 'AA':
+                            self.break_status = 0
+                            c.break_status = 0         # 闭合
+                        elif c.tcms2ato_stat[14] == '00':
+                            self.break_status = 1
+                            c.break_status = 1          # 主断路器断开
+                    parse_flag = 1
+        except Exception as err:
+            print(err)
+        return parse_flag
 
 
     # <已废弃>

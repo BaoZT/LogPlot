@@ -21,5 +21,8 @@
      <file alias="print.png">./IconFiles/print.png</file>
      <file alias="cyclecurve.png">./IconFiles/cyclecurve.png</file>
      <file alias="vscurve.png">./IconFiles/vscurve.png</file>
+     <file alias="serset.png">./IconFiles/serset.png</file>
+     <file alias="offline.png">./IconFiles/offline.png</file>
+     <file alias="realtime.png">./IconFiles/realtime.png</file>
   </qresource>
 </RCC>

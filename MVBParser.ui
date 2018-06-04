@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>546</width>
-    <height>341</height>
+    <width>576</width>
+    <height>378</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,11 +16,33 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <widget class="QTextEdit" name="textEdit">
-      <property name="styleSheet">
-       <string notr="true">font: 10pt &quot;Consolas&quot;;
-background-color: rgb(255, 255, 213);</string>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
+      <widget class="QTextEdit" name="textEdit"/>
+      <widget class="QTreeWidget" name="treeWidget">
+       <column>
+        <property name="text">
+         <string>帧类型</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>字段名</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>字段值</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>含义结果</string>
+        </property>
+       </column>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -30,12 +52,12 @@ background-color: rgb(255, 255, 213);</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>546</width>
+     <width>576</width>
      <height>23</height>
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusBar"/>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
@@ -46,31 +68,11 @@ background-color: rgb(255, 255, 213);</string>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionCopy"/>
-   <addaction name="actionCycleSave"/>
+   <addaction name="actionMVBParserAct"/>
   </widget>
-  <action name="actionCopy">
-   <property name="icon">
-    <iconset>
-     <normaloff>IconFiles/copy.png</normaloff>IconFiles/copy.png</iconset>
-   </property>
+  <action name="actionMVBParserAct">
    <property name="text">
-    <string>复制周期</string>
-   </property>
-   <property name="toolTip">
-    <string>复制该周期记录到剪贴板</string>
-   </property>
-  </action>
-  <action name="actionCycleSave">
-   <property name="icon">
-    <iconset>
-     <normaloff>IconFiles/save.png</normaloff>IconFiles/save.png</iconset>
-   </property>
-   <property name="text">
-    <string>保存周期</string>
-   </property>
-   <property name="toolTip">
-    <string>保存当周期到文件</string>
+    <string>开始解析</string>
    </property>
   </action>
  </widget>

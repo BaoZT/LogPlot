@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1000</width>
-    <height>597</height>
+    <height>603</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,14 +16,20 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_3">
     <item>
-     <widget class="QSplitter" name="splitter">
+     <widget class="QSplitter" name="splitter_3">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="verticalLayout_5">
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="QStackedWidget" name="stackedWidget">
+        <property name="currentIndex">
+         <number>1</number>
+        </property>
+        <widget class="QWidget" name="page_3">
+         <layout class="QVBoxLayout" name="verticalLayout_5">
           <item>
            <widget class="QWidget" name="widget" native="true">
             <property name="sizeIncrement">
@@ -46,145 +52,1056 @@
            </widget>
           </item>
          </layout>
-        </item>
-        <item>
-         <layout class="QGridLayout" name="gridLayout_3">
-          <property name="sizeConstraint">
-           <enum>QLayout::SetMinimumSize</enum>
-          </property>
-          <item row="1" column="5">
-           <widget class="QCheckBox" name="CBramp">
-            <property name="maximumSize">
-             <size>
-              <width>101</width>
-              <height>16</height>
-             </size>
+        </widget>
+        <widget class="QWidget" name="page_4">
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QSplitter" name="splitter_4">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
             </property>
-            <property name="text">
-             <string>S-Ramp</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QCheckBox" name="CBatpcmdv">
-            <property name="maximumSize">
-             <size>
-              <width>101</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>S-Vatpcmdv</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QCheckBox" name="CBcmdv">
-            <property name="maximumSize">
-             <size>
-              <width>101</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>S-Vatocmdv</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="5">
-           <widget class="QCheckBox" name="CBacc">
-            <property name="maximumSize">
-             <size>
-              <width>101</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>S-Acc</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QCheckBox" name="CBvato">
-            <property name="maximumSize">
-             <size>
-              <width>101</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>S-Vato</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QCheckBox" name="CBlevel">
-            <property name="maximumSize">
-             <size>
-              <width>101</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>S-Level</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="4">
-           <spacer name="horizontalSpacer_4">
             <property name="orientation">
-             <enum>Qt::Horizontal</enum>
+             <enum>Qt::Vertical</enum>
             </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
+            <property name="handleWidth">
+             <number>5</number>
             </property>
-           </spacer>
-          </item>
-          <item row="1" column="2">
-           <spacer name="horizontalSpacer_3">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="0" column="0">
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="0" column="6">
-           <spacer name="horizontalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
+            <widget class="QWidget" name="layoutWidget">
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <item>
+               <widget class="QLabel" name="label_4">
+                <property name="font">
+                 <font>
+                  <family>宋体</family>
+                  <pointsize>10</pointsize>
+                  <weight>50</weight>
+                  <bold>false</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>保存路径</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit"/>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_SavePath">
+                <property name="maximumSize">
+                 <size>
+                  <width>24</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>...</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
+               <widget class="QComboBox" name="comboBox"/>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_PortLink">
+                <property name="styleSheet">
+                 <string notr="true">background-color: rgb(238, 86, 63);</string>
+                </property>
+                <property name="text">
+                 <string>连接</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>true</bool>
+                </property>
+                <property name="default">
+                 <bool>false</bool>
+                </property>
+                <property name="flat">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="layoutWidget">
+             <layout class="QHBoxLayout" name="horizontalLayout_4">
+              <item>
+               <widget class="QGroupBox" name="gp_ato2tcms">
+                <property name="title">
+                 <string>ATO2TCMS</string>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_6">
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_7">
+                   <item>
+                    <widget class="QGroupBox" name="gp_ato2tcms_ctrl">
+                     <property name="title">
+                      <string>Ctrl_Info</string>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_4">
+                      <item row="0" column="5">
+                       <widget class="QLineEdit" name="led_ctrl_tract"/>
+                      </item>
+                      <item row="1" column="5">
+                       <widget class="QLineEdit" name="led_ctrl_brake"/>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="lbl_ctrl_hrt">
+                        <property name="text">
+                         <string>ATO心跳</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="3">
+                       <widget class="QLineEdit" name="led_ctrl_atovalid"/>
+                      </item>
+                      <item row="2" column="4">
+                       <widget class="QLabel" name="lbl_ctrl_costspeed">
+                        <property name="text">
+                         <string>恒速命令</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="2">
+                       <widget class="QLabel" name="lbl_ctrl_rdoor">
+                        <property name="text">
+                         <string>开右门</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLineEdit" name="led_ctrl_ldoor"/>
+                      </item>
+                      <item row="2" column="3">
+                       <widget class="QLineEdit" name="led_ctrl_rdoor"/>
+                      </item>
+                      <item row="0" column="4">
+                       <widget class="QLabel" name="lbl_ctrl_trac">
+                        <property name="text">
+                         <string>牵引量</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLineEdit" name="led_ctrl_hrt"/>
+                      </item>
+                      <item row="2" column="5">
+                       <widget class="QLineEdit" name="led_ctrl_costspeed"/>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLineEdit" name="led_ctrl_tbstat"/>
+                      </item>
+                      <item row="1" column="4">
+                       <widget class="QLabel" name="lbl_ctrl_brake">
+                        <property name="text">
+                         <string>制动量</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="lbl_ctrl_tbstat">
+                        <property name="text">
+                         <string>命令状态</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="lbl_ctrl_keepbrake">
+                        <property name="text">
+                         <string>保持制动</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="3">
+                       <widget class="QLineEdit" name="led_ctrl_keepbrake"/>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="lbl_ctrl_ldoor">
+                        <property name="text">
+                         <string>开左门</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="lbl_ctrl_atovalid">
+                        <property name="text">
+                         <string>ATO有效</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLabel" name="lbl_startlamp">
+                        <property name="text">
+                         <string>启动灯</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLineEdit" name="led_ctrl_starlamp"/>
+                      </item>
+                      <item row="3" column="2">
+                       <widget class="QLabel" name="lbl_ctrl_aimspeed">
+                        <property name="text">
+                         <string>恒速目标</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="3">
+                       <widget class="QLineEdit" name="led_ctrl_aimspeed"/>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="gp_ato2tcms_status">
+                     <property name="title">
+                      <string>Status_Info</string>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout">
+                      <item row="0" column="7">
+                       <widget class="QLineEdit" name="led_stat_tunnelin"/>
+                      </item>
+                      <item row="0" column="6">
+                       <widget class="QLabel" name="lbl_stat_tunnelin">
+                        <property name="text">
+                         <string>隧道入口</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="lbl_stat_hrt">
+                        <property name="text">
+                         <string>ATO心跳</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLineEdit" name="led_stat_hrt"/>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="lbl_stat_atospeed">
+                        <property name="text">
+                         <string>ATO速度</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLineEdit" name="led_stat_atospeed"/>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="lbl_stat_error">
+                        <property name="text">
+                         <string>ATO故障</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="3">
+                       <widget class="QLineEdit" name="led_stat_error"/>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="lbl_stat_stonemile">
+                        <property name="text">
+                         <string>公里标</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="3">
+                       <widget class="QLineEdit" name="led_stat_stonemile"/>
+                      </item>
+                      <item row="1" column="6">
+                       <widget class="QLabel" name="lbl_stat_tunnellen">
+                        <property name="text">
+                         <string>隧道长度</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="7">
+                       <widget class="QLineEdit" name="led_stat_tunnellen"/>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_2">
+                <property name="title">
+                 <string>TCMS2ATO</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_5">
+                 <item row="5" column="2" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_pm">
+                   <property name="text">
+                    <string>动车组允许</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="4" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_breakstat">
+                   <property name="text">
+                    <string>主断状态</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_tbstat">
+                   <property name="text">
+                    <string>牵控状态反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="led_tcms_fbk"/>
+                 </item>
+                 <item row="4" column="4" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_nunits">
+                   <property name="text">
+                    <string>编组信息</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="4" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_am">
+                   <property name="text">
+                    <string>门控AM</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_hrt">
+                   <property name="text">
+                    <string>TCMS心跳</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="2" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_costspeedfbk">
+                   <property name="text">
+                    <string>恒速反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="5">
+                  <widget class="QLineEdit" name="led_tcms_doorstat"/>
+                 </item>
+                 <item row="0" column="5">
+                  <widget class="QLineEdit" name="led_tcms_am"/>
+                 </item>
+                 <item row="4" column="5">
+                  <widget class="QLineEdit" name="led_tcms_nunits"/>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="led_tcms_dh"/>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="led_tcms_hrt"/>
+                 </item>
+                 <item row="2" column="4">
+                  <widget class="QLabel" name="lbl_tcms_bstat">
+                   <property name="text">
+                    <string>制动反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="4" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_tractfbk">
+                   <property name="text">
+                    <string>牵引反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="led_tcms_mm"/>
+                 </item>
+                 <item row="1" column="5">
+                  <widget class="QLineEdit" name="led_tcms_tractfbk"/>
+                 </item>
+                 <item row="0" column="2" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_mm">
+                   <property name="text">
+                    <string>门控MM</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="4">
+                  <widget class="QLabel" name="lbl_tcms_doorstat">
+                   <property name="text">
+                    <string>车门状态</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="led_tcms_costspeedfbk"/>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="lbl_tcms_keepbfbk">
+                   <property name="text">
+                    <string>保持制动反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3">
+                  <widget class="QLineEdit" name="led_tcms_pm"/>
+                 </item>
+                 <item row="5" column="5">
+                  <widget class="QLineEdit" name="led_tcms_breakstat"/>
+                 </item>
+                 <item row="4" column="2" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_dh">
+                   <property name="text">
+                    <string>打滑发生</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="5">
+                  <widget class="QLineEdit" name="led_tcms_bfbk"/>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="led_tcms_keepbfbk"/>
+                 </item>
+                 <item row="6" column="5">
+                  <widget class="QLineEdit" name="led_tcms_mandoorpm"/>
+                 </item>
+                 <item row="6" column="4">
+                  <widget class="QLabel" name="lbl_tcms_mandoorpm">
+                   <property name="text">
+                    <string>人工门允许</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="3">
+                  <widget class="QLineEdit" name="led_tcms_atpdoorpm"/>
+                 </item>
+                 <item row="6" column="2">
+                  <widget class="QLabel" name="lbl_tcms_atpdoorpm">
+                   <property name="text">
+                    <string>ATP门允许</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QLineEdit" name="led_tcms_weight"/>
+                 </item>
+                 <item row="6" column="0" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_weight">
+                   <property name="text">
+                    <string>车重</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_kz">
+                   <property name="text">
+                    <string>空转发生</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLineEdit" name="led_tcms_kz"/>
+                 </item>
+                 <item row="4" column="0" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_rdoorfbk">
+                   <property name="text">
+                    <string>开右反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QLineEdit" name="led_tcms_rdoorfbk"/>
+                 </item>
+                 <item row="3" column="0" alignment="Qt::AlignHCenter">
+                  <widget class="QLabel" name="lbl_tcms_ldoorfbk">
+                   <property name="text">
+                    <string>开左反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QLineEdit" name="led_tcms_ldoorfbk"/>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="lbl_tcms_atovalid_fbk">
+                   <property name="text">
+                    <string>ATO有效反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="led_tcms_atovalid_fbk"/>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="lbl_tcms_startlampfbk">
+                   <property name="text">
+                    <string>启动灯反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="led_tcms_startlampfbk"/>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="layoutWidget">
+             <layout class="QHBoxLayout" name="horizontalLayout_5">
+              <item>
+               <widget class="QGroupBox" name="groupBox_3">
+                <property name="title">
+                 <string>ATO-ATP</string>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_8">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_6">
+                   <property name="title">
+                    <string>关键信息</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QTableWidget" name="tableWidgetATPATO">
+                   <column>
+                    <property name="text">
+                     <string>时间</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>方向</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>数据包</string>
+                    </property>
+                   </column>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_4">
+                <property name="title">
+                 <string>ATO-TSRS</string>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_6">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox">
+                   <property name="title">
+                    <string>PLAN_INFO</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_8">
+                    <item>
+                     <layout class="QHBoxLayout" name="horizontalLayout_9">
+                      <item>
+                       <widget class="QLabel" name="label_5">
+                        <property name="text">
+                         <string>计划判断:</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_6">
+                        <property name="maximumSize">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">background-color: rgb(170, 170, 255);</string>
+                        </property>
+                        <property name="text">
+                         <string>有效性</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="Line" name="line">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_8">
+                        <property name="maximumSize">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">alternate-background-color: rgb(255, 255, 255);
+background-color: rgb(170, 170, 255);</string>
+                        </property>
+                        <property name="text">
+                         <string>合法性</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="Line" name="line_2">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_7">
+                        <property name="maximumSize">
+                         <size>
+                          <width>48</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">background-color: rgb(170, 170, 255);</string>
+                        </property>
+                        <property name="text">
+                         <string>是否超时</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="Line" name="line_3">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_9">
+                        <property name="maximumSize">
+                         <size>
+                          <width>48</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">background-color: rgb(170, 170, 255);</string>
+                        </property>
+                        <property name="text">
+                         <string>是否终点</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QTableWidget" name="tableWidgetPlan">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="baseSize">
+                       <size>
+                        <width>0</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="autoScroll">
+                       <bool>true</bool>
+                      </property>
+                      <attribute name="horizontalHeaderCascadingSectionResizes">
+                       <bool>true</bool>
+                      </attribute>
+                      <attribute name="horizontalHeaderDefaultSectionSize">
+                       <number>62</number>
+                      </attribute>
+                      <attribute name="horizontalHeaderMinimumSectionSize">
+                       <number>18</number>
+                      </attribute>
+                      <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+                       <bool>false</bool>
+                      </attribute>
+                      <column>
+                       <property name="text">
+                        <string>段序号</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>发车股道</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>发车时间</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>接车股道</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>接车时间</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>地面时刻</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>到发</string>
+                       </property>
+                      </column>
+                      <column>
+                       <property name="text">
+                        <string>办客</string>
+                       </property>
+                      </column>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QTableWidget" name="tableWidgetWL">
+                   <column>
+                    <property name="text">
+                     <string>时间</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>方向</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>数据包</string>
+                    </property>
+                   </column>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="widget_2" native="true">
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(255, 255, 127);</string>
+             </property>
+            </widget>
+           </widget>
           </item>
          </layout>
-        </item>
-       </layout>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="layoutWidget">
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <property name="leftMargin">
+          <number>10</number>
+         </property>
+         <property name="rightMargin">
+          <number>10</number>
+         </property>
+         <item>
+          <layout class="QGridLayout" name="gridLayout_2">
+           <property name="sizeConstraint">
+            <enum>QLayout::SetFixedSize</enum>
+           </property>
+           <property name="verticalSpacing">
+            <number>0</number>
+           </property>
+           <item row="0" column="1" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_hpm">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>硬允许</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_mode">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>ATO模式</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_carpm">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>车辆允许</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="7" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_dcmd">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>主断状态</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="6" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_trainlen">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>列车车长</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="11" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_stn">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>站台标志</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="5" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_lamp">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>发车灯</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_pm">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>软允许</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="4" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_check">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>自检状态</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="9" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_doorstatus">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>门状态</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="10" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_freq">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);
+selection-background-color: rgb(255, 170, 0);</string>
+             </property>
+             <property name="text">
+              <string>轨道低频</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="8" alignment="Qt::AlignHCenter">
+            <widget class="QLabel" name="lbl_atpdcmd">
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(170, 170, 255);</string>
+             </property>
+             <property name="text">
+              <string>分相区</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QGridLayout" name="gridLayout_3">
+           <property name="sizeConstraint">
+            <enum>QLayout::SetFixedSize</enum>
+           </property>
+           <property name="verticalSpacing">
+            <number>0</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QCheckBox" name="CBvato">
+             <property name="maximumSize">
+              <size>
+               <width>101</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>S-Vato</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QCheckBox" name="CBcmdv">
+             <property name="maximumSize">
+              <size>
+               <width>101</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>S-Vatocmdv</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QCheckBox" name="CBatpcmdv">
+             <property name="maximumSize">
+              <size>
+               <width>101</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>S-Vatpcmdv</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QCheckBox" name="CBlevel">
+             <property name="maximumSize">
+              <size>
+               <width>101</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>S-Level</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="4">
+            <widget class="QCheckBox" name="CBacc">
+             <property name="maximumSize">
+              <size>
+               <width>101</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>S-Acc</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="5">
+            <widget class="QCheckBox" name="CBramp">
+             <property name="maximumSize">
+              <size>
+               <width>101</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>S-Ramp</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
       </widget>
       <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -205,7 +1122,7 @@
              </size>
             </property>
             <property name="text">
-             <string>TextLabel</string>
+             <string>时间</string>
             </property>
            </widget>
           </item>
@@ -218,7 +1135,7 @@
              </size>
             </property>
             <property name="text">
-             <string>TextLabel</string>
+             <string>Y:M:D:H:M:S</string>
             </property>
            </widget>
           </item>
@@ -231,7 +1148,7 @@
              </size>
             </property>
             <property name="text">
-             <string>TextLabel</string>
+             <string>周期</string>
             </property>
            </widget>
           </item>
@@ -424,26 +1341,31 @@
    </property>
    <widget class="QMenu" name="menu_2">
     <property name="title">
-     <string>编辑</string>
+     <string>模式</string>
     </property>
-    <addaction name="actionTag"/>
-    <addaction name="actionView"/>
-    <addaction name="actionVS"/>
-    <addaction name="actionCS"/>
+    <addaction name="actionoffline"/>
+    <addaction name="actionRealtime"/>
    </widget>
    <widget class="QMenu" name="menu_3">
     <property name="title">
-     <string>工具</string>
+     <string>设置</string>
     </property>
-    <action name=""/>
-    <addaction name="actionPan"/>
-    <addaction name="actionZoom"/>
-    <addaction name="actionEdit"/>
-    <addaction name="actionConfig"/>
-    <addaction name="actionReset"/>
-    <addaction name="actionFwd"/>
-    <addaction name="actionBck"/>
-    <addaction name="actionHome"/>
+    <widget class="QMenu" name="menu_7">
+     <property name="title">
+      <string>绘图设置</string>
+     </property>
+     <addaction name="actionReset"/>
+     <addaction name="actionEdit"/>
+     <addaction name="actionConfig"/>
+     <addaction name="actionZoom"/>
+     <addaction name="actionPan"/>
+     <addaction name="actionFwd"/>
+     <addaction name="actionBck"/>
+     <addaction name="actionHome"/>
+    </widget>
+    <addaction name="menu_7"/>
+    <addaction name="actionSerSet"/>
+    <addaction name="actionMVB"/>
    </widget>
    <widget class="QMenu" name="menu_4">
     <property name="title">
@@ -461,8 +1383,33 @@
     <addaction name="fileSave"/>
     <addaction name="Exit"/>
    </widget>
+   <widget class="QMenu" name="menu_5">
+    <property name="title">
+     <string>曲线</string>
+    </property>
+    <addaction name="actionVS"/>
+    <addaction name="actionCS"/>
+   </widget>
+   <widget class="QMenu" name="menu_6">
+    <property name="title">
+     <string>事件</string>
+    </property>
+    <addaction name="actionBTM"/>
+    <addaction name="actionJD"/>
+    <addaction name="actionWL"/>
+   </widget>
+   <widget class="QMenu" name="menu_8">
+    <property name="title">
+     <string>工具</string>
+    </property>
+    <addaction name="actionUTC"/>
+    <addaction name="actionMVBParser"/>
+   </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
+   <addaction name="menu_5"/>
+   <addaction name="menu_6"/>
+   <addaction name="menu_8"/>
    <addaction name="menu_3"/>
    <addaction name="menu_4"/>
   </widget>
@@ -497,7 +1444,7 @@
      <normaloff>IconFiles/file.png</normaloff>IconFiles/file.png</iconset>
    </property>
    <property name="text">
-    <string>打开</string>
+    <string>打开记录</string>
    </property>
   </action>
   <action name="fileClose">
@@ -506,7 +1453,7 @@
      <normaloff>IconFiles/close.png</normaloff>IconFiles/close.png</iconset>
    </property>
    <property name="text">
-    <string>关闭</string>
+    <string>关闭记录</string>
    </property>
   </action>
   <action name="fileSave">
@@ -515,7 +1462,7 @@
      <normaloff>IconFiles/save.png</normaloff>IconFiles/save.png</iconset>
    </property>
    <property name="text">
-    <string>保存</string>
+    <string>保存曲线</string>
    </property>
   </action>
   <action name="Exit">
@@ -676,6 +1623,87 @@
    </property>
    <property name="text">
     <string>周期速度曲线</string>
+   </property>
+  </action>
+  <action name="actionSerSet">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/serset.png</normaloff>IconFiles/serset.png</iconset>
+   </property>
+   <property name="text">
+    <string>串口设置</string>
+   </property>
+   <property name="toolTip">
+    <string>用于窗口和文件保存路径设置</string>
+   </property>
+  </action>
+  <action name="actionoffline">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/offline.png</normaloff>IconFiles/offline.png</iconset>
+   </property>
+   <property name="text">
+    <string>离线数据分析</string>
+   </property>
+   <property name="toolTip">
+    <string>选择离线ATO记录分析显示</string>
+   </property>
+  </action>
+  <action name="actionRealtime">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/realtime.png</normaloff>IconFiles/realtime.png</iconset>
+   </property>
+   <property name="text">
+    <string>实时数据分析</string>
+   </property>
+   <property name="toolTip">
+    <string>实时分析ATO串口记录</string>
+   </property>
+  </action>
+  <action name="actionBTM">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>ATP应答器数据</string>
+   </property>
+   <property name="toolTip">
+    <string>ATO收到的ATP发送的应答器数据</string>
+   </property>
+  </action>
+  <action name="actionJD">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>JD停车点更新</string>
+   </property>
+  </action>
+  <action name="actionWL">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>无线呼叫命令</string>
+   </property>
+   <property name="toolTip">
+    <string>来自应答器或司机手输的无线呼叫命令</string>
+   </property>
+  </action>
+  <action name="actionMVB">
+   <property name="text">
+    <string>MVB端口设置</string>
+   </property>
+  </action>
+  <action name="actionUTC">
+   <property name="text">
+    <string>UTC时间转换器</string>
+   </property>
+  </action>
+  <action name="actionMVBParser">
+   <property name="text">
+    <string>MVB解析器</string>
    </property>
   </action>
  </widget>
