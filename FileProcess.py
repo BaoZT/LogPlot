@@ -444,15 +444,15 @@ class FileProcess(threading.Thread):
         pat_sp0 = re.compile('\[P->O\]SP0,')
         pat_sp1 = re.compile('\[P->O\]SP1,')
         pat_sp2 = re.compile('\[P->O\]SP2,')
-        pat_sp5 = re.compile('\[P->O\]SP5,n_units (\d),nid_operational (\w+),nid_driver (\w+),'
-                             'btm_antenna_position (-?\d+),l_door_dis (\d+), l_sdu_wh_size_(\d+),l_sdu_wh_size_(\d+),'
-                             't_cutoff_traction (\d+),nid_engine (\d+),v_ato_permitted (\d)')
+        pat_sp5 = re.compile('\[P->O\]SP5,\w*?\s?(\d),\w*?\s?(\w+),\w*?\s?(\w+),'
+                             '\w*?\s?(-?\d+),\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+),'
+                             '\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d)')
         pat_sp6 = re.compile('\[P->O\]SP6,')
-        pat_sp7 = re.compile('\[P->O\]SP7,nid_bg (\d+),t_middle (\d+),d_pos_adj (-?\d+),nid_xuser (\d+),q_scale (\d+),'
-                             'q_platform (\d+),q_door (\d+),n_d (\d+),d_stop (\d+)')
+        pat_sp7 = re.compile('\[P->O\]SP7,\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(-?\d+),\w*?\s?(\d+),\w*?\s?(\d+),'
+                             '\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+)')
 
-        pat_sp8 = re.compile('\[P->O\]SP8,q_tsrs (\d),nid_c (\d+),nid_tsrs (\d),nid_radio_h (\w+),nid_radio_l (\w+),'
-                             'q_sleepssion (\d), m_type (\d)')
+        pat_sp8 = re.compile('\[P->O\]SP8,\w*?\s?(\d),\w*?\s?(\d+),\w*?\s?(\d),\w*?\s?(\w+),\w*?\s?(\w+),'
+                             '\w*?\s?(\d), \w*?\s?(\d)')
         pat_sp9 = re.compile('\[P->O\]SP9,')
         # ATO->ATP 数据包
         pat_sp131 = re.compile('\[O->P\]SP131:\w*?\s?(\d),\w*?\s?(\d),\w*?\s?(\d),\w*?\s?(-?\d+),\w*?\s?(\d),\w*?\s?(\d)'
@@ -479,6 +479,19 @@ class FileProcess(threading.Thread):
                     pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46]
 
         return pat_list
+
+    # 创建计划模板
+    @staticmethod
+    def creat_plan_pattern():
+        # 计划解析RP1-RP4
+        pat_rp1 = re.compile('\[RP1\](-?\d+),(\d+),(\d+),(\d+)')
+        pat_rp2 = re.compile('\[RP2\](\d),(\d),(-?\d+),(\d)')
+        pat_rp2_comm = re.compile('\[RP2-(\d+)\](\d+),(\d+),(-?\d+),(-?\d+),(-?\d+),(-?\d+),(\d),(\d)')
+        pat_rp3 = re.compile('\[RP3\](\d),(\d),(-?\d+),(-?\d+),(\d)')
+        pat_rp4 = re.compile('\[RP4\](\d),(-?\d+),(-?\d+),(\d),(\d)')
+
+        return [pat_rp1, pat_rp2, pat_rp2_comm, pat_rp3, pat_rp4]
+
 
     # 计算相邻周期加速度变化
     # <输出> 返回加速度处理结果
@@ -586,6 +599,7 @@ class FileProcess(threading.Thread):
         global pat_ato_ctrl
         global pat_ato_stat
         global pat_tcms_stat
+        real_idx = 0            # 对于记录打印到同一行的情况，首先要获取实际索引
         tmp = ''
         parse_flag = 0
         try:
@@ -593,21 +607,24 @@ class FileProcess(threading.Thread):
                 if '@' in line:
                     pass
                 else:
-                    tmp = line[10:]  # 还有一个冒号需要截掉
-                    c.ato2tcms_ctrl = self.mvbParser.ato_tcms_parse(1025, tmp)
+                    real_idx = line.find('MVB[')
+                    tmp = line[real_idx+10:]  # 还有一个冒号需要截掉
+                    c.ato2tcms_ctrl = self.mvbParser.ato_tcms_parse(1025, tmp)       # 这里仅仅适配解析模块，端口号抽象
                     parse_flag = 1
             elif pat_ato_stat in line:
                 if '@' in line:
                     pass
                 else:
-                    tmp = line[10:]
+                    real_idx = line.find('MVB[')
+                    tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                     c.ato2tcms_stat = self.mvbParser.ato_tcms_parse(1041, tmp)
                     parse_flag = 1
             elif pat_tcms_stat in line:
                 if '@' in line:
                     pass
                 else:
-                    tmp = line[10:]
+                    real_idx = line.find('MVB[')
+                    tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                     c.tcms2ato_stat = self.mvbParser.ato_tcms_parse(1032, tmp)
                     if c.tcms2ato_stat != []:
                         if c.tcms2ato_stat[14] == 'AA':
@@ -620,7 +637,6 @@ class FileProcess(threading.Thread):
         except Exception as err:
             print(err)
         return parse_flag
-
 
     # <已废弃>
     # 处理控车参数用于绘图，生成关键列表

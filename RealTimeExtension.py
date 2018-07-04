@@ -1,5 +1,6 @@
 import matplotlib
 import serial
+import datetime
 import os
 import threading
 import queue
@@ -27,6 +28,7 @@ pat_tcms_Stat = ''
 class SerialRead(threading.Thread, QtCore.QObject):
 
     pat_show_singal = QtCore.pyqtSignal(tuple)
+    plan_show_singal = QtCore.pyqtSignal(tuple)      # 计划显示使用的信号
 
     def __init__(self, name, serialport):
         threading.Thread.__init__(self)
@@ -38,7 +40,19 @@ class SerialRead(threading.Thread, QtCore.QObject):
         self.pat_list = FileProcess.create_all_pattern()
         self.pat_list.insert(0, pat_cycle_start)
         self.pat_list.insert(1, pat_cycle_end)
+        self.pat_plan = FileProcess.creat_plan_pattern()        # 计划解析模板
+        # 周期开始时间
+        self.cycle_os_time = 0
+        # 计划
+        self.rp1 = ()
+        self.rp2 = ()
+        self.rp2_list = []
+        self.rp3 = ()
+        self.rp4 = ()
+        self.plan_in_cycle = '0'     # 主要用于周期识别比较，清理列表
         self.newPaintCnt = 0
+        self.time_plan_remain = 0
+        self.time_plan_count = 0
         # MVB 解析模板
         self.pat_ato_ctrl = ''
         self.pat_ato_stat = ''
@@ -50,7 +64,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
         self.tcms2ato_stat = []
         # 静态变量
         self.gfx_flag = 0
-        self.cycle_num = ''
+        self.cycle_num = '0'
         self.time_content = ''
         self.fsm = []
         self.sc_ctrl = []
@@ -59,12 +73,12 @@ class SerialRead(threading.Thread, QtCore.QObject):
     # 串口成功打开才启动此线程
     def run(self):
         # 读取串口内容
-        # with open('序列35整理.txt','r') as f:
+        # with open('序列6.txt','r') as f:
         while not exit_flag:
             s = time.time()
             # 有数据就读取
             try:
-                # time.sleep(0.01)
+                # time.sleep(0.01)              # 着两行代码用于读取文件
                 # line = f.readline()
                 line = self.ser.readline().decode('ansi').rstrip()    # 串口设置
                 queueLock.acquire()
@@ -111,6 +125,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
         if self.pat_list[0].findall(line):
             temp = self.pat_list[0].findall(line)[0]
             self.cycle_num = temp[1]
+            self.cycle_os_time = int(temp[0])       # 当周期系统时间
             update_flag = 1
         elif self.pat_list[2].findall(line):
             self.time_content = self.pat_list[2].findall(line)[0]  # time 信息直接返回
@@ -137,6 +152,9 @@ class SerialRead(threading.Thread, QtCore.QObject):
                     self.gfx_flag = 0    # 包含真正过分相及错误数据
             except Exception as err:
                 print('gfx_err ')
+
+        # 匹配计划，内部使用独立信号
+        self.plan_research(line, self.cycle_num)
         result = (self.cycle_num, self.time_content, self.fsm, self.sc_ctrl, self.stoppoint,
                   self.ato2tcms_ctrl, self.ato2tcms_stat, self.tcms2ato_stat,
                   self.gfx_flag)
@@ -145,21 +163,23 @@ class SerialRead(threading.Thread, QtCore.QObject):
             self.pat_show_singal.emit(result)
         else:
             pass
+        # 返回用于画图
         return result
 
-        # 解析MVB内容
-
+    # 解析MVB内容
     def mvb_research(self, line):
         global pat_ato_ctrl
         global pat_ato_stat
         global pat_tcms_stat
+        real_idx = 0  # 对于记录打印到同一行的情况，首先要获取实际索引
         tmp = ''
         parse_flag = 0
         if pat_ato_ctrl in line:
             if '@' in line:
                 pass
             else:
-                tmp = line[10:]  # 还有一个冒号需要截掉
+                real_idx = line.find('MVB[')
+                tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                 self.ato2tcms_ctrl = self.mvbParser.ato_tcms_parse(1025, tmp)
                 if self.ato2tcms_ctrl != []:
                     parse_flag = 1
@@ -167,7 +187,8 @@ class SerialRead(threading.Thread, QtCore.QObject):
             if '@' in line:
                 pass
             else:
-                tmp = line[10:]
+                real_idx = line.find('MVB[')
+                tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                 self.ato2tcms_stat = self.mvbParser.ato_tcms_parse(1041, tmp)
                 if self.ato2tcms_stat != []:
                     parse_flag = 1
@@ -175,11 +196,99 @@ class SerialRead(threading.Thread, QtCore.QObject):
             if '@' in line:
                 pass
             else:
-                tmp = line[10:]
+                real_idx = line.find('MVB[')
+                tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                 self.tcms2ato_stat = self.mvbParser.ato_tcms_parse(1032, tmp)
                 if self.tcms2ato_stat != []:
                     parse_flag = 1
         return parse_flag
+
+    # 提取计划内容
+    def plan_research(self, line, cycle_num):
+        update_flag = 0
+        ret_plan = ()
+        temp_utc = ''
+        temp_transfer_list = []
+        # 提高解析效率,当均更新时才发送信号
+        if '[RP' in line:
+            if self.pat_plan[0].findall(line):
+                self.rp1 = self.pat_plan[0].findall(line)[0]
+                update_flag = 1
+
+            elif self.pat_plan[1].findall(line):
+                self.rp2 = self.pat_plan[1].findall(line)[0]
+                update_flag = 1
+
+            elif self.pat_plan[2].findall(line):
+                # 当周期改变时清除，只存储同一周期的
+                if int(cycle_num) != int(self.plan_in_cycle) :
+                    self.rp2_list = []
+                    # 替换其中UTC时间
+                    temp_transfer_list = self.Comput_Plan_Content(self.pat_plan[2].findall(line)[0])
+                    self.rp2_list.append(tuple(temp_transfer_list))
+                    self.plan_in_cycle = cycle_num
+                else:
+                    # 替换其中的UTC时间
+                    temp_transfer_list = self.Comput_Plan_Content(self.pat_plan[2].findall(line)[0])
+                    self.rp2_list.append(tuple(temp_transfer_list))
+                    update_flag = 1
+
+            elif self.pat_plan[3].findall(line):
+                self.rp3 = self.pat_plan[3].findall(line)[0]
+                update_flag = 1
+
+            elif self.pat_plan[4].findall(line):
+                self.rp4 = self.pat_plan[4].findall(line)[0]
+                if int(self.rp4[1]) != 0 :
+                    self.time_plan_remain = int(self.rp4[1]) - self.cycle_os_time
+                if int(self.rp4[2]) != 0:
+                    self.time_plan_count = int(self.rp4[2]) - self.cycle_os_time
+                update_flag = 1
+            else:
+                pass
+            ret_plan = (self.rp1, (self.rp2,self.rp2_list), self.rp3, self.rp4,
+                        self.time_plan_remain,self.time_plan_count)
+        else:
+            pass
+        # 发送信号
+        if update_flag == 1:
+            self.plan_show_singal.emit(ret_plan)
+        else:
+            pass
+        # 返回用于指示解析结果
+        return update_flag
+
+    # 解析utc
+    @staticmethod
+    def TransferUTC(t=str):
+        ltime = time.localtime(int(t))
+        timeStr = time.strftime("%H:%M:%S", ltime)
+        return timeStr
+
+    # 解析转化计划
+    def Comput_Plan_Content(self, t=tuple):
+        # 替换其中的UTC时间
+        temp_transfer_list = [''] * len(t)
+        for idx, item in enumerate(t):
+            if idx in [2, 4, 6]:
+                temp_transfer_list[idx] = self.TransferUTC(t[idx])
+            elif idx == 7:
+                if t[idx]=='1':
+                    temp_transfer_list[idx]='通过'
+                elif t[idx]=='2':
+                    temp_transfer_list[idx]='到发'
+                else:
+                    temp_transfer_list[idx] = '错误'
+            elif idx == 8:
+                if t[idx]=='1':
+                    temp_transfer_list[idx]='办客'
+                elif t[idx]=='2':
+                    temp_transfer_list[idx]='不办客'
+                else:
+                    temp_transfer_list[idx] = '错误'
+            else:
+                temp_transfer_list[idx] = t[idx]
+        return temp_transfer_list
 
 
 class RealPaintWrite(threading.Thread):

@@ -32,6 +32,7 @@ pat_ato_ctrl = 0
 pat_ato_stat = 0
 pat_tcms_stat = 0
 
+
 # 串口设置类
 class SerialDlg(QtWidgets.QDialog):
 
@@ -304,9 +305,9 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             # 牵引制动状态
             if tmp[2] == 'AA':
                 field_result.append('牵引')
-            elif tmp[2] == 'A5':
-                field_result.append('制动')
             elif tmp[2] == '55':
+                field_result.append('制动')
+            elif tmp[2] == 'A5':
                 field_result.append('惰行')
             elif tmp[2] == '00':
                 field_result.append('无命令')
@@ -506,7 +507,6 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
 
         return field_result
 
-
     # 显示最终结果
     def show_parser_result(self, data_type=str, field_name=list, field_value=list, field_result=list):
         self.treeWidget.clear()
@@ -565,7 +565,60 @@ class UTCTransferDlg(QtWidgets.QDialog):
                                                       "错误",
                                                       "注意：UTC时间有误，请修改",
                                                       QtWidgets.QMessageBox.Yes)
+
     def TransferUTC(self, t=str):
         ltime = time.localtime(int(t))
         timeStr = time.strftime("%Y-%m-%d %H:%M:%S", ltime)
         return timeStr
+
+
+# 实时绘图设置类
+class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
+
+    realtime_plot_set_signal = QtCore.pyqtSignal(int,bool)
+
+    def __init__(self, parent=None):
+        super(RealTimePlotDlg, self).__init__(parent)
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+
+        plot_cycle = QtWidgets.QLabel('绘图周期')
+        is_plot_flag = QtWidgets.QLabel('是否绘图')
+
+        self.plot_cycle_time = QtWidgets.QSpinBox()
+        self.plot_flag = QtWidgets.QCheckBox()
+
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(plot_cycle, 0, 0)
+        layout.addWidget(self.plot_cycle_time, 0, 1)
+        layout.addWidget(is_plot_flag, 1, 0)
+        layout.addWidget(self.plot_flag, 1, 1)
+
+        self.OpenButton = QtWidgets.QPushButton(u'确定')
+
+        buttonLayout = QtWidgets.QHBoxLayout()
+        buttonLayout.addWidget(self.OpenButton)
+
+        mainlayout = QtWidgets.QVBoxLayout()
+        mainlayout.addLayout(layout)
+        mainlayout.addLayout(buttonLayout)
+
+        self.OpenButton.clicked.connect(self.PlotSet)
+
+        self.plot_cycle_time.setValue(3)
+        self.plot_flag.setChecked(True)
+        self.resize(180, 80)
+
+        self.setLayout(mainlayout)
+        self.setWindowTitle(u'实时绘图设置')
+
+    def PlotSet(self):
+        plot_flag = False
+        if self.plot_flag.isChecked():
+            plot_flag = True
+        else:
+            plot_flag = False
+        self.realtime_plot_set_signal.emit(self.plot_cycle_time.value(),plot_flag)
+        self.close()
+

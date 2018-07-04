@@ -109,6 +109,10 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.ax1_twin = self.axes1.twinx()
+        # 事件绘制字典,存储每个需要绘制的列表，列表是tuple类型
+        self.event_plot_dic = {}
+        self.event_plot_flag = 0                 # 事件绘制标志
+        self.event_plot_flag_dic = {}            # 指定绘制
 
     # 对于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
@@ -167,6 +171,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                            linewidth=0.8)  # 80km/h
         # 绘制位置速度坐标系
         if cmd == 0:
+            self.plot_event_in_cords(cmd)
             # 如果绘图范围是默认值，还没有绘图，是默认路径
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
                 self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])  # 由于绘制直线会从0开始绘制，这里重置范围
@@ -178,6 +183,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.axes1.set_ylabel('列车速度cm/s')
             self.axes1.set_title(ob.filename+" "+"速度-位置曲线")
         else:
+            self.plot_event_in_cords(cmd)
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
                 self.axes1.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])  # 重置范围
                 self.axes1.set_ylim(-200, 10000)
@@ -273,13 +279,123 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 cursor_track_flag = 0                       # 0 是不追踪
                 self.lock_signal.emit(cursor_track_flag)
 
+    # 获取光标跟踪标志
     def get_track_status(self):
         global cursor_track_flag
         return cursor_track_flag
 
+    # 设置光标跟踪标志
     def set_track_status(self):
         global cursor_track_flag
         cursor_track_flag = 0
+
+    # 计算并设置事件绘制信息及标志
+    def set_event_info_plot(self, event_dic=dict, cycle_dic=dict, pos_list=list, cycle_list=list):
+        '''
+        该函数主要按照事件字典说明，按照传入的周期列表和位置列表
+        计算绘制事件需要的绘图列表，即“事件-周期/位置”列表
+        :param event_dic: 事件字典，指示绘制哪些事件
+        :param cycle_dic: 周期列表，用于查询事件信息对应周期
+        :param pos_list: 位置索引列表，用于生成位置图是需要，借助周期索引来查询
+        :param cycle_list: 周期索引列表，是AOM控车下周期索引，用于建立其他信息查询的引用
+        :return: None
+        '''
+
+        self.event_plot_flag_dic = event_dic
+
+        for k in event_dic.keys():
+            if event_dic[k] == 1:       # 只要有为1的
+                self.event_plot_flag = 1
+                break
+            else:
+                self.event_plot_flag = 0
+        # 貌似numpy 的array 天然取出时浮点
+        map(int, cycle_list)
+        # 当需要事件绘制时，该标志标明有需要绘制，无需一个一个查
+        if self.event_plot_flag == 1:
+            # 应答器事件字典
+            if event_dic['BTM'] == 1:
+                temp_pos_list = []
+                temp_cycle_list = []
+                # 周期字典和周期列表中的周期都是int类型
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                        temp_cycle_list.append(item_cycle)      # 直接添加周期号
+                        temp_pos_list.append(pos_list[idx])     # 添加对应位置
+                self.event_plot_dic['BTM'] = (temp_pos_list, temp_cycle_list)    # 字典查询结果是两个列表
+
+            # 无线事件字典
+            if event_dic['WL'] == 1:
+                temp_pos_list = []
+                temp_cycle_list = []
+                # 周期字典和周期列表中的周期都是int类型
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 8 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                        temp_cycle_list.append(item_cycle)  # 直接添加周期号
+                        temp_pos_list.append(pos_list[idx])  # 添加对应位置
+                        self.event_plot_dic['WL'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+
+            # JD应答器
+            if event_dic['JD'] == 1:
+                temp_pos_list = []
+                temp_cycle_list = []
+                # 周期字典和周期列表中的周期都是int类型
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                        if '13' in cycle_dic[item_cycle].cycle_sp_dict[7]:
+                            temp_cycle_list.append(item_cycle)  # 直接添加周期号
+                            temp_pos_list.append(pos_list[idx])  # 添加对应位置
+                            self.event_plot_dic['JD'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+
+            # 计划
+            if event_dic['PLAN'] == 1:
+                temp_pos_list = []
+                temp_cycle_list = []
+                # 周期字典和周期列表中的周期都是int类型
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 41 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                        temp_cycle_list.append(item_cycle)  # 直接添加周期号
+                        temp_pos_list.append(pos_list[idx])  # 添加对应位置
+                        self.event_plot_dic['PLAN'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+
+
+    # 绘制事件信息
+    def plot_event_in_cords(self, cmd=int):
+        # 需要绘图
+        if self.event_plot_flag == 1:
+            for k in self.event_plot_dic.keys():
+                # 前期数据处理保证只要不为空就有位置和周期数据
+                if self.event_plot_dic[k] != []:
+                    if k == 'BTM' and self.event_plot_flag_dic['BTM'] == 1:
+                        if cmd == 0:
+                            self.axes1.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
+                                               marker='^',color='gold')
+                        else:
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][0]),
+                                               marker='^', color='gold')
+
+                    if k == 'JD' and self.event_plot_flag_dic['JD'] == 1:
+                        if cmd == 0:
+                            self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
+                                               marker='^', color='Blue')
+                        else:
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][0]),
+                                               marker='^', color='Blue')
+
+                    if k == 'WL' and self.event_plot_flag_dic['WL'] == 1:
+                        if cmd == 0:
+                            self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
+                                               marker='D', color='Peru')
+                        else:
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][0]),
+                                               marker='D', color='Peru')
+                    if k == 'PLAN' and self.event_plot_flag_dic['PLAN'] == 1:
+                        if cmd == 0:
+                            self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
+                                               marker='*', color='Purple')
+                        else:
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][0]),
+                                               marker='*', color='Purple')
 
 
 # 实时画板类定义
