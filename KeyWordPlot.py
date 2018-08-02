@@ -289,6 +289,79 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         global cursor_track_flag
         cursor_track_flag = 0
 
+    # 绘制控车气泡文本绘制
+    def plot_ctrl_text(self, ob=FileProcess, pos_idx=int, text_pos_type=int, cmd=int):
+        '''
+        :param ob: 记录处理结果，含分析所需全部信息，可以直接在本函数计算需要显示的内容和数据
+        :param pos_idx: 指示所处理的控车周期索引，内部顺序相对索引
+        :param text_pos_type: 文本框摆放类型，1=跟随模式，0=停靠右上角
+        :param cmd: 当前曲线类型，1=周期速度曲线 0=位置速度曲线
+        :return:None
+        '''
+
+        self.axes1.texts.clear()    # 删除坐标轴文本信息
+
+        # 根据曲线类型获取文本气泡坐标
+        bubble_x = 0
+        bubble_y = 0
+        # 只在ATO速度曲线坐标上显示， cmd : 1=周期速度曲线 0=位置速度曲线
+        if cmd == 0:
+            bubble_x = ob.s[pos_idx]
+            bubble_y = ob.v_ato[pos_idx]
+        elif cmd == 1:
+            bubble_x = ob.cycle[pos_idx]
+            bubble_y = ob.v_ato[pos_idx]
+
+        # 文本框内容字符串生成
+        atocmd_ato_err = ob.cmdv[pos_idx] - ob.v_ato[pos_idx]
+        atpcmd_ato_err = ob.ceilv[pos_idx] - ob.v_ato[pos_idx]
+        stoppos_curpos_err = ob.stoppos[pos_idx] - ob.s[pos_idx]
+        targetpos_curpos_err = ob.targetpos[pos_idx] - ob.s[pos_idx]
+        ramp = ob.ramp[pos_idx]
+        if pos_idx > 0:
+            delta_v = ob.v_ato[pos_idx] - ob.v_ato[pos_idx - 1]
+        else:
+            delta_v = ob.v_ato[pos_idx]
+
+        # 设置报警色
+        if atpcmd_ato_err > 0:
+            paint_color = 'deepskyblue'
+        else:
+            paint_color = 'red'
+
+        str_atocmd_ato_err = '距ATO命令速度:%d cm/s\n'%atocmd_ato_err
+        str_atpcmd_ato_err = '距ATP命令速度:%d cm/s\n'%atpcmd_ato_err
+        str_stoppos_curpos_err = '距停车点:%d cm\n'%stoppos_curpos_err
+        str_targetpos_curpos_err = '距目标点:%d cm\n'%targetpos_curpos_err
+        str_ramp = '当前坡度:%d ‰\n'%ramp
+        str_delta_v = '相邻速度差:%d cm/s\n'%delta_v
+
+        str_show = str_atocmd_ato_err + str_atpcmd_ato_err \
+                   + str_stoppos_curpos_err + str_targetpos_curpos_err \
+                   + str_ramp + str_delta_v
+
+        # 获取当前坐标轴范围，用以计算文本框的偏移比例
+        cord_lim_x = self.axes1.get_xlim()
+        cord_lim_y = self.axes1.get_ylim()
+
+        x_delta = abs(cord_lim_x[1] - cord_lim_x[0])/64
+        y_delta = abs(cord_lim_y[1] - cord_lim_y[0])/32
+
+        bubble_x = bubble_x + x_delta  # 右移动
+        bubble_y = bubble_y - y_delta  # 下移动
+
+        # 文本悬浮窗绘制位置类型，参考主框架定义 1=跟随模式，0=停靠右上角
+        props = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
+
+        if 1 == text_pos_type:
+            self.axes1.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props)
+        elif 0 == text_pos_type:
+            self.axes1.text(0.75, 0.95, str_show, transform=self.axes1.transAxes, fontsize=10, verticalalignment='top',
+                            bbox=props)
+        else:
+            pass
+
+
     # 计算并设置事件绘制信息及标志
     def set_event_info_plot(self, event_dic=dict, cycle_dic=dict, pos_list=list, cycle_list=list):
         '''

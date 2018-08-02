@@ -20,13 +20,14 @@ import threading
 # 全局静态变量
 load_flag = 0         # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
 cursor_in_flag = 0    # 区分光标是否在图像内,初始化为0,in=1，out=2
-curve_flag = 0        # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
+curve_flag = 1        # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
 
 
 # 主界面类
 class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     is_cursor_created = 0
     LinkBtnStatus = 0       # 实时按钮状态信息
+
     # 建立的是Main Window项目，故此处导入的是QMainWindow
     def __init__(self):
         super(Mywindow, self).__init__()
@@ -38,7 +39,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savefilename = ''                # 实时存储的写入文件名(含路径)
         self.pathlist = []
         self.mode = 0                    # 默认0是浏览模式，1是标注模式
-        self.ver = '2.7.0'               # 标示软件版本
+        self.ver = '2.8.0'               # 标示软件版本
         self.serdialog = SerialDlg()     # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)   # 操作串口对象
 
@@ -56,6 +57,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         l.addWidget(self.sp)
         # l.addWidget(self.sp.mpl_toolbar)
 
+        self.bubble_status = 1      # 控车悬浮气泡状态，0=停靠，1=跟随
         self.pat_plan = FileProcess.FileProcess.creat_plan_pattern()  # 计划解析模板
         # 在线绘图
         lr = QtWidgets.QVBoxLayout(self.widget_2)
@@ -105,6 +107,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_PortLink.clicked.connect(self.btnLinkorBreak)
         self.actionMVBParser.triggered.connect(self.show_mvb_parser)
         self.actionUTC.triggered.connect(self.show_utc_transfer)
+        self.action_bubble_dock.triggered.connect(self.set_ctrl_bubble_format)
+        self.action_bubble_track.triggered.connect(self.set_ctrl_bubble_format)
         # 事件绑定
         self.actionBTM.triggered.connect(self.update_event_point)
         self.actionJD.triggered.connect(self.update_event_point)
@@ -153,6 +157,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.progressBar.setValue(0)
         self.label_2.setText('')
         self.spinBox.setRange(0, 1000000)
+        self.action_bubble_track.setChecked(True)
         self.Exit.triggered.connect(QtWidgets.qApp.quit)
         self.CBvato.stateChanged.connect(self.update_up_cure)
         self.CBatpcmdv.stateChanged.connect(self.update_up_cure)
@@ -215,7 +220,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             try:
                 is_ato_control = self.log_process()
                 if is_ato_control == 0:
-                    load_flag = 1      # 记录加载且ATO控车
+                    load_flag = 1                # 记录加载且ATO控车
+                    self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                     self.CBvato.setChecked(True)
                 elif is_ato_control == 1:
                     load_flag = 2      # 记录加载但是ATO没有控车
@@ -1016,6 +1022,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def log_process(self):
         isok = 2                                                # 0=ato控车，1=没有控车,2=没有周期
         isdone = 0
+        self.actionView.trigger()
         self.log = FileProcess.FileProcess(self.progressBar)    # 类的构造函数，函数中给出属性
         self.log.readkeyword(self.file)
         self.log.start()                                        # 启动记录读取线程,run函数不能有返回值
@@ -1330,6 +1337,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.connect(self.set_table_content)
             self.c_vato.move_signal.connect(self.set_tree_content)      # 连接信号槽函数
             self.c_vato.sim_move_singal.connect(self.set_tree_content)  # 连接信号槽函数
+            self.c_vato.move_signal.connect(self.set_ctrl_bubble_content)
+            self.c_vato.sim_move_singal.connect(self.set_ctrl_bubble_content)
             self.c_vato.move_signal.connect(self.set_train_page_content)
             self.c_vato.sim_move_singal.connect(self.set_train_page_content)
             self.c_vato.move_signal.connect(self.set_plan_page_content)
@@ -1345,6 +1354,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.disconnect(self.set_table_content)
             self.c_vato.move_signal.disconnect(self.set_tree_content)  # 连接信号槽函数
             self.c_vato.sim_move_singal.disconnect(self.set_tree_content)  # 连接信号槽函数
+            self.c_vato.move_signal.disconnect(self.set_ctrl_bubble_content)
+            self.c_vato.sim_move_singal.disconnect(self.set_ctrl_bubble_content)
             self.c_vato.move_signal.disconnect(self.set_train_page_content)
             self.c_vato.sim_move_singal.disconnect(self.set_train_page_content)
             self.c_vato.move_signal.disconnect(self.set_plan_page_content)
@@ -1532,6 +1543,23 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for idx3, value in enumerate(item_value):
             self.tableWidget.setItem(idx3, 1, QtWidgets.QTableWidgetItem(value))
         self.label_2.setText(self.log.cycle_dic[self.log.cycle[indx]].time)
+
+    # 事件处理函数，用于设置气泡格式，目前只设置位置
+    def set_ctrl_bubble_format(self):
+        sender = self.sender()
+        if sender.text() == '跟随光标':
+            self.bubble_status = 1      # 1 跟随模式
+        elif sender.text() == '停靠窗口':
+            self.bubble_status = 0      # 0 是停靠，默认右上角
+        else:
+            pass
+
+    # 事件处理函数，计算控车数据悬浮气泡窗并显示
+    def set_ctrl_bubble_content(self, idx):
+        global curve_flag
+        # 根据输入类型设置气泡
+        self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, curve_flag)
+
 
     # 设置树形结构
     def set_tree_fromat(self):
@@ -2015,9 +2043,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，设置计划信息
     def set_plan_page_content(self, idx):
-        for x in range(8):
-            for y in range(3):
-                self.tableWidgetPlan_2.removeCellWidget(x+1,y+1)
         update_flag = 0
         ret_plan = ()
         temp_utc = ''
@@ -2106,7 +2131,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.lbl_plan_final_2.setText('终到站')
                 elif rp2[1] == '0':
                     self.lbl_plan_final_2.setText('非终到站')
-            # 表格显示内容
+            # 有计划，准备表格显示内容
             if rp2_list != []:
                 for item in rp2_list:
                     # 去除打印中计划更新时间信息，无用
@@ -2114,13 +2139,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 len_plan = len(rp2_temp_list)
 
+                # 清空表格内容准备更新
+                self.tableWidgetPlan_2.clearContents()
+
                 # 计划索引
                 for index, item_plan in enumerate(rp2_temp_list):
                     # 内容索引
                     for idx, name in enumerate(item_plan):
                         self.tableWidgetPlan_2.setItem(idx, index, QtWidgets.QTableWidgetItem(item_plan[idx]))
-                        if index > 0:
-                            self.tableWidgetPlan_2.item(idx, index).setTextAlignment(QtCore.Qt.AlignCenter)
+                        self.tableWidgetPlan_2.item(idx, index).setTextAlignment(QtCore.Qt.AlignCenter)
+            else:
+                # 没有计划，清空表格内容直接清空
+                self.tableWidgetPlan_2.clearContents()
+
 
             if rp3 != ():
                 if rp3[0] == '1':
@@ -2448,6 +2479,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         icon18.addPixmap(QtGui.QPixmap(":IconFiles/cyclecurve.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionCS.setIcon(icon18)
 
+
+
         icon19 = QtGui.QIcon()
         icon19.addPixmap(QtGui.QPixmap(":IconFiles/serset.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionSerSet.setIcon(icon19)
@@ -2459,6 +2492,30 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         icon21 = QtGui.QIcon()
         icon21.addPixmap(QtGui.QPixmap(":IconFiles/realtime.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionRealtime.setIcon(icon21)
+
+        icon22 = QtGui.QIcon()
+        icon22.addPixmap(QtGui.QPixmap(":IconFiles/port.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionMVB.setIcon(icon22)
+
+        icon23 = QtGui.QIcon()
+        icon23.addPixmap(QtGui.QPixmap(":IconFiles/UTCParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionUTC.setIcon(icon23)
+
+        icon24 = QtGui.QIcon()
+        icon24.addPixmap(QtGui.QPixmap(":IconFiles/MVBParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionMVBParser.setIcon(icon24)
+
+        icon25 = QtGui.QIcon()
+        icon25.addPixmap(QtGui.QPixmap(":IconFiles/realtimeset.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionRealTimePlot.setIcon(icon25)
+
+        icon26 = QtGui.QIcon()
+        icon26.addPixmap(QtGui.QPixmap(":IconFiles/track.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.action_bubble_track.setIcon(icon26)
+
+        icon27 = QtGui.QIcon()
+        icon27.addPixmap(QtGui.QPixmap(":IconFiles/dock.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.action_bubble_dock.setIcon(icon27)
 
 # 周期界面类
 class Cyclewindow(QtWidgets.QMainWindow, CycleWin):

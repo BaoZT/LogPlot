@@ -2112,10 +2112,18 @@ background-color: rgb(170, 170, 255);</string>
      <addaction name="actionBck"/>
      <addaction name="actionHome"/>
     </widget>
+    <widget class="QMenu" name="menu_9">
+     <property name="title">
+      <string>数据悬窗设置</string>
+     </property>
+     <addaction name="action_bubble_track"/>
+     <addaction name="action_bubble_dock"/>
+    </widget>
     <addaction name="menu_7"/>
     <addaction name="actionRealTimePlot"/>
     <addaction name="actionSerSet"/>
     <addaction name="actionMVB"/>
+    <addaction name="menu_9"/>
    </widget>
    <widget class="QMenu" name="menu_4">
     <property name="title">
@@ -2435,16 +2443,28 @@ background-color: rgb(170, 170, 255);</string>
    </property>
   </action>
   <action name="actionMVB">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/port.png</normaloff>IconFiles/port.png</iconset>
+   </property>
    <property name="text">
     <string>MVB端口设置</string>
    </property>
   </action>
   <action name="actionUTC">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/UTCParser.png</normaloff>IconFiles/UTCParser.png</iconset>
+   </property>
    <property name="text">
     <string>UTC时间转换器</string>
    </property>
   </action>
   <action name="actionMVBParser">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/MVBParser.png</normaloff>IconFiles/MVBParser.png</iconset>
+   </property>
    <property name="text">
     <string>MVB解析器</string>
    </property>
@@ -2469,11 +2489,48 @@ background-color: rgb(170, 170, 255);</string>
    </property>
   </action>
   <action name="actionRealTimePlot">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/realtimeset.png</normaloff>IconFiles/realtimeset.png</iconset>
+   </property>
    <property name="text">
     <string>实时绘图设置</string>
    </property>
    <property name="toolTip">
     <string>实时绘图周期和绘制设置</string>
+   </property>
+  </action>
+  <action name="action_bubble_track">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/track.png</normaloff>IconFiles/track.png</iconset>
+   </property>
+   <property name="text">
+    <string>跟随光标</string>
+   </property>
+   <property name="toolTip">
+    <string>数据分析悬窗跟随光标移动</string>
+   </property>
+  </action>
+  <action name="action_bubble_dock">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/dock.png</normaloff>IconFiles/dock.png</iconset>
+   </property>
+   <property name="text">
+    <string>停靠窗口</string>
+   </property>
+   <property name="toolTip">
+    <string>数据分析悬窗停靠窗口右上角</string>
    </property>
   </action>
  </widget>

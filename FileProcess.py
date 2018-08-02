@@ -126,6 +126,7 @@ class FileProcess(threading.Thread):
         self.a = np.array([])
         self.cmdv = np.array([])
         self.level = np.array([])
+        self.real_level = np.array([])
         self.output_level = np.array([])
         self.ceilv = np.array([])
         self.statmachine = np.array([])
@@ -139,7 +140,15 @@ class FileProcess(threading.Thread):
         self.platform = np.array([])
         self.stoperr = -32768
         self.stop_error = []
+        # 文件读取结果
         self.filename = ''
+        self.lines = []
+        self.cycle_dic = {}
+        # 主断及分相是保持的变化才变
+        self.break_status = 0
+        self.gfx_flag = 0
+        # 读取耗时
+        self.time_use = []
         # 文件读取结果
         self.lines = []
         self.cycle_dic = {}
