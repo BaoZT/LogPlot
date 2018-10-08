@@ -241,7 +241,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 print("End all file process")
                 if is_ato_control == 0:
                     load_flag = 1                # 记录加载且ATO控车
-                    self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
+                    self.actionView.trigger()    # 目前无效果，待完善，目的 用于加载后重置坐标轴
                     self.CBvato.setChecked(True)
                     print('Set View mode and choose Vato')
                 elif is_ato_control == 1:
