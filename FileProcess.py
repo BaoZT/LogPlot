@@ -75,12 +75,14 @@ class FileProcess(threading.Thread):
         self.real_level = np.array([])
         self.output_level = np.array([])
         self.ceilv = np.array([])
+        self.atp_permit_v = np.array([])
         self.statmachine = np.array([])
         self.v_target = np.array([])
         self.targetpos = np.array([])
         self.stoppos = np.array([])
         self.ma = np.array([])
         self.ramp = np.array([])
+        self.adjramp = np.array([])     # 增加等效坡度
         self.skip = np.array([])
         self.mtask = np.array([])
         self.platform = np.array([])
@@ -98,22 +100,28 @@ class FileProcess(threading.Thread):
         self.time_use = []
 
     def run(self):
-        iscycleok = 0
-        islistok = 1
-        isok = 2
-        start = time.clock()
-        iscycleok = self.create_cycle_dic()                         # 创建了周期字典
-        t1 = time.clock() - start
-        start = time.clock()                                        # 更新计时起点
-        islistok = self.create_ctrl_cycle_list()                    # 解析周期内容
-        t2 = time.clock() - start
-        if iscycleok == 1:
-            isok = islistok                # 当解析到周期时，返回实际解析结果, 2=无周期无结果，1=有周期无控车，0=有周期有控车
-        elif iscycleok == 0:
-            isok = 2                       # 当没有周期
-        else:
-            isok = iscycleok               # 当出现重新启机时，返回启机行号
-        self.time_use = [t1, t2, isok]
+        try:
+            iscycleok = 0
+            islistok = 1
+            isok = 2
+            start = time.clock()
+            iscycleok = self.create_cycle_dic()                         # 创建了周期字典
+            print('Create cycle dic!')
+            t1 = time.clock() - start
+            start = time.clock()                                        # 更新计时起点
+            islistok = self.create_ctrl_cycle_list()                    # 解析周期内容
+            print('Add and analysis dic content')
+            t2 = time.clock() - start
+            if iscycleok == 1:
+                isok = islistok                # 当解析到周期时，返回实际解析结果, 2=无周期无结果，1=有周期无控车，0=有周期有控车
+            elif iscycleok == 0:
+                isok = 2                       # 当没有周期
+            else:
+                isok = iscycleok               # 当出现重新启机时，返回启机行号
+            self.time_use = [t1, t2, isok]
+        except Exception as err:
+            print(err)
+            print('err in log process!')
 
     def get_time_use(self):
         return self.time_use
@@ -129,12 +137,14 @@ class FileProcess(threading.Thread):
         self.real_level = np.array([])
         self.output_level = np.array([])
         self.ceilv = np.array([])
+        self.atp_permit_v = np.array([])
         self.statmachine = np.array([])
         self.v_target = np.array([])
         self.targetpos = np.array([])
         self.stoppos = np.array([])
         self.ma = np.array([])
         self.ramp = np.array([])
+        self.adjramp = np.array([])
         self.skip = np.array([])
         self.mtask = np.array([])
         self.platform = np.array([])
@@ -152,6 +162,8 @@ class FileProcess(threading.Thread):
         # 文件读取结果
         self.lines = []
         self.cycle_dic = {}
+        # 重置进度条
+
 
     # 输入： 文件路径
     def readkeyword(self, file):
@@ -446,7 +458,7 @@ class FileProcess(threading.Thread):
         # ATO模式转换条件
         pat_fsm = re.compile('FSM{(\d) (\d) (\d) (\d) (\d) (\d)}sg{(\d) (\d) (\d+) (\d+) (\w+) (\w+)}ss{(\d+) (\d)}')
         pat_sc = re.compile('SC{(\d+) (\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (\d+) (\d+) (-?\d+) (-?\d+)}t (\d+) (\d+) (\d+)'
-                            ' (\d+),(\d+)} f (-?\d+) (\d+) (\d+) (\w+)} p(\d+) (\d+)}CC')
+                            ' (\d+),(\d+)} f (-?\d+) (\d+) (\d+) (-?\w+)} p(\d+) (\d+)}CC')
         pat_stop = re.compile('stoppoint:jd=(\d+) ref=(\d+) ma=(\d+)')
 
         # ATP->ATO 数据包
@@ -519,6 +531,51 @@ class FileProcess(threading.Thread):
         # 由于是差值计算，最后补充一个元素
         self.a = np.append(self.a, 0)
 
+    # 计算ATP允许速度序列，只能从SP2包中获取
+    # <输出> 返回ATP允许处理结果
+    def get_atp_permit_v(self):
+        c_num = 0
+        temp_p = 1
+        c_num_start = 0
+
+        # 遍历周期
+        if len(self.cycle_dic.keys()) != 0:
+            for ctrl_item in self.cycle_dic.keys():
+                # print('Comput ATP Permit %d' % ctrl_item)
+                if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
+                    c_num = self.cycle_dic[ctrl_item].cycle_num     # 获取周期号
+                    # 如果有数据包
+                    if 2 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
+                        temp_p = int(self.cycle_dic[ctrl_item].cycle_sp_dict[2][11])
+                        self.atp_permit_v = np.append(self.atp_permit_v, temp_p)    # 添加
+                    else:
+                        # 首次获取，当周期无SP2
+                        if temp_p == 1:
+                            # 向前取5个周期,且字典存在
+                            if c_num > 5 and ((c_num - 5) in self.cycle_dic.keys()):
+                                c_num_start = c_num - 5
+                                # 遍历周期
+                                for c in range(c_num_start, c_num):
+                                    # 如果有数据包
+                                    if 2 in self.cycle_dic[c].cycle_sp_dict.keys():
+                                        temp_p = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())      # 非首次投入ATO周期，无SP2包
+                                        print('ato cycle no sp2, find before aom!')
+                                        break
+                                    else:
+                                        pass
+                            else:
+                                pass    # 直接添加1
+                            self.atp_permit_v = np.append(self.atp_permit_v, temp_p)  # 添加
+                            temp_p = 0  # 清除作为标志，表明已经非首次
+                        else:
+                            self.atp_permit_v = np.append(self.atp_permit_v, self.atp_permit_v[-1])
+                else:
+                    pass
+        else:
+            print('no ato ctrl,no atp permit v')
+        # print('get atp permit v ok %d, %d'%(len(self.v_ato),len(self.atp_permit_v)))
+
+
     # <核心函数>
     # 建立ATO控制信息和周期的关系字典
     def create_ctrl_cycle_list(self):
@@ -574,6 +631,7 @@ class FileProcess(threading.Thread):
                 self.level = mat[:, 5]
                 self.output_level = mat[:, 5]
                 self.ramp = mat[:, 8]
+                self.adjramp = mat[:, 9]
                 self.statmachine = mat[:, 16]
                 # 增加位置信息
                 self.v_target = mat[:, 10]
@@ -586,8 +644,13 @@ class FileProcess(threading.Thread):
                 # 通过办客
                 self.skip = mat[:, 19]
                 self.mtask = mat[:, 20]
+                print('Slip Ctrl Matrix')
                 # 计算加速度
                 self.comput_acc()
+                print('Comput Train Acc')
+                # 获取ATP允许速度序列
+                print('Comput ATP Permit V')
+                self.get_atp_permit_v()
                 ret = 0
             else:
                 ret = 1

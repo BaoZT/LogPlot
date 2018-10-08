@@ -19,14 +19,22 @@
 @desc: 主要用于聚集主窗口中弹出的临时小窗口，包括工具和设置
 
 '''
+import matplotlib
 from MVBParser import Ui_MainWindow as MVBParserWin
+from Measure import Ui_MainWindow as MeasureWin
+from PyQt5 import QtCore, QtGui, QtWidgets
+matplotlib.use("Qt5Agg")  # 声明使用QT5
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from ProtocolParse import MVBParse
 from PyQt5 import QtWidgets, QtCore, QtGui
+import matplotlib.pyplot as plt
+import FileProcess
 import serial
 import serial.tools.list_ports
 import datetime
 import time
 import re
+import numpy as np
 
 pat_ato_ctrl = 0
 pat_ato_stat = 0
@@ -622,3 +630,77 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
         self.realtime_plot_set_signal.emit(self.plot_cycle_time.value(),plot_flag)
         self.close()
 
+
+# 定义画板类适配于后期应用
+class Figure_Canvas(FigureCanvas):
+
+    def __init__(self, parent=None):
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111)
+        FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
+
+
+# 控车测量设置类
+class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
+
+    # 初始化，获取加载后的处理信息
+    def __init__(self,  parent=None, ob=FileProcess.FileProcess):
+        self.log = ob
+        super(Ctrl_MeasureDlg, self).__init__(parent)
+        self.setupUi(self)
+        self.sp = Figure_Canvas(self.widget)         # 这是继承FigureCanvas的子类，使用子窗体widget作为父
+        l = QtWidgets.QVBoxLayout(self.widget)
+        l.addWidget(self.sp)
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+        self.setWindowTitle(u'ATO曲线测量器')
+        self.resize(600,400)
+
+
+    # 用于绘制估计加速度曲线
+    def measure_plot(self, idx_start=int, idx_end=int, cmd=int):
+        # 根据索引大小关系获取实际序列
+        if idx_start <= idx_end:
+            pass
+        else:
+            idx_start, idx_end = idx_end, idx_start # 当终点比起点更靠前，互换转为正常顺序
+
+        # 根据曲线模式获取列表
+        if cmd == 0:  # 位置速度曲线
+            x_list = self.log.cycle[idx_start:idx_end]
+            y_list = self.log.v_ato[idx_start:idx_end]
+            # 走行距离
+            s_sim = self.log.s[idx_end] - self.log.s[idx_start]
+        else:
+            x_list = self.log.cycle[idx_start:idx_end]
+            y_list = self.log.v_ato[idx_start:idx_end]
+            # 走行距离
+            s_sim = self.log.s[idx_end] - self.log.s[idx_start]
+
+        v_sim = self.log.v_ato[idx_end] - self.log.v_ato[idx_start]
+
+        # 计算拟合的加速度
+        z = np.polyfit(x_list, y_list, 1)   # 一次多项式拟合，相当于线性拟合
+        p_sim = np.poly1d(z)
+        print(p_sim)        # 打印拟合表达式
+        a_sim = z[0]*10     # 获取估计加速度,由于时间单位是100ms所以乘以10
+
+        # 计算估计曲线
+        y_list_sim = p_sim(x_list)
+
+        self.sp.ax.plot(x_list, y_list_sim, color='red')
+        self.sp.ax.plot(x_list, y_list, color='deeppink', marker='.', markersize=0.2)
+        str_asim = '预估加速度:%.*f cm/s^2\n'%(3,a_sim)
+        str_cycle_num = '测量时间:%.*f s\n'%(3,(idx_end-idx_start)/10.0)
+        str_s_sim = 'ATO走行距离:%d cm\n'%int(s_sim)
+        str_v_sim = 'ATO速度变化:%d cm/s'%(v_sim)
+
+        str_show = str_asim + str_cycle_num + str_s_sim + str_v_sim
+        props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
+        if a_sim > 0 :
+            self.sp.ax.text(0.1, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
+                            bbox=props)
+        else:
+            self.sp.ax.text(0.58, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
+                            bbox=props)

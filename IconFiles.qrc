@@ -30,5 +30,7 @@
      <file alias="track.png">./IconFiles/track.png</file>
      <file alias="realtimeset.png">./IconFiles/realtimeset.png</file>
      <file alias="port.png">./IconFiles/port.png</file>
+     <file alias="acc.png">./IconFiles/acc.png</file>
+     <file alias="export.png">./IconFiles/export.png</file>
   </qresource>
 </RCC>

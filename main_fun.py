@@ -8,14 +8,16 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from LogMainWin import Ui_MainWindow
 from CycleInfo import Ui_MainWindow as CycleWin
-from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg
+from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg
 import MiniWinCollection
+import numpy as np
 import sys
 import time
 import os
 import serial
 import serial.tools.list_ports
 import threading
+import xlwt
 
 # 全局静态变量
 load_flag = 0         # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
@@ -39,7 +41,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savefilename = ''                # 实时存储的写入文件名(含路径)
         self.pathlist = []
         self.mode = 0                    # 默认0是浏览模式，1是标注模式
-        self.ver = '2.8.0'               # 标示软件版本
+        self.ver = '2.8.6'               # 标示软件版本
         self.serdialog = SerialDlg()     # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)   # 操作串口对象
 
@@ -57,8 +59,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         l.addWidget(self.sp)
         # l.addWidget(self.sp.mpl_toolbar)
 
-        self.bubble_status = 1      # 控车悬浮气泡状态，0=停靠，1=跟随
+        self.bubble_status = 0          # 控车悬浮气泡状态，0=停靠，1=跟随
+        self.tag_latest_pos_idx = 0  # 悬窗最近一次索引，用于状态改变或曲线改变时立即刷新使用，最近一次
         self.pat_plan = FileProcess.FileProcess.creat_plan_pattern()  # 计划解析模板
+
+        self.ctrl_measure_status = 0  # 控车曲线测量状态，0=初始态，1=测量起始态，2=进行中 ,3=测量终止态
         # 在线绘图
         lr = QtWidgets.QVBoxLayout(self.widget_2)
         self.sp_real = Figure_Canvas_R(self.widget_2)
@@ -82,6 +87,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.fileClose.triggered.connect(self.close_figure)
         self.fileSave.triggered.connect(self.sp.mpl_toolbar.save_figure)
         self.actionConfig.triggered.connect(self.sp.mpl_toolbar.configure_subplots)
+        self.actionExport.triggered.connect(self.export_ato_ctrl_info)
         self.actionPan.triggered.connect(self.sp.mpl_toolbar.pan)
         self.actionZoom.triggered.connect(self.zoom)
         self.actionEdit.triggered.connect(self.sp.mpl_toolbar.edit_parameters)
@@ -109,6 +115,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionUTC.triggered.connect(self.show_utc_transfer)
         self.action_bubble_dock.triggered.connect(self.set_ctrl_bubble_format)
         self.action_bubble_track.triggered.connect(self.set_ctrl_bubble_format)
+        self.action_acc_measure.triggered.connect(self.ctrl_measure)
+        self.sp.mpl_connect('button_press_event',self.ctrl_measure_clicked)     # 鼠标单击的测量处理事件
         # 事件绑定
         self.actionBTM.triggered.connect(self.update_event_point)
         self.actionJD.triggered.connect(self.update_event_point)
@@ -120,6 +128,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_plan.clicked.connect(self.showOffRight_PLAN)
         self.btn_train.clicked.connect(self.showOffRight_MVB)
         self.btn_filetab.clicked.connect(self.showOffRight_FILE)
+        self.btn_atp.clicked.connect(self.showoffRight_ATP)
 
         # 窗口设置初始化
         self.showOffLineUI()
@@ -165,11 +174,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBcmdv.stateChanged.connect(self.update_up_cure)
         self.CBacc.stateChanged.connect(self.update_down_cure)
         self.CBramp.stateChanged.connect(self.update_down_cure)
+        self.CBatppmtv.stateChanged.connect(self.update_up_cure)
 
         self.CBvato.stateChanged.connect(self.realtimeLineChoose)
         self.CBatpcmdv.stateChanged.connect(self.realtimeLineChoose)
         self.CBlevel.stateChanged.connect(self.realtimeLineChoose)
         self.CBcmdv.stateChanged.connect(self.realtimeLineChoose)
+        # 实时ATP允许速度保留未实现
 
         self.actionBTM.triggered.connect(self.set_log_event)
         # 如果初始界面实时
@@ -197,6 +208,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.file = path
                 self.statusbar.showMessage(path)
         else:
+            print('Init file path')
             filepath = temp.join(self.pathlist[:-1])                # 纪录上一次的文件路径
             filepath = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', filepath)
             path = filepath[0]
@@ -210,19 +222,28 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if path == '':
             pass
         else:
-            self.update_filetab()
-            self.sp.axes1.clear()
-            self.textEdit.clear()
-            self.reset_all_checkbox()
-            self.reset_text_edit()
-            self.mode = 0               # 恢复初始浏览模式
-            self.update_mvb_port_pat()  # 更新mvb索引端口信息
             try:
+                print('Init global vars')
+                load_flag = 0  # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
+                curve_flag = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
+                print('Init UI widgt')
+                self.update_filetab()
+                self.reset_all_checkbox()
+                self.reset_text_edit()
+                self.mode = 0               # 恢复初始浏览模式
+                self.update_mvb_port_pat()  # 更新mvb索引端口信息
+                print("Clear axes")
+                self.sp.axes1.clear()
+                self.textEdit.clear()
+                print('Init File log')
+                # 开始处理
                 is_ato_control = self.log_process()
+                print("End all file process")
                 if is_ato_control == 0:
                     load_flag = 1                # 记录加载且ATO控车
                     self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                     self.CBvato.setChecked(True)
+                    print('Set View mode and choose Vato')
                 elif is_ato_control == 1:
                     load_flag = 2      # 记录加载但是ATO没有控车
                     reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
@@ -244,10 +265,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 显示实时界面
     def showRealTimeUI(self):
         self.stackedWidget.setCurrentWidget(self.page_4)
+        self.btn_ato.clicked()
         self.fileOpen.setDisabled(True)     # 设置文件读取不可用
         self.btn_plan.setDisabled(True)
         self.btn_train.setDisabled(True)
-        self.btn_ato.click()
         # 如有转换重置右边列表
         self.actionView.trigger()
         self.tableWidget.clear()
@@ -260,25 +281,29 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def showOffLineUI(self):
         self.stackedWidget.setCurrentWidget(self.page_3)
         self.fileOpen.setEnabled(True)      # 设置文件读取可用
-        self.stackedWidget1.setCurrentWidget(self.stackedWidgetPage1)
+        self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
         self.btn_plan.setEnabled(True)
         self.btn_train.setEnabled(True)
 
     # 显示控车情况
     def showOffRight_ATO(self):
-        self.stackedWidget1.setCurrentWidget(self.stackedWidgetPage1)
+        self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
 
     # 显示MVB数据
     def showOffRight_MVB(self):
-        self.stackedWidget1.setCurrentWidget(self.page_train)
+        self.stackedWidget_RightCol.setCurrentWidget(self.page_train)
 
     # 显示计划情况
     def showOffRight_PLAN(self):
-        self.stackedWidget1.setCurrentWidget(self.page_plan)
+        self.stackedWidget_RightCol.setCurrentWidget(self.page_plan)
 
     # 显示记录情况
     def showOffRight_FILE(self):
-        self.stackedWidget1.setCurrentWidget(self.stackedWidgetPage2)
+        self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage2)
+
+    # 显示ATP接口情况
+    def showoffRight_ATP(self):
+        self.stackedWidget_RightCol.setCurrentWidget(self.page_ATP)
 
     # 串口设置，应当立即更新
     def showSerSet(self):
@@ -696,17 +721,17 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.lbl_mode.setText('ATO模式')
                 self.lbl_mode.setStyleSheet("background-color: rgb(170, 170, 255);")
 
-            # 软允许
-            if temp[2] == '1':
-                self.lbl_pm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_pm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
             # 硬允许
-            if temp[3] == '1':
+            if temp[2] == '1':
                 self.lbl_hpm.setStyleSheet("background-color: rgb(0, 255, 127);")
             else:
                 self.lbl_hpm.setStyleSheet("background-color: rgb(255, 0, 0);")
+
+            # 软允许
+            if temp[3] == '1':
+                self.lbl_pm.setStyleSheet("background-color: rgb(0, 255, 127);")
+            else:
+                self.lbl_pm.setStyleSheet("background-color: rgb(255, 0, 0);")
 
             # 动车组允许
             if temp[4] == '1':
@@ -738,10 +763,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.lbl_doorstatus.setText('门关')
 
             # 低频
-            if temp[11] == '00':
+            if temp[11] == '0':
                 self.lbl_freq.setText('H码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(255, 0, 0);")
-            elif temp[11] == '02':
+            elif temp[11] == '2':
                 self.lbl_freq.setText('HU码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(255, 215, 15);")
             elif temp[11] == '10':
@@ -1020,39 +1045,50 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 记录文件处理核心函数，生成周期字典和绘图值列表
     def log_process(self):
+        global cursor_in_flag
+        cursor_in_flag = 0
         isok = 2                                                # 0=ato控车，1=没有控车,2=没有周期
         isdone = 0
         self.actionView.trigger()
         self.log = FileProcess.FileProcess(self.progressBar)    # 类的构造函数，函数中给出属性
         self.log.readkeyword(self.file)
+        print('Preprocess file path!')
         self.log.start()                                        # 启动记录读取线程,run函数不能有返回值
+        print('Begin log read thread!')
         while self.log.is_alive():                              # 由于文件读取线程和后面是依赖关系，不能立即继续执行
             time.sleep(1)
             continue
-        [t1, t2, isok] = self.log.get_time_use()
-        self.show_message("Info:预处理耗时:" + str(t1) + 's')
-        # 记录中模式有AOR或AOS
-        if isok == 0:
-            self.show_message("Info:文本计算耗时:" + str(t2) + 's')
-            max_c = int(max(self.log.cycle))
-            min_c = int(min(self.log.cycle))
-            self.spinBox.setRange(min_c, max_c)
-            self.show_message("Info:曲线周期数:"+str(max_c - min_c)+' '+'from'+str(min_c)+'to'+str(max_c))
-            self.spinBox.setValue(min_c)
-            self.label_2.setText(self.log.cycle_dic[min_c].time)    # 显示起始周期
-        elif isok == 1:
-            self.show_message("Info:文本计算耗时:" + str(t2)+'s')
-            self.show_message("Info:ATO没有控车！")
-            max_c = int(max(self.log.cycle_dic.keys()))
-            min_c = int(min(self.log.cycle_dic.keys()))
-            self.spinBox.setRange(min_c, max_c)
-            self.show_message("Info:曲线周期数:"+str(max_c - min_c)+' '+'from'+str(min_c)+'to'+str(max_c))
-            self.spinBox.setValue(min_c)
-            self.label_2.setText(self.log.cycle_dic[min_c].time)  # 显示起始周期
-        elif isok == 2:
-            self.show_message("Info:记录中没有周期！")
+        print('End log read thread!')
+        # 处理返回结果
+        if self.log.get_time_use() != []:
+            [t1, t2, isok] = self.log.get_time_use()
+            self.show_message("Info:预处理耗时:" + str(t1) + 's')
+            # 记录中模式有AOR或AOS
+            if isok == 0:
+                self.show_message("Info:文本计算耗时:" + str(t2) + 's')
+                max_c = int(max(self.log.cycle))
+                min_c = int(min(self.log.cycle))
+                self.tag_latest_pos_idx = 0     # 每次加载文件后置为最小
+                self.spinBox.setRange(min_c, max_c)
+                self.show_message("Info:曲线周期数:"+str(max_c - min_c)+' '+'from'+str(min_c)+'to'+str(max_c))
+                self.spinBox.setValue(min_c)
+                self.label_2.setText(self.log.cycle_dic[min_c].time)    # 显示起始周期
+            elif isok == 1:
+                self.show_message("Info:文本计算耗时:" + str(t2)+'s')
+                self.show_message("Info:ATO没有控车！")
+                max_c = int(max(self.log.cycle_dic.keys()))
+                min_c = int(min(self.log.cycle_dic.keys()))
+                self.tag_latest_pos_idx = 0     # 每次加载文件后置为最小
+                self.spinBox.setRange(min_c, max_c)
+                self.show_message("Info:曲线周期数:"+str(max_c - min_c)+' '+'from'+str(min_c)+'to'+str(max_c))
+                self.spinBox.setValue(min_c)
+                self.label_2.setText(self.log.cycle_dic[min_c].time)  # 显示起始周期
+            elif isok == 2:
+                self.show_message("Info:记录中没有周期！")
+            else:
+                pass
         else:
-            pass
+            print('Err Can not get time use')
         return isok
 
     # 事件处理函数，计数器数值变化触发事件，绑定光标和内容更新
@@ -1061,7 +1097,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         global curve_flag
         xy_lim = []
         track_flag = self.sp.get_track_status()               # 获取之前光标的锁定状态
-        print(self.sp.get_track_status())
+
         # 光标离开图像
         if cursor_in_flag == 2:
             cur_cycle = self.spinBox.value()                  # 获取当前周期值
@@ -1081,10 +1117,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             self.sp.axes1.set_xlim(xy_lim[0][0], xy_lim[0][1])
                             self.sp.axes1.set_ylim(xy_lim[1][0], xy_lim[1][1])
                             self.update_up_cure()
-                            print(self.sp.get_track_status())
+
                             if track_flag == 0:     # 如果之前是锁定的，更新后依然锁定在最新位置
                                 self.sp.set_track_status()
-                                print(self.sp.get_track_status())
+
                         # 再更新光标
                         self.c_vato.sim_mouse_move(int(info[0]), int(info[1]))  # 其中前两者位置和速度为移动目标
                     elif curve_flag == 1:
@@ -1108,6 +1144,54 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             pass        # 否则 不处理
 
+    # 事件处理函数，启动后进入测量状态
+    def ctrl_measure(self):
+        self.ctrl_measure_status = 1    # 一旦单击则进入测量开始状态
+        self.sp.setCursor(QtCore.Qt.WhatsThisCursor)
+        print('start measure!')
+
+    # 事件处理函数，标记单击事件
+    def ctrl_measure_clicked(self, event):
+        global curve_flag
+
+        # 如果开始测量则进入，则获取终点
+        if self.ctrl_measure_status == 2:
+            # 下面是当前鼠标坐标
+            x, y = event.xdata, event.ydata
+            # 速度位置曲线
+            if curve_flag == 0:
+                self.indx_measure_end = min(np.searchsorted(self.log.s, [x])[0], len(self.log.s) - 1)
+            # 周期速度曲线
+            if curve_flag == 1:
+                self.indx_measure_end = min(np.searchsorted(self.log.cycle, [x])[0], len(self.log.cycle) - 1)
+
+            self.measure = Ctrl_MeasureDlg(None, self.log)
+            self.measure.measure_plot(self.indx_measure_start,self.indx_measure_end, curve_flag)
+            self.measure.show()
+
+            # 获取终点索引，测量结束
+            self.ctrl_measure_status = 3
+            print('end measure!')
+            # 更改图标
+            if self.mode == 1:  # 标记模式
+                self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
+            elif self.mode == 0:  # 浏览模式
+                self.sp.setCursor(QtCore.Qt.ArrowCursor)
+
+        # 如果是初始状态，则设置为启动
+        if self.ctrl_measure_status == 1:
+            print('begin measure!')
+            # 下面是当前鼠标坐标
+            x, y = event.xdata, event.ydata
+            # 速度位置曲线
+            if curve_flag == 0:
+                self.indx_measure_start = min(np.searchsorted(self.log.s, [x])[0], len(self.log.s) - 1)
+                self.ctrl_measure_status = 2
+            # 周期速度曲线
+            if curve_flag == 1:
+                self.indx_measure_start = min(np.searchsorted(self.log.cycle, [x])[0], len(self.log.cycle) - 1)
+                self.ctrl_measure_status = 2
+
     # 事件处理函数，更新光标进入图像标志，in=1
     def cursor_in_fig(self, event):
         global cursor_in_flag
@@ -1119,8 +1203,20 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def cursor_out_fig(self, event):
         global cursor_in_flag
         cursor_in_flag = 2
-        self.c_vato.move_signal.disconnect(self.set_table_content)      # 离开图后解除光标触发
+        try:
+            self.c_vato.move_signal.disconnect(self.set_table_content)      # 离开图后解除光标触发
+        except Exception as err:
+            print(err)
         print('disconnect '+'leave figure'+str(cursor_in_flag))
+        # 测量立即终止，恢复初始态:
+        if self.ctrl_measure_status > 0:
+            self.ctrl_measure_status = 0
+            # 更改图标
+            if self.mode == 1:  # 标记模式
+                self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
+            elif self.mode == 0:  # 浏览模式
+                self.sp.setCursor(QtCore.Qt.ArrowCursor)
+            print('exit measure')
 
     # 绘制各种速度位置曲线
     def update_up_cure(self):
@@ -1130,15 +1226,20 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if load_flag == 1:
             x_monitor = self.sp.axes1.get_xlim()
             y_monitor = self.sp.axes1.get_ylim()
-            if self.CBvato.isChecked() or self.CBcmdv.isChecked() \
+            if self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
                     or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
                 self.clear_axis()
+                print("Mode Change recreate the paint")
                 # 清除光标重新创建
                 if self.mode == 1:
+                    # 重绘文字
+                    self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
+                    print("Update ctrl text ")
                     if Mywindow.is_cursor_created == 1:
                         Mywindow.is_cursor_created = 0
                         del self.c_vato
                     self.tag_cursor_creat()
+                print("Update Curve recreate curve and tag cursor ")
                 # 处理ATO速度
                 if self.CBvato.isChecked():
                     self.sp.plotlog_vs(self.log, self.mode, curve_flag)
@@ -1149,6 +1250,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.sp.plotlog_vcmdv(self.log, self.mode, curve_flag)
                 else:
                     self.CBcmdv.setChecked(False)
+                # 处理允许速度
+                if self.CBatppmtv.isChecked():
+                    self.sp.plotlog_v_atp_pmt_s(self.log, self.mode, curve_flag)
+                else:
+                    self.CBatppmtv.setChecked(False)
                 # 处理顶棚速度
                 if self.CBatpcmdv.isChecked():
                     self.sp.plotlog_vceil(self.log, curve_flag)
@@ -1188,7 +1294,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         self.sp.plotlog_ramp(self.log, curve_flag)
                     else:
                         self.CBramp.setChecked(False)
-                elif self.CBvato.isChecked() or self.CBcmdv.isChecked() \
+                elif self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked()\
                         or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
                     self.update_up_cure()               # 当没有选择下图时更新上图
                     self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
@@ -1262,6 +1368,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if sender.text() == '标注模式' and self.mode == 0:      # 由浏览模式进入标注模式不重绘范围
             self.mode = 1
             if load_flag == 1 and self.CBvato.isChecked():
+                print("Mode Change excute!")
                 self.update_up_cure()
                 self.tag_cursor_creat()      # 只针对速度曲线
         elif sender.text() == '浏览模式' and self.mode == 1:    # 进入浏览模式重绘
@@ -1330,6 +1437,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 self.c_vato = SnaptoCursor(self.sp, self.sp.axes1, self.log.cycle, self.log.v_ato)  # 初始化一个光标
             self.c_vato.reset_cursor_plot()
+            print("Link Signal to Tag Cursor")
             self.cid1 = self.sp.mpl_connect('motion_notify_event', self.c_vato.mouse_move)
             self.cid2 = self.sp.mpl_connect('figure_enter_event', self.cursor_in_fig)
             self.cid3 = self.sp.mpl_connect('figure_leave_event', self.cursor_out_fig)
@@ -1346,6 +1454,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.move_signal.connect(self.set_ato_status_label)      # 标签
             self.c_vato.sim_move_singal.connect(self.set_ato_status_label)
             Mywindow.is_cursor_created = 1
+            print("Mode changed Create tag cursor ")
         elif self.mode == 0 and 1 == Mywindow.is_cursor_created:
             self.sp.mpl_disconnect(self.cid1)
             self.sp.mpl_disconnect(self.cid2)
@@ -1365,6 +1474,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.disconnect(self.set_ato_status_label)
             Mywindow.is_cursor_created = 0
             del self.c_vato
+            print("Mode changed clear tag cursor ")
         else:
             pass
 
@@ -1547,19 +1657,24 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 事件处理函数，用于设置气泡格式，目前只设置位置
     def set_ctrl_bubble_format(self):
         sender = self.sender()
-        if sender.text() == '跟随光标':
-            self.bubble_status = 1      # 1 跟随模式
-        elif sender.text() == '停靠窗口':
-            self.bubble_status = 0      # 0 是停靠，默认右上角
-        else:
-            pass
+        # 清除光标重新创建
+        if self.mode == 1:
+            if sender.text() == '跟随光标':
+                self.bubble_status = 1      # 1 跟随模式，立即更新
+                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
+            elif sender.text() == '停靠窗口':
+                self.bubble_status = 0      # 0 是停靠，默认右上角，立即更新
+                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
+            else:
+                pass
+        self.sp.draw()
 
     # 事件处理函数，计算控车数据悬浮气泡窗并显示
     def set_ctrl_bubble_content(self, idx):
         global curve_flag
         # 根据输入类型设置气泡
         self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, curve_flag)
-
+        self.tag_latest_pos_idx = idx
 
     # 设置树形结构
     def set_tree_fromat(self):
@@ -2215,6 +2330,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     temp_transfer_list[idx] = t[idx]
             return temp_transfer_list
 
+    # 事件处理函数，设置ATP信息
+    def set_ATP_page_content(self, idx):
+        # 筛选SP2包信息
+        for k in self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict.keys():
+            pass
+
+
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):
         self.CBacc.setChecked(False)
@@ -2223,6 +2345,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBcmdv.setChecked(False)
         self.CBvato.setChecked(False)
         self.CBramp.setChecked(False)
+        self.CBatppmtv.setChecked(False)
 
     # 重置主界面文本框
     def reset_text_edit(self):
@@ -2293,13 +2416,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.lbl_mode.setStyleSheet("background-color: rgb(170, 170, 255);")
 
             # 软允许
-            if temp[2] == '1':
+            if temp[3] == '1':
                 self.lbl_pm.setStyleSheet("background-color: rgb(0, 255, 127);")
             else:
                 self.lbl_pm.setStyleSheet("background-color: rgb(255, 0, 0);")
 
             # 硬允许
-            if temp[3] == '1':
+            if temp[2] == '1':
                 self.lbl_hpm.setStyleSheet("background-color: rgb(0, 255, 127);")
             else:
                 self.lbl_hpm.setStyleSheet("background-color: rgb(255, 0, 0);")
@@ -2337,10 +2460,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.lbl_doorstatus.setText('门关')
 
             # 低频
-            if temp[11] == '00':
+            if temp[11] == '0':
                 self.lbl_freq.setText('H码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(255, 0, 0);")
-            elif temp[11] == '02':
+            elif temp[11] == '2':
                 self.lbl_freq.setText('HU码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(255, 215, 15);")
             elif temp[11] == '10':
@@ -2397,6 +2520,31 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             self.lbl_atpdcmd.setText('非过分相')
             self.lbl_atpdcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
+
+    # 导出函数
+    def export_ato_ctrl_info(self):
+        global load_flag
+        # file is load
+        if load_flag == 1:
+            try:
+                filepath = QtWidgets.QFileDialog.getSaveFileName(self, "Save file", "d:/", "excel files(*.xls)")
+                if filepath != ('', ''):
+                    workbook = xlwt.Workbook()
+                    sheet = workbook.add_sheet("ATO控制信息")
+                    tb_head = ['系统周期', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位']
+                    tb_content = [self.log.cycle, self.log.atp_permit_v, self.log.ceilv, self.log.cmdv, self.log.level]
+                    for i, item in enumerate(tb_head):
+                        sheet.write(0, i, item)
+                        for j, content in enumerate(tb_content[i]):
+                            sheet.write(j+1, i, int(content))
+                    print('over')
+                    workbook.save(filepath[0])
+                    self.statusbar.showMessage(filepath[0] + "成功导出数据！")
+                else:
+                    pass
+            except Exception as err:
+                self.statusbar.showMessage(filepath[0] + "导出失败！")
+
 
     # 由于pyinstaller不能打包直接打包图片资源的缺陷，QtDesigner自动生成的图标代码实际无法打包，需在目录下放置图标文件夹
     # 所以通过手动生成的qrc文件（QtDesigner也可以，未试验），通过PyRrc5转为py资源文件
@@ -2516,6 +2664,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         icon27 = QtGui.QIcon()
         icon27.addPixmap(QtGui.QPixmap(":IconFiles/dock.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.action_bubble_dock.setIcon(icon27)
+
+        icon28 = QtGui.QIcon()
+        icon28.addPixmap(QtGui.QPixmap(":IconFiles/acc.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.action_acc_measure.setIcon(icon28)
+
+        icon29 = QtGui.QIcon()
+        icon29.addPixmap(QtGui.QPixmap(":IconFiles/export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionExport.setIcon(icon29)
 
 # 周期界面类
 class Cyclewindow(QtWidgets.QMainWindow, CycleWin):
