@@ -1326,7 +1326,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>4</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -2061,7 +2061,7 @@ background-color: rgb(170, 170, 255);</string>
                <string>通用信息</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_10">
-               <item row="0" column="5">
+               <item row="0" column="5" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_atp_stop_ok">
                  <property name="maximumSize">
                   <size>
@@ -2077,7 +2077,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="2">
+               <item row="0" column="2" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_atp_cut_traction">
                  <property name="maximumSize">
                   <size>
@@ -2093,7 +2093,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="3">
+               <item row="0" column="3" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_tsm">
                  <property name="maximumSize">
                   <size>
@@ -2109,7 +2109,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="0">
+               <item row="0" column="0" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_atp_level">
                  <property name="maximumSize">
                   <size>
@@ -2125,7 +2125,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="5">
+               <item row="2" column="5" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_door_pmt">
                  <property name="maximumSize">
                   <size>
@@ -2141,7 +2141,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="3">
+               <item row="2" column="3" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_tb">
                  <property name="maximumSize">
                   <size>
@@ -2157,7 +2157,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="2">
+               <item row="2" column="2" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_atp_brake">
                  <property name="maximumSize">
                   <size>
@@ -2173,7 +2173,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="0">
+               <item row="2" column="0" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_atp_mode">
                  <property name="maximumSize">
                   <size>
@@ -2189,7 +2189,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="6">
+               <item row="0" column="6" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_ato_ctrl_stat">
                  <property name="maximumSize">
                   <size>
@@ -2205,7 +2205,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="6">
+               <item row="2" column="6" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_ato_radio">
                  <property name="maximumSize">
                   <size>
@@ -2221,7 +2221,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="7">
+               <item row="0" column="7" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_ato_session">
                  <property name="maximumSize">
                   <size>
@@ -2237,7 +2237,7 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="7">
+               <item row="2" column="7" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_mvb_link">
                  <property name="maximumSize">
                   <size>
@@ -2277,7 +2277,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_milestone">
                    <property name="maximumSize">
                     <size>
@@ -2300,11 +2300,11 @@ background-color: rgb(170, 170, 255);</string>
                     </size>
                    </property>
                    <property name="text">
-                    <string>移动授权终点</string>
+                    <string>MA终点</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_ma">
                    <property name="maximumSize">
                     <size>
@@ -2331,7 +2331,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_jz_signal_dis">
                    <property name="maximumSize">
                     <size>
@@ -2358,7 +2358,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_target_dis">
                    <property name="maximumSize">
                     <size>
@@ -2385,7 +2385,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_cz_signal_dis">
                    <property name="maximumSize">
                     <size>
@@ -2412,7 +2412,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_gfx_dis">
                    <property name="maximumSize">
                     <size>
@@ -2439,7 +2439,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_stn_center_dis">
                    <property name="maximumSize">
                     <size>
@@ -2466,7 +2466,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_tsm_dis">
                    <property name="maximumSize">
                     <size>
@@ -2493,7 +2493,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_target_v">
                    <property name="maximumSize">
                     <size>
@@ -2520,7 +2520,7 @@ background-color: rgb(170, 170, 255);</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignLeft">
                   <widget class="QLineEdit" name="led_atp_stoperr">
                    <property name="maximumSize">
                     <size>

@@ -1057,6 +1057,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         print('Begin log read thread!')
         while self.log.is_alive():                              # 由于文件读取线程和后面是依赖关系，不能立即继续执行
             time.sleep(1)
+            print('Thread is running!')
             continue
         print('End log read thread!')
         # 处理返回结果
@@ -1451,6 +1452,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.connect(self.set_train_page_content)
             self.c_vato.move_signal.connect(self.set_plan_page_content)
             self.c_vato.sim_move_singal.connect(self.set_plan_page_content)
+            self.c_vato.move_signal.connect(self.set_ATP_page_content)
+            self.c_vato.sim_move_singal.connect(self.set_ATP_page_content)
+
             self.c_vato.move_signal.connect(self.set_ato_status_label)      # 标签
             self.c_vato.sim_move_singal.connect(self.set_ato_status_label)
             Mywindow.is_cursor_created = 1
@@ -1469,6 +1473,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.disconnect(self.set_train_page_content)
             self.c_vato.move_signal.disconnect(self.set_plan_page_content)
             self.c_vato.sim_move_singal.disconnect(self.set_plan_page_content)
+            self.c_vato.move_signal.disconnect(self.set_ATP_page_content)
+            self.c_vato.sim_move_singal.disconnect(self.set_ATP_page_content)
 
             self.c_vato.move_signal.disconnect(self.set_ato_status_label)      # 标签
             self.c_vato.sim_move_singal.disconnect(self.set_ato_status_label)
@@ -2332,9 +2338,129 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，设置ATP信息
     def set_ATP_page_content(self, idx):
-        # 筛选SP2包信息
+        # 数据包北荣使用tuple类型
         for k in self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict.keys():
-            pass
+            if k == 2:
+                sp2_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+                self.set_atp_info_win(sp2_tpl,2)
+            elif k == 5:
+                sp5_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+            elif k == 7:
+                sp7_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+            elif k == 131:
+                sp131_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+
+    # 设置数据包显示到界面
+    def set_atp_info_win(self,sp_tpl=tuple,clsify = int):
+        #SP2包内容
+        if clsify == 2:
+            if sp_tpl != ():
+                #门允许状态
+                if sp_tpl[2].strip() == '1':       #左门允许
+                    self.lbl_door_pmt.setText('左门允许')
+                    self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
+                elif sp_tpl[3].strip() == '1':     #右门允许
+                    self.lbl_door_pmt.setText('右门允许')
+                    self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
+                else:
+                    self.lbl_door_pmt.setText('无门允许')
+                    self.lbl_door_pmt.setStyleSheet("background-color: rgb(255, 0, 0);")
+                #ATP停准停稳状态
+                if sp_tpl[16].strip() == '0':
+                    self.lbl_atp_stop_ok.setText('未停稳')
+                    self.lbl_atp_stop_ok.setStyleSheet("background-color: rgb(255, 0, 0);")
+                elif sp_tpl[16].strip() == '1':
+                    self.lbl_atp_stop_ok.setText('停稳未停准')
+                    self.lbl_atp_stop_ok.setStyleSheet("background-color: rgb(0, 200, 127);")
+                elif sp_tpl[16].strip() == '2':
+                    self.lbl_atp_stop_ok.setText('停稳停准')
+                    self.lbl_atp_stop_ok.setStyleSheet("background-color: rgb(0, 255, 127);")
+
+                #是否TSM区
+                if sp_tpl[21].strip() == '2147483647' or sp_tpl[21].strip() != '4294967295':
+                    self.lbl_tsm.setText('CSM区')
+                    self.lbl_tsm.setStyleSheet("background-color: rgb(0, 255, 127);")
+                else:
+                    self.lbl_tsm.setText('TSM区')
+                    self.lbl_tsm.setStyleSheet("background-color: rgb(255, 255, 0);")
+
+                #是否立折
+                if sp_tpl[5].strip() == '1':
+                    self.lbl_tb.setText('立折换端')
+                    self.lbl_tb.setStyleSheet("background-color: rgb(0, 255, 127);")
+                else:
+                    self.lbl_tb.setText('非换端')
+                    self.lbl_tb.setStyleSheet("background-color: rgb(170, 170, 255);")
+
+                #是否切牵引
+                if sp_tpl[24].strip() == '1':
+                    self.lbl_atp_cut_traction.setText('ATP切除牵引')
+                    self.lbl_atp_cut_traction.setStyleSheet("background-color:  rgb(255, 0, 0);")
+                else:
+                    self.lbl_atp_cut_traction.setText('未切除牵引')
+                    self.lbl_atp_cut_traction.setStyleSheet("background-color: rgb(170, 170, 255);")
+
+                #是否制动
+                if sp_tpl[25].strip() == '1':
+                    self.lbl_atp_brake.setText('ATP施加制动')
+                    self.lbl_atp_brake.setStyleSheet("background-color: rgb(255, 0, 0);")
+                else:
+                    self.lbl_atp_brake.setText('未施加制动')
+                    self.lbl_atp_brake.setStyleSheet("background-color: rgb(170, 170, 255);")
+
+                #ATP等级/模式
+                if sp_tpl[8].strip() == '1':
+                    self.lbl_atp_level.setText('CTCS2')
+
+                    if sp_tpl[9].strip() == '1':
+                        self.lbl_atp_mode.setText('待机模式')
+                    elif sp_tpl[9].strip() == '2':
+                        self.lbl_atp_mode.setText('完全模式')
+                    elif sp_tpl[9].strip() == '3':
+                        self.lbl_atp_mode.setText('部分模式')
+                    elif sp_tpl[9].strip() == '5':
+                        self.lbl_atp_mode.setText('引导模式')
+                    elif sp_tpl[9].strip() == '7':
+                        self.lbl_atp_mode.setText('目视模式')
+                    elif sp_tpl[9].strip() == '8':
+                        self.lbl_atp_mode.setText('调车模式')
+                    elif sp_tpl[9].strip() == '9':
+                        self.lbl_atp_mode.setText('隔离模式')
+                    elif sp_tpl[9].strip() == '10':
+                        self.lbl_atp_mode.setText('机信模式')
+                    elif sp_tpl[9].strip() == '11':
+                        self.lbl_atp_mode.setText('休眠模式')
+                elif sp_tpl[8].strip() == '3':
+                    self.lbl_atp_level.setText('CTCS3')
+
+                    if sp_tpl[9].strip() == '6':
+                        self.lbl_atp_mode.setText('待机模式')
+                    elif sp_tpl[9].strip() == '0':
+                        self.lbl_atp_mode.setText('完全模式')
+                    elif sp_tpl[9].strip() == '1':
+                        self.lbl_atp_mode.setText('引导模式')
+                    elif sp_tpl[9].strip() == '2':
+                        self.lbl_atp_mode.setText('目视模式')
+                    elif sp_tpl[9].strip() == '3':
+                        self.lbl_atp_mode.setText('调车模式')
+                    elif sp_tpl[9].strip() == '10':
+                        self.lbl_atp_mode.setText('隔离模式')
+                    elif sp_tpl[9].strip() == '5':
+                        self.lbl_atp_mode.setText('休眠模式')
+
+                #显示信息
+                self.led_stn_center_dis.setText(sp_tpl[18].strip()+'cm')
+                self.led_jz_signal_dis.setText(sp_tpl[19].strip()+'cm')
+                self.led_cz_signal_dis.setText(sp_tpl[20].strip()+'cm')
+                self.led_atp_tsm_dis.setText(sp_tpl[21].strip()+'cm')
+                self.led_cz_signal_dis.setText(sp_tpl[20].strip()+'cm')
+                self.led_atp_milestone.setText('K'+str(int(int(sp_tpl[23])/1000))+'+'+str(int(sp_tpl[23])%1000))
+                self.led_atp_target_dis.setText(sp_tpl[7].strip()+'cm')
+                self.led_atp_target_v.setText(sp_tpl[6].strip()+'cm/s')
+                self.led_atp_ma.setText(sp_tpl[12].strip()+'m')
+                self.led_atp_stoperr.setText(sp_tpl[16].strip()+'cm')
+
+
 
 
     # 重置主界面所有的选择框
