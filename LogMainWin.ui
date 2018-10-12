@@ -2095,9 +2095,15 @@ background-color: rgb(170, 170, 255);</string>
                </item>
                <item row="0" column="3" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_tsm">
+                 <property name="minimumSize">
+                  <size>
+                   <width>40</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="maximumSize">
                   <size>
-                   <width>50</width>
+                   <width>70</width>
                    <height>20</height>
                   </size>
                  </property>
@@ -2113,7 +2119,7 @@ background-color: rgb(170, 170, 255);</string>
                 <widget class="QLabel" name="lbl_atp_level">
                  <property name="maximumSize">
                   <size>
-                   <width>45</width>
+                   <width>80</width>
                    <height>20</height>
                   </size>
                  </property>
@@ -2127,6 +2133,12 @@ background-color: rgb(170, 170, 255);</string>
                </item>
                <item row="2" column="5" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_door_pmt">
+                 <property name="minimumSize">
+                  <size>
+                   <width>50</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="maximumSize">
                   <size>
                    <width>70</width>
@@ -2177,7 +2189,7 @@ background-color: rgb(170, 170, 255);</string>
                 <widget class="QLabel" name="lbl_atp_mode">
                  <property name="maximumSize">
                   <size>
-                   <width>45</width>
+                   <width>80</width>
                    <height>20</height>
                   </size>
                  </property>

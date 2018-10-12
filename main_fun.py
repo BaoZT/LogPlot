@@ -2345,10 +2345,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.set_atp_info_win(sp2_tpl,2)
             elif k == 5:
                 sp5_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+                self.set_atp_info_win(sp5_tpl, 5)
             elif k == 7:
                 sp7_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
             elif k == 131:
                 sp131_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+                self.set_atp_info_win(sp131_tpl, 131)
 
     # 设置数据包显示到界面
     def set_atp_info_win(self,sp_tpl=tuple,clsify = int):
@@ -2378,10 +2380,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 #是否TSM区
                 if sp_tpl[21].strip() == '2147483647' or sp_tpl[21].strip() != '4294967295':
-                    self.lbl_tsm.setText('CSM区')
+                    self.lbl_tsm.setText('恒速区')
                     self.lbl_tsm.setStyleSheet("background-color: rgb(0, 255, 127);")
                 else:
-                    self.lbl_tsm.setText('TSM区')
+                    self.lbl_tsm.setText('减速区')
                     self.lbl_tsm.setStyleSheet("background-color: rgb(255, 255, 0);")
 
                 #是否立折
@@ -2456,12 +2458,67 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_cz_signal_dis.setText(sp_tpl[20].strip()+'cm')
                 self.led_atp_milestone.setText('K'+str(int(int(sp_tpl[23])/1000))+'+'+str(int(sp_tpl[23])%1000))
                 self.led_atp_target_dis.setText(sp_tpl[7].strip()+'cm')
+                self.led_atp_gfx_dis.setText(sp_tpl[14].strip()+'m')
                 self.led_atp_target_v.setText(sp_tpl[6].strip()+'cm/s')
                 self.led_atp_ma.setText(sp_tpl[12].strip()+'m')
                 self.led_atp_stoperr.setText(sp_tpl[16].strip()+'cm')
 
+        if clsify == 5:
+            if sp_tpl != ():
+                if sp_tpl[0].strip() == '1':
+                    self.led_units.setText('8编组')
+                elif sp_tpl[0].strip() == '2':
+                    self.led_units.setText('16编组')
+                elif sp_tpl[0].strip() == '3':
+                    self.led_units.setText('18编组')
 
+                if sp_tpl[9].strip() == '1':
+                    self.led_driver_strategy.setText('正常策略')
+                elif sp_tpl[9].strip() == '2':
+                    self.led_driver_strategy.setText('快行策略')
+                elif sp_tpl[9].strip() == '3':
+                    self.led_driver_strategy.setText('慢行策略')
 
+                #BTM天线等
+                self.led_atp_btm_pos.setText(sp_tpl[3].strip())
+                self.led_head_foor_dis.setText(sp_tpl[4].strip())
+                self.led_nid_engine.setText(sp_tpl[8].strip())
+
+        if clsify == 131:
+            if sp_tpl != ():
+                if sp_tpl[6].strip() == '1':
+                    self.lbl_mvb_link.setText('MVB正常')
+                    self.lbl_mvb_link.setStyleSheet("background-color: rgb(0, 255, 127);")
+                elif sp_tpl[6].strip() == '2':
+                    self.lbl_mvb_link.setText('MVB中断')
+                    self.lbl_mvb_link.setStyleSheet("background-color: rgb(255, 0, 0);")
+
+                if sp_tpl[4].strip() == '1':
+                    self.lbl_ato_radio.setText('电台正常')
+                    self.lbl_ato_radio.setStyleSheet("background-color: rgb(0, 255, 127);")
+                elif sp_tpl[4].strip() == '0':
+                    self.lbl_ato_radio.setText('电台异常')
+                    self.lbl_ato_radio.setStyleSheet("background-color: rgb(255, 0, 0);")
+
+                if sp_tpl[5].strip() == '1':
+                    self.lbl_ato_session.setText('未连接')
+                    self.lbl_ato_session.setStyleSheet("background-color: rgb(255, 0, 0);")
+                elif sp_tpl[5].strip() == '2':
+                    self.lbl_ato_session.setText('正在呼叫')
+                    self.lbl_ato_session.setStyleSheet("background-color: rgb(170, 170, 255);")
+                elif sp_tpl[5].strip() == '3':
+                    self.lbl_ato_session.setText('正常连接')
+                    self.lbl_ato_session.setStyleSheet("background-color: rgb(0, 255, 127);")
+
+                if sp_tpl[0].strip() == '1':
+                    self.lbl_ato_ctrl_stat.setText('计划有效')
+                else:
+                    if sp_tpl[7].strip() == '1':
+                        self.lbl_ato_ctrl_stat.setText('正常策略')
+                    elif sp_tpl[7].strip() == '2':
+                        self.lbl_ato_ctrl_stat.setText('快行策略')
+                    elif sp_tpl[7].strip() == '3':
+                        self.lbl_ato_ctrl_stat.setText('慢行策略')
 
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):
