@@ -2814,7 +2814,28 @@ background-color: rgb(170, 170, 255);</string>
                 </layout>
                </item>
                <item>
-                <widget class="QTableWidget" name="tableWidget_2"/>
+                <widget class="QTableWidget" name="tableATPBTM">
+                 <column>
+                  <property name="text">
+                   <string>时间</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>应答器编号</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>位置矫正值</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>公里标</string>
+                  </property>
+                 </column>
+                </widget>
                </item>
               </layout>
              </widget>

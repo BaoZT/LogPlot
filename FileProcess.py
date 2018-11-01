@@ -465,9 +465,8 @@ class FileProcess(threading.Thread):
         pat_sp0 = re.compile('\[P->O\]SP0,')
         pat_sp1 = re.compile('\[P->O\]SP1,')
         pat_sp2 = re.compile('\[P->O\]SP2,')
-        pat_sp5 = re.compile('\[P->O\]SP5,\w*?\s?(\d),\w*?\s?(\w+),\w*?\s?(\w+),'
-                             '\w*?\s?(-?\d+),\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+),'
-                             '\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d)')
+        pat_sp5 = re.compile('\[P->O\]SP5,.*\s(\d),.*\s(\w+),.*\s(\w+),.*\s(-?\d+),.*\s(\d+),.*\s(\d+),.*\s(\d+),'
+                             '.*\s(\d+),.*\s(\d+),.*\s(\d)')    # 因为有下划线所以不支持\w了
         pat_sp6 = re.compile('\[P->O\]SP6,')
         pat_sp7 = re.compile('\[P->O\]SP7,\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(-?\d+),\w*?\s?(\d+),\w*?\s?(\d+),'
                              '\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+)')

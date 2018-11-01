@@ -243,6 +243,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     load_flag = 1                # 记录加载且ATO控车
                     self.actionView.trigger()    # 目前无效果，待完善，目的 用于加载后重置坐标轴
                     self.CBvato.setChecked(True)
+                    self.win_init_log_processed()   # 记录加载成功且有控车时，初始化显示一些内容
                     print('Set View mode and choose Vato')
                 elif is_ato_control == 1:
                     load_flag = 2      # 记录加载但是ATO没有控车
@@ -650,7 +651,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(tcms2ato_stat)
 
     # 右侧边栏显示
-    def realtime_table_show(self,cycle_num=str, cycle_time=str,sc_ctrl=list, stoppoint=list, gfx_flag=int):
+    def realtime_table_show(self, cycle_num=str, cycle_time=str, sc_ctrl=list, stoppoint=list, gfx_flag=int):
         item_value = []
         if sc_ctrl!=[]:
             if 1 == int(sc_ctrl[19]):
@@ -1091,6 +1092,41 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             print('Err Can not get time use')
         return isok
+
+    # 用于一些界面加载记录初始化后显示的内容,如数据包一次显示
+    def win_init_log_processed(self):
+        # 初始化列车数据界面，如果后面更新再有动态光标触发更新，更新后保持
+        sp5_tpl = ()
+        sp5_snipper = 0
+        sp7_cnt = 1
+        # 初始化表格
+        self.tableATPBTM.resizeRowsToContents()
+        self.tableATPBTM.verticalHeader().setVisible(False)
+        self.tableATPBTM.setColumnCount(4)
+        self.tableATPBTM.setRowCount(200)
+        # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
+        for c in self.log.cycle_dic.keys():
+            if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                sp5_tpl = self.log.cycle_dic[c].cycle_sp_dict[5]
+                self.set_atp_info_win(sp5_tpl, 5)
+                sp5_snipper = 0
+            # 加载应答器信息
+            if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                print("sp7 %d"%sp7_cnt)
+                c_show_sp7 = self.log.cycle_dic[c]
+                d_t = c_show_sp7.time.split(' ')
+                self.tableATPBTM.setItem(sp7_cnt, 0, QtWidgets.QTableWidgetItem(d_t[1]))
+                self.tableATPBTM.setItem(sp7_cnt, 1, QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][0]))
+                self.tableATPBTM.setItem(sp7_cnt, 2, QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][1]))
+                # 获取公里标
+                if 2 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                    sp2_tpl = self.log.cycle_dic[c].cycle_sp_dict[2]
+                    self.tableATPBTM.setItem(sp7_cnt, 3, QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000))
+                                                                                    + '+' + str(int(sp2_tpl[23]) % 1000)))
+                sp7_cnt = sp7_cnt + 1
+        # 文本显示
+        if sp5_snipper == 0:
+            self.show_message("Info: Nn SP5 in log,no train data")
 
     # 事件处理函数，计数器数值变化触发事件，绑定光标和内容更新
     def spin_value_changed(self):
@@ -2342,7 +2378,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for k in self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict.keys():
             if k == 2:
                 sp2_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
-                self.set_atp_info_win(sp2_tpl,2)
+                self.set_atp_info_win(sp2_tpl, 2)
             elif k == 5:
                 sp5_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
                 self.set_atp_info_win(sp5_tpl, 5)
@@ -2480,8 +2516,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.led_driver_strategy.setText('慢行策略')
 
                 #BTM天线等
-                self.led_atp_btm_pos.setText(sp_tpl[3].strip())
-                self.led_head_foor_dis.setText(sp_tpl[4].strip())
+                self.led_atp_btm_pos.setText(str(int(sp_tpl[3])*10)+'cm')
+                self.led_head_foor_dis.setText(sp_tpl[4].strip()+'cm')
                 self.led_nid_engine.setText(sp_tpl[8].strip())
 
         if clsify == 131:
@@ -2714,8 +2750,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if filepath != ('', ''):
                     workbook = xlwt.Workbook()
                     sheet = workbook.add_sheet("ATO控制信息")
-                    tb_head = ['系统周期', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位']
-                    tb_content = [self.log.cycle, self.log.atp_permit_v, self.log.ceilv, self.log.cmdv, self.log.level]
+                    tb_head = ['系统周期', '位置', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位','车头坡度','等效坡度']
+                    tb_content = [self.log.cycle, self.log.s, self.log.atp_permit_v, self.log.ceilv, self.log.cmdv,
+                                  self.log.level, self.log.ramp, self.log.adjramp]
                     for i, item in enumerate(tb_head):
                         sheet.write(0, i, item)
                         for j, content in enumerate(tb_content[i]):
