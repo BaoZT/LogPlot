@@ -82,7 +82,7 @@ class SnaptoCursor(QtCore.QObject):
         # update the line positions
         self.lx.set_ydata(y)
         self.ly.set_xdata(x)
-        # print('x=%1.2f, y=%1.2f' % (x, y))
+        print('x=%1.2f, y=%1.2f' % (x, y))
         self.fmpl.draw()
         # 发射信号
         self.sim_move_singal.emit(indx)  # 发射信号索引
@@ -382,6 +382,8 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         '''
         该函数主要按照事件字典说明，按照传入的周期列表和位置列表
         计算绘制事件需要的绘图列表，即“事件-周期/位置”列表
+        由于周期字典是无序字典，所以索引无法用于周期列表，因此只能通过两个循环，
+        单个循环中获得的顺序是字典的不能使用
         :param event_dic: 事件字典，指示绘制哪些事件
         :param cycle_dic: 周期列表，用于查询事件信息对应周期
         :param pos_list: 位置索引列表，用于生成位置图是需要，借助周期索引来查询
@@ -406,9 +408,12 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 temp_pos_list = []
                 temp_cycle_list = []
                 # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_list):
+                for idx, item_cycle in enumerate(cycle_dic.keys()):
                     if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         temp_cycle_list.append(item_cycle)      # 直接添加周期号
+                # 位置信息不一定有，在只使用SC打印时
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         temp_pos_list.append(pos_list[idx])     # 添加对应位置
                 self.event_plot_dic['BTM'] = (temp_pos_list, temp_cycle_list)    # 字典查询结果是两个列表
 
@@ -417,34 +422,42 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 temp_pos_list = []
                 temp_cycle_list = []
                 # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_list):
+                for idx, item_cycle in enumerate(cycle_dic.keys()):
                     if 8 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         temp_cycle_list.append(item_cycle)  # 直接添加周期号
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 8 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         temp_pos_list.append(pos_list[idx])  # 添加对应位置
-                        self.event_plot_dic['WL'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+                self.event_plot_dic['WL'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
 
             # JD应答器
             if event_dic['JD'] == 1:
                 temp_pos_list = []
                 temp_cycle_list = []
                 # 周期字典和周期列表中的周期都是int类型
+                for idx, item_cycle in enumerate(cycle_dic.keys()):
+                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                        if '13' == cycle_dic[item_cycle].cycle_sp_dict[7][3].strip():
+                            temp_cycle_list.append(item_cycle)  # 直接添加周期号
                 for idx, item_cycle in enumerate(cycle_list):
                     if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        if '13' in cycle_dic[item_cycle].cycle_sp_dict[7]:
-                            temp_cycle_list.append(item_cycle)  # 直接添加周期号
+                        if '13' == cycle_dic[item_cycle].cycle_sp_dict[7][3].strip():
                             temp_pos_list.append(pos_list[idx])  # 添加对应位置
-                            self.event_plot_dic['JD'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+                self.event_plot_dic['JD'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+
 
             # 计划
             if event_dic['PLAN'] == 1:
                 temp_pos_list = []
                 temp_cycle_list = []
                 # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_list):
+                for idx, item_cycle in enumerate(cycle_dic.keys()):
                     if 41 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         temp_cycle_list.append(item_cycle)  # 直接添加周期号
+                for idx, item_cycle in enumerate(cycle_list):
+                    if 41 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         temp_pos_list.append(pos_list[idx])  # 添加对应位置
-                        self.event_plot_dic['PLAN'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+                self.event_plot_dic['PLAN'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
 
 
     # 绘制事件信息
@@ -459,7 +472,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                             self.axes1.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
                                                marker='^',color='gold')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][0]),
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][1]),
                                                marker='^', color='gold')
 
                     if k == 'JD' and self.event_plot_flag_dic['JD'] == 1:
@@ -467,7 +480,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
                                                marker='^', color='Blue')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][0]),
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='^', color='Blue')
 
                     if k == 'WL' and self.event_plot_flag_dic['WL'] == 1:
@@ -475,14 +488,14 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
                                                marker='D', color='Peru')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][0]),
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='D', color='Peru')
                     if k == 'PLAN' and self.event_plot_flag_dic['PLAN'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
                                                marker='*', color='Purple')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][0]),
+                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='*', color='Purple')
 
 

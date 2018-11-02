@@ -40,8 +40,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savePath = os.getcwd()+'\\'      # 实时存储的文件保存路径（文件夹）,增加斜线直接添加文件名即可
         self.savefilename = ''                # 实时存储的写入文件名(含路径)
         self.pathlist = []
+        self.BTM_cycle = []              # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0                    # 默认0是浏览模式，1是标注模式
-        self.ver = '2.8.6'               # 标示软件版本
+        self.ver = '2.9.6'               # 标示软件版本
         self.serdialog = SerialDlg()     # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)   # 操作串口对象
 
@@ -68,6 +69,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         lr = QtWidgets.QVBoxLayout(self.widget_2)
         self.sp_real = Figure_Canvas_R(self.widget_2)
         lr.addWidget(self.sp_real)          # 必须创造布局并且加入才行
+        # 设置BTM表
+        self.tableATPBTM.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 
         # MVB解析面板
         self.mvbParserPage = MVBParse()
@@ -139,6 +142,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.lineEdit.setText(os.getcwd())
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(self.filetab_clicked)
+        self.tableATPBTM.itemClicked.connect(self.BTM_selected_info)
 
     def initUI(self):
         self.splitter_7.setStretchFactor(0, 1)
@@ -1098,35 +1102,63 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 初始化列车数据界面，如果后面更新再有动态光标触发更新，更新后保持
         sp5_tpl = ()
         sp5_snipper = 0
-        sp7_cnt = 1
+        sp7_cnt = 0
         # 初始化表格
         self.tableATPBTM.resizeRowsToContents()
-        self.tableATPBTM.verticalHeader().setVisible(False)
+        # self.tableATPBTM.resizeColumnsToContents()
+        self.tableATPBTM.verticalHeader().setVisible(True)
+        self.BTM_cycle = []     # 首先初始化列表
+        # BTM TABLE 计数
+        sp7_table_row_cnt = 1
+        for c in self.log.cycle_dic.keys():
+            if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                sp7_table_row_cnt = sp7_table_row_cnt + 1
+                self.BTM_cycle.append(c)
         self.tableATPBTM.setColumnCount(4)
-        self.tableATPBTM.setRowCount(200)
+        self.tableATPBTM.setRowCount(sp7_table_row_cnt)
         # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
         for c in self.log.cycle_dic.keys():
             if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
                 sp5_tpl = self.log.cycle_dic[c].cycle_sp_dict[5]
                 self.set_atp_info_win(sp5_tpl, 5)
-                sp5_snipper = 0
+                sp5_snipper = 1
             # 加载应答器信息
             if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                print("sp7 %d"%sp7_cnt)
                 c_show_sp7 = self.log.cycle_dic[c]
-                d_t = c_show_sp7.time.split(' ')
-                self.tableATPBTM.setItem(sp7_cnt, 0, QtWidgets.QTableWidgetItem(d_t[1]))
-                self.tableATPBTM.setItem(sp7_cnt, 1, QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][0]))
-                self.tableATPBTM.setItem(sp7_cnt, 2, QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][1]))
+                d_t = c_show_sp7.time.split(" ")[1]         # 取时间
+                item_dt = QtWidgets.QTableWidgetItem(d_t)
+                item_balise_bum = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][0])
+                item_adjpos = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][2]+'cm')
+
+                item_dt.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                item_balise_bum.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                item_adjpos.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+
+
                 # 获取公里标
                 if 2 in self.log.cycle_dic[c].cycle_sp_dict.keys():
                     sp2_tpl = self.log.cycle_dic[c].cycle_sp_dict[2]
-                    self.tableATPBTM.setItem(sp7_cnt, 3, QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000))
-                                                                                    + '+' + str(int(sp2_tpl[23]) % 1000)))
+                    item_milestone = QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000))
+                                                                + '+' + str(int(sp2_tpl[23]) % 1000))
+                    # 虽然目前有SP2必有SP7但不能保证，所有还是单独条件
+                    if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
+                        item_milestone.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                    # 所有都居中，但只SP7刷红
+                    item_milestone.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                    self.tableATPBTM.setItem(sp7_cnt, 3, item_milestone)
+                # JD正常刷颜色
+                if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
+                    item_dt.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                    item_balise_bum.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                    item_adjpos.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+
+                self.tableATPBTM.setItem(sp7_cnt, 0, item_dt)
+                self.tableATPBTM.setItem(sp7_cnt, 1, item_balise_bum)
+                self.tableATPBTM.setItem(sp7_cnt, 2, item_adjpos)
                 sp7_cnt = sp7_cnt + 1
         # 文本显示
         if sp5_snipper == 0:
-            self.show_message("Info: Nn SP5 in log,no train data")
+            self.show_message("Info: N0 SP5 in log,no train data")
 
     # 事件处理函数，计数器数值变化触发事件，绑定光标和内容更新
     def spin_value_changed(self):
@@ -1175,7 +1207,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         # 再更新光标
                         self.c_vato.sim_mouse_move(int(cur_cycle), int(info[1]))     # 绘制速度周期曲线时查询为周期，速度
                 else:
-                    pass
+                    # 因为移动光标意味着重发信号，单纯移动光标有歧义，若发送信号有可能造成大量新防护问题，这里暂不修改。
+                    self.show_message('Err:光标不更新，该周期控车信息丢失')
             else:
                 self.show_message('Err:记录边界或周期丢失！')
         else:
@@ -1588,24 +1621,29 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 设置主界面表格的格式
     def set_table_format(self):
-        item_name = ['V_ato', 'V_cmd', 'V_atpcmdv', 'Real_level', 'Level', 'StateMachine',   # 0~5
-                     'Current_Pos', 'V_target', 'Target_Pos', 'MA', 'Stop_Pos', 'Stop_Err',  # 6~11
-                     'JD_Stop', 'Ref_Stop', 'Ma_Stop',                                       # 12~14
-                     'Skip_Status', 'Task_Status']
-        item_unit = ['cm/s', 'cm/s', 'cm/s', '-','-','-',
+        item_name = ['ATO当前速度', 'ATO命令速度', 'ATP命令速度','ATP允许速度', '估计级位', '输出级位', '控车状态机',   # 0~5
+                     '当前位置', '目标速度', '目标位置', 'MA终点', 'ATO停车点', '停车误差',               # 6~11
+                     '精确停车点', '参考停车点', 'MA停车点',                                             # 12~14
+                     '通过信息', '办客信息']
+        item_unit = ['cm/s', 'cm/s', 'cm/s', 'cm/s','-','-','-',
                      'cm', 'cm/s', 'cm', 'cm', 'cm', 'cm', 'cm',  'cm',
-                     'cm', 'cm', 'cm']
+                     'cm', '-', '-']
         # table name
-        self.tableWidget.setRowCount(17)
+        self.tableWidget.setRowCount(18)
         self.tableWidget.setColumnCount(3)
-        self.tableWidget.setHorizontalHeaderLabels(['CtrlInfo', 'Values', 'Uint'])
+        self.tableWidget.setHorizontalHeaderLabels(['ATO控制信息', '控车数据', '单位'])
         self.tableWidget.resizeRowsToContents()
         self.tableWidget.verticalHeader().setVisible(False)
+        self.tableWidget.setColumnWidth(1, 170)
 
         for idx, name in enumerate(item_name):
-            self.tableWidget.setItem(idx, 0, QtWidgets.QTableWidgetItem(name))
+            i_content_name = QtWidgets.QTableWidgetItem(name)
+            i_content_name.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+            self.tableWidget.setItem(idx, 0, i_content_name)
         for idx2, unit in enumerate(item_unit):
-            self.tableWidget.setItem(idx2, 2, QtWidgets.QTableWidgetItem(unit))
+            i_content_unit = QtWidgets.QTableWidgetItem(unit)
+            i_content_unit.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+            self.tableWidget.setItem(idx2, 2, i_content_unit)
 
     # 事件处理函数，设置主界面表格内容
     def set_tableall_content(self, indx):
@@ -1613,21 +1651,22 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         stop_list = list(self.log.cycle_dic[self.log.cycle[indx]].stoppoint)
         # 获取和计算
         if 1 == int(self.log.skip[indx]):
-            str_skip = 'Skip'
+            str_skip = '通过'
         elif 2 == int(self.log.skip[indx]):
-            str_skip = 'No'
+            str_skip = '到发'
         else:
-            str_skip = 'None'
+            str_skip = '未知'
         if 1 == int(self.log.mtask[indx]):
-            str_task = 'Task'
+            str_task = '办客'
         elif 2 == int(self.log.mtask[indx]):
-            str_task = 'No'
+            str_task = '不办客'
         else:
-            str_task = 'None'
+            str_task = '未知'
         # 装填
         item_value.append(str(int(self.log.v_ato[indx])))   # 使用int的原因是只有整数精度，不多显示
         item_value.append(str(int(self.log.cmdv[indx])))
         item_value.append(str(int(self.log.ceilv[indx])))
+        item_value.append(str(int(self.log.atp_permit_v[indx])))
         item_value.append(str(int(self.log.real_level[indx])))
         item_value.append(str(int(self.log.level[indx])))
         item_value.append(str(int(self.log.statmachine[indx])))
@@ -1642,13 +1681,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item_value.append(str(int(stop_list[1])))
             item_value.append(str(int(stop_list[2])))
         else:
-            item_value.append('None')
-            item_value.append('None')
-            item_value.append('None')
+            item_value.append('无')
+            item_value.append('无')
+            item_value.append('无')
         item_value.append(str_skip)
         item_value.append(str_task)
         for idx3, value in enumerate(item_value):
-            self.tableWidget.setItem(idx3, 1, QtWidgets.QTableWidgetItem(value))
+            i_content = QtWidgets.QTableWidgetItem(value)
+            i_content.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
         self.label_2.setText(self.log.cycle_dic[self.log.cycle[indx]].time)
         self.spinBox.setValue(int(self.log.cycle_dic[self.log.cycle[indx]].cycle_num))
 
@@ -1658,21 +1698,22 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         stop_list = list(self.log.cycle_dic[self.log.cycle[indx]].stoppoint)
         # 获取和计算
         if 1 == int(self.log.skip[indx]):
-            str_skip = 'Skip'
+            str_skip = '通过'
         elif 2 == int(self.log.skip[indx]):
-            str_skip = 'No'
+            str_skip = '到发'
         else:
-            str_skip = 'None'
+            str_skip = '未知'
         if 1 == int(self.log.mtask[indx]):
-            str_task = 'Task'
+            str_task = '办客'
         elif 2 == int(self.log.mtask[indx]):
-            str_task = 'No'
+            str_task = '不办客'
         else:
-            str_task = 'None'
+            str_task = '未知'
         # 装填
         item_value.append(str(int(self.log.v_ato[indx])))  # 使用int的原因是只有整数精度，不多显示
         item_value.append(str(int(self.log.cmdv[indx])))
         item_value.append(str(int(self.log.ceilv[indx])))
+        item_value.append(str(int(self.log.atp_permit_v[indx])))
         item_value.append(str(int(self.log.real_level[indx])))
         item_value.append(str(int(self.log.level[indx])))
         item_value.append(str(int(self.log.statmachine[indx])))
@@ -1687,13 +1728,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item_value.append(str(int(stop_list[1])))
             item_value.append(str(int(stop_list[2])))
         else:
-            item_value.append('None')
-            item_value.append('None')
-            item_value.append('None')
+            item_value.append('无')
+            item_value.append('无')
+            item_value.append('无')
         item_value.append(str_skip)
         item_value.append(str_task)
         for idx3, value in enumerate(item_value):
-            self.tableWidget.setItem(idx3, 1, QtWidgets.QTableWidgetItem(value))
+            i_content = QtWidgets.QTableWidgetItem(value)
+            i_content.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+            self.tableWidget.setItem(idx3, 1, i_content)
         self.label_2.setText(self.log.cycle_dic[self.log.cycle[indx]].time)
 
     # 事件处理函数，用于设置气泡格式，目前只设置位置
@@ -2555,6 +2598,54 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         self.lbl_ato_ctrl_stat.setText('快行策略')
                     elif sp_tpl[7].strip() == '3':
                         self.lbl_ato_ctrl_stat.setText('慢行策略')
+
+    # 应答器表格选中事件,调用光标
+    def BTM_selected_info(self, row_item):
+        c_num = self.BTM_cycle[row_item.row()]
+        try:
+            self.spinBox.setValue(c_num)
+            if 7 in self.log.cycle_dic[c_num].cycle_sp_dict.keys():
+                c_show_sp7 = self.log.cycle_dic[c_num]
+                # JD正常刷颜色
+                if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
+                    self.led_with_c13.setText('有')
+                    self.led_with_c13.setStyleSheet("background-color: rgb(225, 0, 0);")
+                    # 站台位置
+                    platform_pos = int(c_show_sp7.cycle_sp_dict[7][5])
+                    if platform_pos == 0:
+                        self.led_platform_pos.setText('左侧')
+                    elif platform_pos == 1:
+                        self.led_platform_pos.setText('右侧')
+                    elif platform_pos == 2:
+                        self.led_platform_pos.setText('双侧')
+                    elif platform_pos == 3:
+                        self.led_platform_pos.setText('无站台')
+                    # 站台门
+                    platform_door = int(c_show_sp7.cycle_sp_dict[7][6])
+                    if platform_door == 1:
+                        self.led_platform_door.setText('有')
+                    elif platform_door == 2:
+                        self.led_platform_door.setText('无')
+                    # 停车点
+                    self.led_track.setText(c_show_sp7.cycle_sp_dict[7][7])
+                    scale = int(c_show_sp7.cycle_sp_dict[7][4])
+                    d_stop = int(c_show_sp7.cycle_sp_dict[7][8])
+                    if scale == 0:
+                        scale = 10
+                    elif scale == 1:
+                        scale = 100
+                    elif scale == 2:
+                        scale = 1000
+                    self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
+                else:
+                    self.led_with_c13.setText('无')
+                    self.led_with_c13.setStyleSheet("background-color: rgb(0, 0, 0);")
+                    self.led_platform_door.clear()
+                    self.led_platform_pos.clear()
+                    self.led_track.clear()
+                    self.led_stop_d_JD.clear()
+        except Exception as err:
+            print(err)
 
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):

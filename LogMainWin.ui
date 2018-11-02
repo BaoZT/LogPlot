@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1202</width>
-    <height>791</height>
+    <height>793</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1326,7 +1326,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>4</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -2618,7 +2618,7 @@ background-color: rgb(170, 170, 255);</string>
                     </size>
                    </property>
                    <property name="text">
-                    <string>司机选择策略</string>
+                    <string>司机策略</string>
                    </property>
                   </widget>
                  </item>
@@ -2702,19 +2702,19 @@ background-color: rgb(170, 170, 255);</string>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_5">
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_30">
-                 <item>
+                <layout class="QGridLayout" name="gridLayout_13">
+                 <item row="0" column="0">
                   <layout class="QHBoxLayout" name="horizontalLayout_29">
                    <item>
                     <widget class="QLabel" name="lbl_with_c13">
                      <property name="maximumSize">
                       <size>
-                       <width>80</width>
+                       <width>120</width>
                        <height>20</height>
                       </size>
                      </property>
                      <property name="text">
-                      <string>是否含C13包</string>
+                      <string>是否含C13包-JD应答器</string>
                      </property>
                     </widget>
                    </item>
@@ -2730,7 +2730,7 @@ background-color: rgb(170, 170, 255);</string>
                    </item>
                   </layout>
                  </item>
-                 <item>
+                 <item row="0" column="1">
                   <layout class="QHBoxLayout" name="horizontalLayout_28">
                    <item>
                     <widget class="QLabel" name="lbl_platform_door">
@@ -2757,7 +2757,7 @@ background-color: rgb(170, 170, 255);</string>
                    </item>
                   </layout>
                  </item>
-                 <item>
+                 <item row="0" column="2">
                   <layout class="QHBoxLayout" name="horizontalLayout_27">
                    <item>
                     <widget class="QLabel" name="lbl_platform_pos">
@@ -2776,7 +2776,7 @@ background-color: rgb(170, 170, 255);</string>
                     <widget class="QLineEdit" name="led_platform_pos">
                      <property name="maximumSize">
                       <size>
-                       <width>30</width>
+                       <width>50</width>
                        <height>20</height>
                       </size>
                      </property>
@@ -2784,18 +2784,32 @@ background-color: rgb(170, 170, 255);</string>
                    </item>
                   </layout>
                  </item>
-                 <item>
+                 <item row="1" column="0">
+                  <layout class="QHBoxLayout" name="horizontalLayout_30">
+                   <item>
+                    <widget class="QLabel" name="label_8">
+                     <property name="text">
+                      <string>距离精确停车点</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="led_stop_d_JD"/>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="1" column="1" colspan="2">
                   <layout class="QHBoxLayout" name="horizontalLayout_26">
                    <item>
                     <widget class="QLabel" name="lbl_track">
                      <property name="maximumSize">
                       <size>
-                       <width>50</width>
+                       <width>100</width>
                        <height>20</height>
                       </size>
                      </property>
                      <property name="text">
-                      <string>站台股道</string>
+                      <string>列车停靠股道编号</string>
                      </property>
                     </widget>
                    </item>
@@ -2803,7 +2817,7 @@ background-color: rgb(170, 170, 255);</string>
                     <widget class="QLineEdit" name="led_track">
                      <property name="maximumSize">
                       <size>
-                       <width>100</width>
+                       <width>80</width>
                        <height>20</height>
                       </size>
                      </property>
@@ -2815,6 +2829,12 @@ background-color: rgb(170, 170, 255);</string>
                </item>
                <item>
                 <widget class="QTableWidget" name="tableATPBTM">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <column>
                   <property name="text">
                    <string>时间</string>
