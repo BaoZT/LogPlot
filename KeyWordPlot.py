@@ -478,10 +478,10 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                     if k == 'JD' and self.event_plot_flag_dic['JD'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
-                                               marker='^', color='Blue')
+                                               marker='^', linewidth=3, color='Blue')
                         else:
                             self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
-                                               marker='^', color='Blue')
+                                               marker='^',linewidth=3, color='Blue')
 
                     if k == 'WL' and self.event_plot_flag_dic['WL'] == 1:
                         if cmd == 0:
