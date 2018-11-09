@@ -22,6 +22,7 @@
 import matplotlib
 from MVBParser import Ui_MainWindow as MVBParserWin
 from Measure import Ui_MainWindow as MeasureWin
+from CycleInfo import Ui_MainWindow as CycleWin
 from PyQt5 import QtCore, QtGui, QtWidgets
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -40,6 +41,45 @@ pat_ato_ctrl = 0
 pat_ato_stat = 0
 pat_tcms_stat = 0
 
+
+# 周期界面类
+class Cyclewindow(QtWidgets.QMainWindow, CycleWin):
+    def __init__(self):
+        super(Cyclewindow, self).__init__()
+        self.setupUi(self)
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+        self.icon_from_file()
+        self.actionCycleSave.triggered.connect(self.save_log)
+        self.actionCopy.triggered.connect(self.copy_cliperboard)
+
+    # 事件处理函数，向指定路径中写入该周期
+    def save_log(self, str_list=list):
+        filepath = QtWidgets.QFileDialog.getSaveFileName(self, "Save file", "d:/", "txt files(*.txt)")
+        if filepath != ('', ''):
+            f = open(filepath[0], "w")
+            f.write(str(self.textEdit.toPlainText()))
+            f.close()
+            self.statusBar.showMessage(filepath[0] + "成功保存该周期！")
+        else:
+            pass
+
+    # 事件处理函数，复制当前周期内容
+    def copy_cliperboard(self):
+        cliper = QtWidgets.QApplication.clipboard()
+        cliper.setText(str(self.textEdit.toPlainText()))
+        self.statusBar.showMessage("成功复制周期！")
+
+    # 用于将图标资源文件打包
+    def icon_from_file(self):
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":IconFiles/copy.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionCopy.setIcon(icon)
+
+        icon1 = QtGui.QIcon()
+        icon1.addPixmap(QtGui.QPixmap(":IconFiles/save.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionCycleSave.setIcon(icon1)
 
 # 串口设置类
 class SerialDlg(QtWidgets.QDialog):
@@ -649,45 +689,99 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         super(Ctrl_MeasureDlg, self).__init__(parent)
         self.setupUi(self)
         self.sp = Figure_Canvas(self.widget)         # 这是继承FigureCanvas的子类，使用子窗体widget作为父
+        self.ctrlAccTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         l.addWidget(self.sp)
+        l.addWidget(self.ctrlAccTable)
+        self.acc_table_format()
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'ATO曲线测量器')
-        self.resize(600,400)
+        self.resize(500, 600)
 
+    # 设置加速度显示表
+    def acc_table_format(self):
+        self.ctrlAccTable.setRowCount(4)
+        self.ctrlAccTable.setColumnCount(3)
+        self.ctrlAccTable.setHorizontalHeaderLabels(['控车曲线分类', '估计加速度', '单位'])
 
-    # 用于绘制估计加速度曲线
-    def measure_plot(self, idx_start=int, idx_end=int, cmd=int):
+    # 重置索引从到右，统一鼠标点击顺序
+    def set_segment_idx(self, idx_start=int, idx_end=int,):
         # 根据索引大小关系获取实际序列
         if idx_start <= idx_end:
             pass
         else:
-            idx_start, idx_end = idx_end, idx_start # 当终点比起点更靠前，互换转为正常顺序
+            idx_start, idx_end = idx_end, idx_start  # 当终点比起点更靠前，互换转为正常顺序
+        return idx_start, idx_end
 
-        # 根据曲线模式获取列表
-        if cmd == 0:  # 位置速度曲线
-            x_list = self.log.cycle[idx_start:idx_end]
-            y_list = self.log.v_ato[idx_start:idx_end]
-            # 走行距离
-            s_sim = self.log.s[idx_end] - self.log.s[idx_start]
-        else:
-            x_list = self.log.cycle[idx_start:idx_end]
-            y_list = self.log.v_ato[idx_start:idx_end]
-            # 走行距离
-            s_sim = self.log.s[idx_end] - self.log.s[idx_start]
+    # 计算所有加速度 可以输入原始索引，兼容已经转换
+    def comput_all_acc_extimate(self, idx_start=int, idx_end=int):
+        [idx_start, idx_end] = self.set_segment_idx(idx_start, idx_end)
 
+        x_list = self.log.cycle[idx_start:idx_end]
+        y_vato_list = self.log.v_ato[idx_start:idx_end]
+        y_atppmtv_list = self.log.atp_permit_v[idx_start:idx_end]
+        y_atocmdv_list = self.log.cmdv[idx_start:idx_end]
+        y_atpcmdvlist = self.log.ceilv[idx_start:idx_end]
+        # 计算加速度
+        vato_acc_est = self.get_estimate_acc(x_list, y_vato_list)
+        atppmtv_acc_est = self.get_estimate_acc(x_list, y_atppmtv_list)
+        atocmdv_acc_est = self.get_estimate_acc(x_list, y_atocmdv_list)
+        atpcmdv_acc_est = self.get_estimate_acc(x_list, y_atpcmdvlist)
+
+        return [atppmtv_acc_est, atpcmdv_acc_est, atocmdv_acc_est, vato_acc_est]
+
+    # 获取速度并计算加速度,用于绘图
+    def comput_vato_acc_estimate_plot(self, idx_start=int, idx_end=int, cmd=int):
+
+        [idx_start, idx_end] = self.set_segment_idx(idx_start, idx_end)
+        # 获取段
+        x_list = self.log.cycle[idx_start:idx_end]
+        y_list = self.log.v_ato[idx_start:idx_end]
+        # 走行距离
+        s_sim = self.log.s[idx_end] - self.log.s[idx_start]
         v_sim = self.log.v_ato[idx_end] - self.log.v_ato[idx_start]
-
         # 计算拟合的加速度
-        z = np.polyfit(x_list, y_list, 1)   # 一次多项式拟合，相当于线性拟合
+        [a_sim, p_sim] = self.get_estimate_acc(x_list, y_list)   # 一次多项式拟合，相当于线性拟合
+
+        return [v_sim, s_sim, a_sim, x_list, y_list, p_sim]
+
+    # 获取速度并计算加速度
+    def get_estimate_acc(self, x_raw=list, y_raw=list):
+        z = np.polyfit(x_raw, y_raw, 1)   # 一次多项式拟合，相当于线性拟合
+        a_sim = z[0] * 10  # 获取估计加速度,由于时间单位是100ms所以乘以10,后者是函数
         p_sim = np.poly1d(z)
         print(p_sim)        # 打印拟合表达式
-        a_sim = z[0]*10     # 获取估计加速度,由于时间单位是100ms所以乘以10
+        return [a_sim, p_sim]
 
+    # 用于绘制估计加速度曲线
+    def measure_plot(self, idx_start=int, idx_end=int, cmd=int):
+        estimate_a_tuple = 0
+
+        estimate_a_tuple = self.comput_vato_acc_estimate_plot(idx_start, idx_end, cmd)
+        v_sim = estimate_a_tuple[0]
+        s_sim = estimate_a_tuple[1]
+        a_sim = estimate_a_tuple[2]    # 加速度已经转为cm/s^2
+        x_list = estimate_a_tuple[3]
+        y_list = estimate_a_tuple[4]
         # 计算估计曲线
-        y_list_sim = p_sim(x_list)
+        y_list_sim = estimate_a_tuple[5](x_list)
+        # 计算表格
+        acc_all = self.comput_all_acc_extimate(idx_start, idx_end)
+
+        item_name = ['ATP允许速度', 'ATP命令速度', 'ATO命令速度', '实际速度']
+        item_unit = ['cm/s^2', 'cm/s^2', 'cm/s^2', 'cm/s^2']
+        for idx, name in enumerate(item_name):
+            i_content_name = QtWidgets.QTableWidgetItem(name)
+            i_content_name.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+            i_content_unit = QtWidgets.QTableWidgetItem(item_unit[idx])
+            i_content_unit.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+            i_content_value = QtWidgets.QTableWidgetItem(str(acc_all[idx][0]))
+            i_content_value.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+            self.ctrlAccTable.setItem(idx, 0, i_content_name)
+            self.ctrlAccTable.setItem(idx, 1, i_content_value)
+            self.ctrlAccTable.setItem(idx, 2, i_content_unit)
 
         self.sp.ax.plot(x_list, y_list_sim, color='red')
         self.sp.ax.plot(x_list, y_list, color='deeppink', marker='.', markersize=0.2)

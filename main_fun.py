@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+# encoding: utf-8
+
 import FileProcess
 import KeyWordPlot
 from ProtocolParse import MVBParse
@@ -7,8 +11,8 @@ import RealTimeExtension
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from LogMainWin import Ui_MainWindow
-from CycleInfo import Ui_MainWindow as CycleWin
-from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg
+
+from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg,Cyclewindow
 import MiniWinCollection
 import numpy as np
 import sys
@@ -42,7 +46,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pathlist = []
         self.BTM_cycle = []              # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0                    # 默认0是浏览模式，1是标注模式
-        self.ver = '2.9.7'               # 标示软件版本
+        self.ver = '2.9.8'               # 标示软件版本
         self.serdialog = SerialDlg()     # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)   # 操作串口对象
 
@@ -1057,15 +1061,17 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 用于一些界面加载记录初始化后显示的内容,如数据包一次显示
     def win_init_log_processed(self):
+        global load_flag
         # 初始化列车数据界面，如果后面更新再有动态光标触发更新，更新后保持
         sp5_tpl = ()
         sp5_snipper = 0
         sp7_cnt = 0
         try:
+            # ATP 右侧标签显示相关
             self.Log("Begin init log show")
             # 初始化表格
             self.tableATPBTM.clear()
-            self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值','公里标'])
+            self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值', '公里标'])
             self.tableATPBTM.setColumnWidth(0, 60)
             self.tableATPBTM.setColumnWidth(1, 80)
             self.tableATPBTM.setColumnWidth(2, 70)
@@ -1101,12 +1107,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     item_balise_bum.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
                     item_adjpos.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
-
                     # 获取公里标
                     if 2 in self.log.cycle_dic[c].cycle_sp_dict.keys():
                         sp2_tpl = self.log.cycle_dic[c].cycle_sp_dict[2]
-                        item_milestone = QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000))
-                                                                    + '+' + str(int(sp2_tpl[23]) % 1000))
+                        if '4294967295' != sp2_tpl[23].strip():
+                            item_milestone = QtWidgets.QTableWidgetItem('K'+str(int(int(sp2_tpl[23])/1000))+'+' +
+                                                                        str(int(sp2_tpl[23]) % 1000))
+                        else:
+                            item_milestone = QtWidgets.QTableWidgetItem('未知')
                         # 虽然目前有SP2必有SP7但不能保证，所有还是单独条件
                         if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
                             item_milestone.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
@@ -1126,6 +1134,22 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 文本显示
             if sp5_snipper == 0:
                 self.show_message("Info: N0 SP5 in log,no train data")
+            # 事件发生相关
+            if load_flag == 1:
+                if self.actionJD.isChecked():
+                    pass
+                else:
+                    self.actionJD.trigger()
+                # 如果没选中 trigger一下
+                if self.actionBTM.isChecked():
+                    pass
+                else:
+                    self.actionBTM.trigger()
+                # 更新
+                self.update_event_point()
+
+            else:
+                pass
         except Exception as err:
             self.Log(err)
 
@@ -1185,9 +1209,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，启动后进入测量状态
     def ctrl_measure(self):
-        self.ctrl_measure_status = 1    # 一旦单击则进入测量开始状态
-        self.sp.setCursor(QtCore.Qt.WhatsThisCursor)
-        self.Log('start measure!')
+        global load_flag
+        # 加载文件才能测量
+        if load_flag == 1:
+            self.ctrl_measure_status = 1    # 一旦单击则进入测量开始状态
+            self.sp.setCursor(QtCore.Qt.WhatsThisCursor)
+            self.Log('start measure!')
+        else:
+            self.show_message("Info:记录未加载，不测量")
 
     # 事件处理函数，标记单击事件
     def ctrl_measure_clicked(self, event):
@@ -1205,7 +1234,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.indx_measure_end = min(np.searchsorted(self.log.cycle, [x])[0], len(self.log.cycle) - 1)
 
             self.measure = Ctrl_MeasureDlg(None, self.log)
-            self.measure.measure_plot(self.indx_measure_start,self.indx_measure_end, curve_flag)
+            self.measure.measure_plot(self.indx_measure_start, self.indx_measure_end, curve_flag)
             self.measure.show()
 
             # 获取终点索引，测量结束
@@ -1374,7 +1403,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # 如果文件加载成功，传递数据字典和选择信息
         if load_flag == 1:
-            self.sp.set_event_info_plot(event_dict,self.log.cycle_dic,self.log.s, self.log.cycle)
+            self.sp.set_event_info_plot(event_dict, self.log.cycle_dic, self.log.s, self.log.cycle)
             self.update_up_cure()
 
     # 清除图像和轴相关内容，画板清屏
@@ -1733,7 +1762,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 设置树形结构
     def set_tree_fromat(self):
         self.treeWidget.setColumnCount(3)       # 协议字段，数据，单位
-        self.treeWidget.setHeaderLabels(['Procotol', 'Field', 'Value'])
+        self.treeWidget.setHeaderLabels(['协议数据包', '字段', '取值'])
         self.treeWidget.setColumnWidth(0, 100)
         self.treeWidget.setColumnWidth(1, 125)
         # self.treeWidget.setHeaderLabels(['Procotol', 'Field', 'Value', 'Unit']) # 内容解析未来添加
@@ -2498,12 +2527,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         self.lbl_atp_mode.setText('休眠模式')
 
                 #显示信息
+                if '4294967295' != sp_tpl[23].strip():
+                    self.led_atp_milestone.setText('K'+str(int(int(sp_tpl[23])/1000))+'+'+str(int(sp_tpl[23])%1000))
+                else:
+                    self.led_atp_milestone.setText('未知')
                 self.led_stn_center_dis.setText(sp_tpl[18].strip()+'cm')
                 self.led_jz_signal_dis.setText(sp_tpl[19].strip()+'cm')
                 self.led_cz_signal_dis.setText(sp_tpl[20].strip()+'cm')
                 self.led_atp_tsm_dis.setText(sp_tpl[21].strip()+'cm')
                 self.led_cz_signal_dis.setText(sp_tpl[20].strip()+'cm')
-                self.led_atp_milestone.setText('K'+str(int(int(sp_tpl[23])/1000))+'+'+str(int(sp_tpl[23])%1000))
                 self.led_atp_target_dis.setText(sp_tpl[7].strip()+'cm')
                 self.led_atp_gfx_dis.setText(sp_tpl[14].strip()+'m')
                 self.led_atp_target_v.setText(sp_tpl[6].strip()+'cm/s')
@@ -2835,9 +2867,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.statusbar.showMessage(filepath[0] + "导出失败！")
 
     # 打印函数
-    def Log(self,msg):
-         print(msg + ',File:"' + __file__ + '",Line' + str(sys._getframe().f_lineno) +
+    def Log(self, msg):
+        if str == type(msg):
+            print(msg + ',File:"' + __file__ + '",Line' + str(sys._getframe().f_lineno) +
                ', in' + sys._getframe().f_code.co_name)
+        else:
+            print(msg)
+
     # 由于pyinstaller不能打包直接打包图片资源的缺陷，QtDesigner自动生成的图标代码实际无法打包，需在目录下放置图标文件夹
     # 所以通过手动生成的qrc文件（QtDesigner也可以，未试验），通过PyRrc5转为py资源文件
     # 使用该函数重复设置来用资源文件内容替代原来自图片的图标，实现pyinstaller的打包图标
@@ -2964,46 +3000,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         icon29 = QtGui.QIcon()
         icon29.addPixmap(QtGui.QPixmap(":IconFiles/export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionExport.setIcon(icon29)
-
-# 周期界面类
-class Cyclewindow(QtWidgets.QMainWindow, CycleWin):
-    def __init__(self):
-        super(Cyclewindow, self).__init__()
-        self.setupUi(self)
-        logicon = QtGui.QIcon()
-        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.setWindowIcon(logicon)
-        self.icon_from_file()
-        self.actionCycleSave.triggered.connect(self.save_log)
-        self.actionCopy.triggered.connect(self.copy_cliperboard)
-
-    # 事件处理函数，向指定路径中写入该周期
-    def save_log(self, str_list=list):
-        filepath = QtWidgets.QFileDialog.getSaveFileName(self, "Save file", "d:/", "txt files(*.txt)")
-        if filepath != ('', ''):
-            f = open(filepath[0], "w")
-            f.write(str(self.textEdit.toPlainText()))
-            f.close()
-            self.statusBar.showMessage(filepath[0] + "成功保存该周期！")
-        else:
-            pass
-
-    # 事件处理函数，复制当前周期内容
-    def copy_cliperboard(self):
-        cliper = QtWidgets.QApplication.clipboard()
-        cliper.setText(str(self.textEdit.toPlainText()))
-        self.statusBar.showMessage("成功复制周期！")
-
-    # 用于将图标资源文件打包
-    def icon_from_file(self):
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":IconFiles/copy.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionCopy.setIcon(icon)
-
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":IconFiles/save.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionCycleSave.setIcon(icon1)
-
 
 
 if __name__ == '__main__':
