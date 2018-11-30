@@ -1326,7 +1326,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -1404,7 +1404,7 @@ selection-background-color: rgb(255, 170, 0);</string>
                  <item>
                   <widget class="QGroupBox" name="gp_ato2tcms_ctrl_2">
                    <property name="styleSheet">
-                    <string notr="true">background-color: rgb(250, 230, 255);</string>
+                    <string notr="true">background-color: rgb(255, 224, 225);</string>
                    </property>
                    <property name="title">
                     <string>控制信息</string>
@@ -1526,7 +1526,7 @@ selection-background-color: rgb(255, 170, 0);</string>
                  <item>
                   <widget class="QGroupBox" name="gp_ato2tcms_status_2">
                    <property name="styleSheet">
-                    <string notr="true">background-color: rgb(219, 223, 255);</string>
+                    <string notr="true">background-color: rgb(255, 224, 225);</string>
                    </property>
                    <property name="title">
                     <string>状态信息</string>
@@ -2071,38 +2071,6 @@ background-color: rgb(170, 170, 255);</string>
                <string>通用信息</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_10">
-               <item row="0" column="5" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_atp_stop_ok">
-                 <property name="maximumSize">
-                  <size>
-                   <width>70</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATP停准停稳</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="2" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_atp_cut_traction">
-                 <property name="maximumSize">
-                  <size>
-                   <width>70</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATP切牵状态</string>
-                 </property>
-                </widget>
-               </item>
                <item row="0" column="3" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_tsm">
                  <property name="minimumSize">
@@ -2122,22 +2090,6 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                  <property name="text">
                   <string>是否TSM</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_atp_level">
-                 <property name="maximumSize">
-                  <size>
-                   <width>80</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATP等级</string>
                  </property>
                 </widget>
                </item>
@@ -2163,70 +2115,6 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="3" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_tb">
-                 <property name="maximumSize">
-                  <size>
-                   <width>50</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>是否立折</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_atp_brake">
-                 <property name="maximumSize">
-                  <size>
-                   <width>70</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATP制动状态</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_atp_mode">
-                 <property name="maximumSize">
-                  <size>
-                   <width>80</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATP模式</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="6" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_ato_ctrl_stat">
-                 <property name="maximumSize">
-                  <size>
-                   <width>70</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATO控车策略</string>
-                 </property>
-                </widget>
-               </item>
                <item row="2" column="6" alignment="Qt::AlignHCenter">
                 <widget class="QLabel" name="lbl_ato_radio">
                  <property name="maximumSize">
@@ -2240,22 +2128,6 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                  <property name="text">
                   <string>ATO电台状态</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="7" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_ato_session">
-                 <property name="maximumSize">
-                  <size>
-                   <width>70</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(170, 170, 255);</string>
-                 </property>
-                 <property name="text">
-                  <string>ATO无线连接</string>
                  </property>
                 </widget>
                </item>
@@ -2275,599 +2147,728 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                 </widget>
                </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QGroupBox" name="gp_atp_s_v">
-              <property name="title">
-               <string>ATP坐标系信息</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_11">
-               <item row="4" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_31">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_milestone">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>ATP公里标</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_milestone">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="3" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_20">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_ma">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>MA终点</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_ma">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_13">
-                 <item>
-                  <widget class="QLabel" name="lbl_jz_signal_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>前方进站信号机距离</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_jz_signal_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_17">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_target_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>ATP目标距离</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_target_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_14">
-                 <item>
-                  <widget class="QLabel" name="lbl_cz_signal_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>前方出站信号机距离</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_cz_signal_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="3" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_19">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_gfx_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>前方最近分相区距离</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_gfx_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="2" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_15">
-                 <item>
-                  <widget class="QLabel" name="lbl_stn_center_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>前方站台中心点距离</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_stn_center_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="2" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_18">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_tsm_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>TSM区距离</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_tsm_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_16">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_target_v">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>ATP目标速度</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_target_v">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="4" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_32">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_stoperr">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>ATP停车误差</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item alignment="Qt::AlignLeft">
-                  <widget class="QLineEdit" name="led_atp_stoperr">
-                   <property name="maximumSize">
-                    <size>
-                     <width>110</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QGroupBox" name="gp_atp_train">
-              <property name="title">
-               <string>列车数据</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_12">
-               <item row="0" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_22">
-                 <item>
-                  <widget class="QLabel" name="lbl_head_door_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>120</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>车头距第一客室门</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="led_head_foor_dis">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_21">
-                 <item>
-                  <widget class="QLabel" name="lbl_atp_btm_pos">
-                   <property name="maximumSize">
-                    <size>
-                     <width>70</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>BTM天线位置</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="led_atp_btm_pos">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="2">
-                <layout class="QHBoxLayout" name="horizontalLayout_24">
-                 <item>
-                  <widget class="QLabel" name="lbl_driver_strategy">
-                   <property name="maximumSize">
-                    <size>
-                     <width>120</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>司机策略</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="led_driver_strategy">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_25">
-                 <item>
-                  <widget class="QLabel" name="lbl_nid_engine">
-                   <property name="maximumSize">
-                    <size>
-                     <width>120</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>车载设备标识号</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="led_nid_engine">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="1">
-                <layout class="QHBoxLayout" name="horizontalLayout_23">
-                 <item>
-                  <widget class="QLabel" name="lbl_units">
-                   <property name="maximumSize">
-                    <size>
-                     <width>70</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>编组类型</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="led_units">
-                   <property name="maximumSize">
-                    <size>
-                     <width>80</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-              <zorder></zorder>
-              <zorder></zorder>
-              <zorder></zorder>
-              <zorder></zorder>
-             </widget>
-            </item>
-            <item>
-             <widget class="QGroupBox" name="gp_atp_btm">
-              <property name="title">
-               <string>应答器数据</string>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_5">
-               <item>
-                <layout class="QGridLayout" name="gridLayout_13">
-                 <item row="0" column="0">
-                  <layout class="QHBoxLayout" name="horizontalLayout_29">
-                   <item>
-                    <widget class="QLabel" name="lbl_with_c13">
-                     <property name="maximumSize">
-                      <size>
-                       <width>120</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>是否含C13包-JD应答器</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="led_with_c13">
-                     <property name="maximumSize">
-                      <size>
-                       <width>30</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="0" column="1">
-                  <layout class="QHBoxLayout" name="horizontalLayout_28">
-                   <item>
-                    <widget class="QLabel" name="lbl_platform_door">
-                     <property name="maximumSize">
-                      <size>
-                       <width>80</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>是否设站台门</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="led_platform_door">
-                     <property name="maximumSize">
-                      <size>
-                       <width>30</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="0" column="2">
-                  <layout class="QHBoxLayout" name="horizontalLayout_27">
-                   <item>
-                    <widget class="QLabel" name="lbl_platform_pos">
-                     <property name="maximumSize">
-                      <size>
-                       <width>80</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>站台位置</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="led_platform_pos">
-                     <property name="maximumSize">
-                      <size>
-                       <width>50</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="1" column="0">
-                  <layout class="QHBoxLayout" name="horizontalLayout_30">
-                   <item>
-                    <widget class="QLabel" name="label_8">
-                     <property name="text">
-                      <string>距离精确停车点</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="led_stop_d_JD"/>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="1" column="1" colspan="2">
-                  <layout class="QHBoxLayout" name="horizontalLayout_26">
-                   <item>
-                    <widget class="QLabel" name="lbl_track">
-                     <property name="maximumSize">
-                      <size>
-                       <width>100</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>列车停靠股道编号</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="led_track">
-                     <property name="maximumSize">
-                      <size>
-                       <width>80</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <widget class="QTableWidget" name="tableATPBTM">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
+               <item row="0" column="2" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_atp_cut_traction">
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>20</height>
+                  </size>
                  </property>
-                 <column>
-                  <property name="text">
-                   <string>时间</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>应答器编号</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>位置矫正值</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>公里标</string>
-                  </property>
-                 </column>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATP切牵状态</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="0" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_atp_level">
+                 <property name="maximumSize">
+                  <size>
+                   <width>80</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATP等级</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="5" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_atp_stop_ok">
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATP停准停稳</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="6" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_ato_ctrl_stat">
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATO控车策略</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="7" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_ato_session">
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATO无线连接</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_atp_mode">
+                 <property name="maximumSize">
+                  <size>
+                   <width>80</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATP模式</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="2" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_atp_brake">
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>ATP制动状态</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="3" alignment="Qt::AlignHCenter">
+                <widget class="QLabel" name="lbl_tb">
+                 <property name="maximumSize">
+                  <size>
+                   <width>50</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(170, 170, 255);</string>
+                 </property>
+                 <property name="text">
+                  <string>是否立折</string>
+                 </property>
                 </widget>
                </item>
               </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSplitter" name="splitter_8">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <widget class="QGroupBox" name="gp_atp_s_v">
+               <property name="title">
+                <string>ATP坐标系信息</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_11">
+                <item row="1" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_14">
+                  <item>
+                   <widget class="QLabel" name="lbl_cz_signal_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>前方出站信号机距离</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_cz_signal_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="2" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_15">
+                  <item>
+                   <widget class="QLabel" name="lbl_stn_center_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>前方站台中心点距离</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_stn_center_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="2" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_18">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_tsm_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>TSM区距离</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_tsm_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_17">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_target_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>ATP目标距离</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_target_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_16">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_target_v">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>ATP目标速度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_target_v">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_31">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_milestone">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>ATP公里标</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_milestone">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_32">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_stoperr">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>ATP停车误差</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_stoperr">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_13">
+                  <item>
+                   <widget class="QLabel" name="lbl_jz_signal_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>前方进站信号机距离</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_jz_signal_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="3" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_19">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_gfx_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>前方最近分相区距离</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_gfx_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="3" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_20">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_ma">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>MA终点</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item alignment="Qt::AlignLeft">
+                   <widget class="QLineEdit" name="led_atp_ma">
+                    <property name="maximumSize">
+                     <size>
+                      <width>110</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QGroupBox" name="gp_atp_train">
+               <property name="title">
+                <string>列车数据</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_12">
+                <item row="1" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_25">
+                  <item>
+                   <widget class="QLabel" name="lbl_nid_engine">
+                    <property name="maximumSize">
+                     <size>
+                      <width>120</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>车载设备标识号</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="led_nid_engine">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_24">
+                  <item>
+                   <widget class="QLabel" name="lbl_driver_strategy">
+                    <property name="maximumSize">
+                     <size>
+                      <width>120</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>司机策略</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="led_driver_strategy">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_22">
+                  <item>
+                   <widget class="QLabel" name="lbl_head_door_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>120</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>车头距第一客室门</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="led_head_foor_dis">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_21">
+                  <item>
+                   <widget class="QLabel" name="lbl_atp_btm_pos">
+                    <property name="maximumSize">
+                     <size>
+                      <width>70</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>BTM天线位置</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="led_atp_btm_pos">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_23">
+                  <item>
+                   <widget class="QLabel" name="lbl_units">
+                    <property name="maximumSize">
+                     <size>
+                      <width>70</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>编组类型</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="led_units">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+               <zorder></zorder>
+               <zorder></zorder>
+               <zorder></zorder>
+               <zorder></zorder>
+              </widget>
+              <widget class="QGroupBox" name="gp_atp_btm">
+               <property name="title">
+                <string>应答器数据</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <layout class="QGridLayout" name="gridLayout_13">
+                  <item row="0" column="0">
+                   <layout class="QHBoxLayout" name="horizontalLayout_29">
+                    <item>
+                     <widget class="QLabel" name="lbl_with_c13">
+                      <property name="maximumSize">
+                       <size>
+                        <width>120</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>是否含C13包-JD应答器</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="led_with_c13">
+                      <property name="maximumSize">
+                       <size>
+                        <width>30</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item row="0" column="1">
+                   <layout class="QHBoxLayout" name="horizontalLayout_28">
+                    <item>
+                     <widget class="QLabel" name="lbl_platform_door">
+                      <property name="maximumSize">
+                       <size>
+                        <width>80</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>是否设站台门</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="led_platform_door">
+                      <property name="maximumSize">
+                       <size>
+                        <width>30</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item row="0" column="2">
+                   <layout class="QHBoxLayout" name="horizontalLayout_27">
+                    <item>
+                     <widget class="QLabel" name="lbl_platform_pos">
+                      <property name="maximumSize">
+                       <size>
+                        <width>80</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>站台位置</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="led_platform_pos">
+                      <property name="maximumSize">
+                       <size>
+                        <width>50</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item row="1" column="0">
+                   <layout class="QHBoxLayout" name="horizontalLayout_30">
+                    <item>
+                     <widget class="QLabel" name="label_8">
+                      <property name="text">
+                       <string>距离精确停车点</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="led_stop_d_JD"/>
+                    </item>
+                   </layout>
+                  </item>
+                  <item row="1" column="1" colspan="2">
+                   <layout class="QHBoxLayout" name="horizontalLayout_26">
+                    <item>
+                     <widget class="QLabel" name="lbl_track">
+                      <property name="maximumSize">
+                       <size>
+                        <width>100</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>列车停靠股道编号</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="led_track">
+                      <property name="maximumSize">
+                       <size>
+                        <width>80</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QTableWidget" name="tableATPBTM">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <column>
+                   <property name="text">
+                    <string>时间</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>应答器编号</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>位置矫正值</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>公里标</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </widget>
             </item>
            </layout>
