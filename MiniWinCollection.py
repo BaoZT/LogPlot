@@ -28,6 +28,8 @@ matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from ProtocolParse import MVBParse
 from PyQt5 import QtWidgets, QtCore, QtGui
+from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
+from KeyWordPlot import SnaptoCursor
 import matplotlib.pyplot as plt
 import FileProcess
 import serial
@@ -695,7 +697,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         l.addWidget(self.ctrlAccTable)
         self.acc_table_format()
         logicon = QtGui.QIcon()
-        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/acc.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'ATO曲线测量器')
         self.resize(500, 600)
@@ -798,3 +800,126 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         else:
             self.sp.ax.text(0.58, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props)
+
+
+# 控车网络时延显示类
+class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
+
+    # 初始化，获取加载后的处理信息
+    def __init__(self,  parent=None, ob=FileProcess.FileProcess):
+        self.log = ob
+        super(Train_Com_MeasureDlg, self).__init__(parent)
+        self.setupUi(self)
+        self.sp = Figure_Canvas(self.widget)         # 这是继承FigureCanvas的子类，使用子窗体widget作为
+        self.trainComTable = QtWidgets.QTableWidget()
+        l = QtWidgets.QVBoxLayout(self.widget)
+        self.sp.mpl_toolbar = NavigationToolbar(self.sp, self.widget)  # 传入FigureCanvas类或子类实例，和父窗体
+
+        #l.addWidget(self.trainComTable)
+        l.addWidget(self.sp)
+        l.addWidget(self.sp.mpl_toolbar)
+        self.acc_table_format()
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+        self.setWindowTitle(u'车辆通信时延观测器')
+        self.resize(500, 600)
+        # 初始化内容
+        self.ato2tcms_tb_ctrl = []
+        self.tcms2ato_tb_fbk = []
+        self.cycle_ord = []     # 为了使得绘图由周期信息，考虑到某个周期可能没有输入只有输出，所以需要人工组合，使得输入保持
+        self.mvbdialog = MVBPortDlg()
+
+
+    # 设置显示表显示表
+    def acc_table_format(self):
+        self.trainComTable.setRowCount(4)
+        self.trainComTable.setColumnCount(3)
+        self.trainComTable.setHorizontalHeaderLabels(['统计项目', '时延', '单位'])
+
+    # 计算所有牵引制动及反馈情况情况
+    def comput_all_ctrl_info(self):
+
+        pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
+        pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
+        pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
+        # 读取该周期内容
+        try:
+            for idx in range(len(self.log.cycle)):
+                ato_ctrl_flag = 0   # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
+                tcms_fbk_flag = 0
+                for line in self.log.cycle_dic[self.log.cycle[idx]].cycle_all_info:
+
+                    if pat_ato_ctrl in line:
+                        if '@' in line:
+                            pass
+                        else:
+                            real_idx = line.find('MVB[')
+                            tmp = line[real_idx + 28:real_idx + 42].split()  # 取出命令字段中的牵引制动及命令
+                            tb_stat = tmp[0]
+                            t_cmd = tmp[1] + tmp[2]
+                            b_cmd = tmp[3] + tmp[4]
+                            ato_ctrl_flag = 1
+
+                    elif pat_tcms_stat in line:
+                        if '@' in line:
+                            pass
+                        else:
+                            real_idx = line.find('MVB[')
+                            tmp = line[real_idx + 31:real_idx + 45].split()  # 还有一个冒号需要截掉
+                            tb_fbk = tmp[0]
+                            t_fbk = tmp[1] + tmp[2]
+                            b_fbk = tmp[3] + tmp[4]
+                            tcms_fbk_flag = 1
+
+                if ato_ctrl_flag and tcms_fbk_flag:
+                    if tb_stat == 'AA':
+                        self.ato2tcms_tb_ctrl.append(int(t_cmd, 16))
+                    elif tb_stat == '55':
+                        self.ato2tcms_tb_ctrl.append(0 - int(b_cmd, 16))
+                    elif tb_stat == 'A5':
+                        self.ato2tcms_tb_ctrl.append(0)
+                    else:
+                        print('mvb delay plot compute err!')
+                        self.ato2tcms_tb_ctrl.append(0)
+
+                    if tb_fbk == 'AA':
+                        self.tcms2ato_tb_fbk.append(int(t_fbk, 16))
+                    elif tb_fbk == '55':
+                        self.tcms2ato_tb_fbk.append(0 - int(b_fbk, 16))
+                    elif tb_fbk == 'A5':
+                        self.tcms2ato_tb_fbk.append(0)
+                    else:
+                        print('mvb delay plot compute err!')
+                        self.tcms2ato_tb_fbk.append(0)
+
+                    # 获取周期信息
+                    self.cycle_ord.append(self.log.cycle[idx])
+
+        except Exception as err:
+            print(err)
+
+    # 用于绘制估计加速度曲线
+    def measure_plot(self):
+        self.comput_all_ctrl_info()
+        self.sp.ax.plot(self.cycle_ord, self.ato2tcms_tb_ctrl, color='blue', marker='.', markersize=0.5)
+        self.sp.ax.plot(self.cycle_ord, self.tcms2ato_tb_fbk, color='red', marker='.', markersize=0.5)
+        self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.cycle_ord, self.ato2tcms_tb_ctrl)  # 初始化一个光标
+        self.tb_cursor.reset_cursor_plot()
+        self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
+        self.tb_cursor.move_signal.connect(self.cusor_plot)
+        self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord)-1])  # 默认与不带光标统一的显示范围
+        self.sp.ax.set_ylim(-17000, 17000)
+        self.sp.ax.legend(['ATO输出命令', ' 车辆反馈命令'])
+
+
+    # 光标跟随
+    def cusor_plot(self, idx):
+        self.sp.ax.texts.clear()
+        str_ato_cycle = '当前周期:%d \n' % (self.cycle_ord[idx])
+        str_ato_ctrl = 'ATO输出指令:%d \n'%(self.ato2tcms_tb_ctrl[idx])
+        str_tcms_fbk = '车辆反馈指令:%d '%(self.tcms2ato_tb_fbk[idx])
+        str_show = str_ato_cycle + str_ato_ctrl + str_tcms_fbk
+        props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
+
+        self.sp.ax.text(0.5, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',bbox=props)

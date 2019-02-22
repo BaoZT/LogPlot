@@ -1326,7 +1326,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>5</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -2873,7 +2873,37 @@ background-color: rgb(170, 170, 255);</string>
             </item>
            </layout>
           </widget>
-          <widget class="QWidget" name="page_Statistic"/>
+          <widget class="QWidget" name="page_Statistic">
+           <layout class="QVBoxLayout" name="verticalLayout_15">
+            <item>
+             <widget class="QGroupBox" name="groupBox_2">
+              <property name="title">
+               <string>车辆网络响应时延</string>
+              </property>
+              <widget class="QPushButton" name="btn_mvb_delay_plot">
+               <property name="geometry">
+                <rect>
+                 <x>290</x>
+                 <y>20</y>
+                 <width>101</width>
+                 <height>23</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>图形绘制</string>
+               </property>
+              </widget>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_5">
+              <property name="title">
+               <string>控制冲击率统计</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
         <item>

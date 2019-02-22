@@ -31,8 +31,8 @@ class SnaptoCursor(QtCore.QObject):
         self.ax = ax
         self.ax.set_xlim(x[0], x[len(x)-1])  # 默认与不带光标统一的显示范围
         self.ax.set_ylim(-200, 10000)
-        self.lx = sp.axes1.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
-        self.ly = sp.axes1.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
+        self.lx = self.ax.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
+        self.ly = self.ax.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
         self.x = x
         self.y = y
         # use for record key words
@@ -66,7 +66,7 @@ class SnaptoCursor(QtCore.QObject):
             y = self.y[indx]
             self.lx.set_ydata(y)
             self.ly.set_xdata(x)
-            # print('x=%1.2f, y=%1.2f' % (x, y))
+            #print('x=%1.2f, y=%1.2f' % (x, y))
             self.fmpl.draw()
             # 发射信号
             self.move_signal.emit(indx)  # 发射信号索引

@@ -12,7 +12,8 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from LogMainWin import Ui_MainWindow
 
-from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg,Cyclewindow
+from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg, \
+    Cyclewindow, Train_Com_MeasureDlg
 import MiniWinCollection
 import numpy as np
 import sys
@@ -123,7 +124,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.action_bubble_dock.triggered.connect(self.set_ctrl_bubble_format)
         self.action_bubble_track.triggered.connect(self.set_ctrl_bubble_format)
         self.action_acc_measure.triggered.connect(self.ctrl_measure)
-        self.sp.mpl_connect('button_press_event',self.ctrl_measure_clicked)     # 鼠标单击的测量处理事件
+        self.sp.mpl_connect('button_press_event', self.ctrl_measure_clicked)     # 鼠标单击的测量处理事件
+        self.btn_mvb_delay_plot.clicked.connect(self.show_statistics_mvb_delay)
         # 事件绑定
         self.actionBTM.triggered.connect(self.update_event_point)
         self.actionJD.triggered.connect(self.update_event_point)
@@ -136,6 +138,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_train.clicked.connect(self.showOffRight_MVB)
         self.btn_filetab.clicked.connect(self.showOffRight_FILE)
         self.btn_atp.clicked.connect(self.showoffRight_ATP)
+        self.btn_statistics.clicked.connect(self.showoffRight_STATISTICS)
 
         # 窗口设置初始化
         self.showOffLineUI()
@@ -272,6 +275,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def showoffRight_ATP(self):
         self.stackedWidget_RightCol.setCurrentWidget(self.page_ATP)
 
+    # 显示统计接口情况
+    def showoffRight_STATISTICS(self):
+        self.stackedWidget_RightCol.setCurrentWidget(self.page_Statistic)
+
     # 串口设置，应当立即更新
     def showSerSet(self):
         self.serdialog.show()
@@ -382,7 +389,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.realtime_table_show(cycle_num, cycle_time, sc_ctrl,stoppoint,gfx_flag)
         self.realtime_fsm_show(fsm_list)
         # 显示主界面
-        self.realtime_mvb_show(ato2tcms_ctrl,ato2tcms_stat, tcms2ato_stat)
+        self.realtime_mvb_show(ato2tcms_ctrl, ato2tcms_stat, tcms2ato_stat)
 
     # 显示MVB数据
     def realtime_mvb_show(self, ato2tcms_ctrl=list, ato2tcms_stat=list, tcms2ato_stat=list):
@@ -953,6 +960,17 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 设置ATP相关区域
     def set_atp_zone_format(self):
         self.tableWidgetATPATO.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+
+    # 事件处理函数绘制统计区域的 车辆牵引制动统计图
+    def show_statistics_mvb_delay(self):
+        global load_flag
+        if load_flag == 1:
+            self.train_com_delay = Train_Com_MeasureDlg(None, self.log)
+            self.Log('Plot statistics info!')
+
+            self.train_com_delay.measure_plot()
+            self.train_com_delay.show()
+
 
     # 更新离线绘图事件标示
     def set_log_event(self):
@@ -2429,7 +2447,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.set_atp_info_win(sp131_tpl, 131)
 
     # 设置数据包显示到界面
-    def set_atp_info_win(self,sp_tpl=tuple,clsify = int):
+    def set_atp_info_win(self, sp_tpl=tuple, clsify=int):
         #SP2包内容
         if clsify == 2:
             if sp_tpl != ():
@@ -2852,9 +2870,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if filepath != ('', ''):
                     workbook = xlwt.Workbook()
                     sheet = workbook.add_sheet("ATO控制信息")
-                    tb_head = ['系统周期', '位置', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位','车头坡度','等效坡度']
+                    tb_head = ['系统周期', '位置', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位', '车头坡度', '等效坡度'
+                               '牵引制动信号', '牵引制动反馈']
                     tb_content = [self.log.cycle, self.log.s, self.log.atp_permit_v, self.log.ceilv, self.log.cmdv,
-                                  self.log.level, self.log.ramp, self.log.adjramp]
+                                  self.log.level, self.log.ramp, self.log.adjramp, self.log]
                     for i, item in enumerate(tb_head):
                         sheet.write(0, i, item)
                         for j, content in enumerate(tb_content[i]):
