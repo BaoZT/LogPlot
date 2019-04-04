@@ -139,6 +139,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_filetab.clicked.connect(self.showOffRight_FILE)
         self.btn_atp.clicked.connect(self.showoffRight_ATP)
         self.btn_statistics.clicked.connect(self.showoffRight_STATISTICS)
+        self.btn_balise.clicked.connect(self.showoffRight_BALISE)
 
         # 窗口设置初始化
         self.showOffLineUI()
@@ -152,13 +153,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableATPBTM.itemClicked.connect(self.BTM_selected_info)
 
     def initUI(self):
-        self.splitter_7.setStretchFactor(0, 1)
-        self.splitter_7.setStretchFactor(1, 2)
-        self.splitter_7.setStretchFactor(2, 2)
-        self.splitter_7.setStretchFactor(3, 5)
-
-        self.splitter_4.setStretchFactor(0, 2)
-        self.splitter_4.setStretchFactor(1, 8)
 
         self.splitter_5.setStretchFactor(0, 6)
         self.splitter_5.setStretchFactor(1, 4)
@@ -238,6 +232,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_plan.setDisabled(True)
         self.btn_train.setDisabled(True)
         self.btn_filetab.setDisabled(True)
+        self.btn_atp.setDisabled(True)
+        self.btn_filetab.setDisabled(True)
         # 如有转换重置右边列表
         self.actionView.trigger()
         self.tableWidget.clear()
@@ -245,7 +241,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeWidget.clear()
         self.tableWidgetPlan_2.clear()
         self.set_tree_fromat()
-        self.btn_filetab.setDisabled(True)
+
 
     # 显示离线界面
     def showOffLineUI(self):
@@ -254,6 +250,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
         self.btn_plan.setEnabled(True)
         self.btn_train.setEnabled(True)
+        self.btn_atp.setEnabled(True)
 
     # 显示控车情况
     def showOffRight_ATO(self):
@@ -274,6 +271,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 显示ATP接口情况
     def showoffRight_ATP(self):
         self.stackedWidget_RightCol.setCurrentWidget(self.page_ATP)
+
+    # 显示应答器信息
+    def showoffRight_BALISE(self):
+        self.stackedWidget_RightCol.setCurrentWidget(self.page_balise)
 
     # 显示统计接口情况
     def showoffRight_STATISTICS(self):
