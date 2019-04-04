@@ -440,7 +440,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             if tmp[1][1] == '3':
                 field_result[len(field_result) - 1] = field_result[len(field_result)-1]+',启动灯有效'
             elif tmp[1][1] == '0':
-                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + ',启动灯有效'
+                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + ',启动灯无效'
             else:
                 field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + '异常值'+tmp[1][1]
 
@@ -550,10 +550,18 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             else:
                 field_result.append('异常值%s'%tmp[15])
             # 不允许状态字
+            str_tcms = ''
+            str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
+                       '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
+                       'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
             if tmp[16] == '00':
                 field_result.append('正常')
             else:
-                field_result.append('异常%s'%tmp[16])
+                val_field = int(tmp[16],16)
+                for cnt in range(7, -1, -1):
+                    if val_field & (1 << cnt) != 0:
+                        str_tcms = str_tcms+str_raw[cnt]
+                field_result.append('异常原因:%s'%str_tcms)
 
         return field_result
 
@@ -904,6 +912,8 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.comput_all_ctrl_info()
         self.sp.ax.plot(self.cycle_ord, self.ato2tcms_tb_ctrl, color='blue', marker='.', markersize=0.5)
         self.sp.ax.plot(self.cycle_ord, self.tcms2ato_tb_fbk, color='red', marker='.', markersize=0.5)
+        self.ax1 = self.sp.ax.twinx()
+        self.ax1.plot(self.log.cycle, self.log.v_ato, color='pink', marker='.', markersize=0.5)
         self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.cycle_ord, self.ato2tcms_tb_ctrl)  # 初始化一个光标
         self.tb_cursor.reset_cursor_plot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
@@ -922,4 +932,4 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         str_show = str_ato_cycle + str_ato_ctrl + str_tcms_fbk
         props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
 
-        self.sp.ax.text(0.5, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',bbox=props)
+        self.sp.ax.text(0.03, 0.97, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',bbox=props)

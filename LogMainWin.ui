@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1202</width>
-    <height>793</height>
+    <height>796</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -328,216 +328,234 @@
                 <property name="title">
                  <string>TCMS2ATO</string>
                 </property>
-                <layout class="QGridLayout" name="gridLayout_5">
-                 <item row="5" column="2" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_pm">
-                   <property name="text">
-                    <string>动车组允许</string>
-                   </property>
-                  </widget>
+                <layout class="QVBoxLayout" name="verticalLayout_16">
+                 <item>
+                  <layout class="QGridLayout" name="gridLayout_5">
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="lbl_tcms_hrt">
+                     <property name="text">
+                      <string>TCMS心跳</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QLineEdit" name="led_tcms_hrt"/>
+                   </item>
+                   <item row="0" column="2">
+                    <widget class="QLabel" name="lbl_tcms_mm">
+                     <property name="text">
+                      <string>门控MM</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="3">
+                    <widget class="QLineEdit" name="led_tcms_mm"/>
+                   </item>
+                   <item row="0" column="4">
+                    <widget class="QLabel" name="lbl_tcms_am">
+                     <property name="text">
+                      <string>门控AM</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="5">
+                    <widget class="QLineEdit" name="led_tcms_am"/>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLabel" name="lbl_tcms_startlampfbk">
+                     <property name="text">
+                      <string>启动灯反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QLineEdit" name="led_tcms_startlampfbk"/>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QLabel" name="lbl_tcms_tbstat">
+                     <property name="text">
+                      <string>牵控状态反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QLineEdit" name="led_tcms_fbk"/>
+                   </item>
+                   <item row="1" column="4">
+                    <widget class="QLabel" name="lbl_tcms_tractfbk">
+                     <property name="text">
+                      <string>牵引反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="5">
+                    <widget class="QLineEdit" name="led_tcms_tractfbk"/>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QLabel" name="lbl_tcms_atovalid_fbk">
+                     <property name="text">
+                      <string>ATO有效反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QLineEdit" name="led_tcms_atovalid_fbk"/>
+                   </item>
+                   <item row="2" column="2">
+                    <widget class="QLabel" name="lbl_tcms_keepbfbk">
+                     <property name="text">
+                      <string>保持制动反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="3">
+                    <widget class="QLineEdit" name="led_tcms_keepbfbk"/>
+                   </item>
+                   <item row="2" column="4">
+                    <widget class="QLabel" name="lbl_tcms_bstat">
+                     <property name="text">
+                      <string>制动反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="5">
+                    <widget class="QLineEdit" name="led_tcms_bfbk"/>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QLabel" name="lbl_tcms_ldoorfbk">
+                     <property name="text">
+                      <string>开左反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="1">
+                    <widget class="QLineEdit" name="led_tcms_ldoorfbk"/>
+                   </item>
+                   <item row="3" column="2">
+                    <widget class="QLabel" name="lbl_tcms_costspeedfbk">
+                     <property name="text">
+                      <string>恒速反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="3">
+                    <widget class="QLineEdit" name="led_tcms_costspeedfbk"/>
+                   </item>
+                   <item row="3" column="4">
+                    <widget class="QLabel" name="lbl_tcms_doorstat">
+                     <property name="text">
+                      <string>车门状态</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="5">
+                    <widget class="QLineEdit" name="led_tcms_doorstat"/>
+                   </item>
+                   <item row="4" column="0">
+                    <widget class="QLabel" name="lbl_tcms_rdoorfbk">
+                     <property name="text">
+                      <string>开右反馈</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="1">
+                    <widget class="QLineEdit" name="led_tcms_rdoorfbk"/>
+                   </item>
+                   <item row="4" column="2">
+                    <widget class="QLabel" name="lbl_tcms_dh">
+                     <property name="text">
+                      <string>打滑发生</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="3">
+                    <widget class="QLineEdit" name="led_tcms_dh"/>
+                   </item>
+                   <item row="4" column="4">
+                    <widget class="QLabel" name="lbl_tcms_nunits">
+                     <property name="text">
+                      <string>编组信息</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="5">
+                    <widget class="QLineEdit" name="led_tcms_nunits"/>
+                   </item>
+                   <item row="5" column="0">
+                    <widget class="QLabel" name="lbl_tcms_kz">
+                     <property name="text">
+                      <string>空转发生</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="1">
+                    <widget class="QLineEdit" name="led_tcms_kz"/>
+                   </item>
+                   <item row="5" column="2">
+                    <widget class="QLabel" name="lbl_tcms_pm">
+                     <property name="text">
+                      <string>动车组允许</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="3">
+                    <widget class="QLineEdit" name="led_tcms_pm"/>
+                   </item>
+                   <item row="5" column="4">
+                    <widget class="QLabel" name="lbl_tcms_breakstat">
+                     <property name="text">
+                      <string>主断状态</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="5">
+                    <widget class="QLineEdit" name="led_tcms_breakstat"/>
+                   </item>
+                   <item row="6" column="0">
+                    <widget class="QLabel" name="lbl_tcms_weight">
+                     <property name="text">
+                      <string>车重</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="6" column="1">
+                    <widget class="QLineEdit" name="led_tcms_weight"/>
+                   </item>
+                   <item row="6" column="2">
+                    <widget class="QLabel" name="lbl_tcms_atpdoorpm">
+                     <property name="text">
+                      <string>ATP门允许</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="6" column="3">
+                    <widget class="QLineEdit" name="led_tcms_atpdoorpm"/>
+                   </item>
+                   <item row="6" column="4">
+                    <widget class="QLabel" name="lbl_tcms_mandoorpm">
+                     <property name="text">
+                      <string>人工门允许</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="6" column="5">
+                    <widget class="QLineEdit" name="led_tcms_mandoorpm"/>
+                   </item>
+                  </layout>
                  </item>
-                 <item row="5" column="4" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_breakstat">
-                   <property name="text">
-                    <string>主断状态</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="2" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_tbstat">
-                   <property name="text">
-                    <string>牵控状态反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="3">
-                  <widget class="QLineEdit" name="led_tcms_fbk"/>
-                 </item>
-                 <item row="4" column="4" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_nunits">
-                   <property name="text">
-                    <string>编组信息</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="4" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_am">
-                   <property name="text">
-                    <string>门控AM</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_hrt">
-                   <property name="text">
-                    <string>TCMS心跳</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="2" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_costspeedfbk">
-                   <property name="text">
-                    <string>恒速反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="5">
-                  <widget class="QLineEdit" name="led_tcms_doorstat"/>
-                 </item>
-                 <item row="0" column="5">
-                  <widget class="QLineEdit" name="led_tcms_am"/>
-                 </item>
-                 <item row="4" column="5">
-                  <widget class="QLineEdit" name="led_tcms_nunits"/>
-                 </item>
-                 <item row="4" column="3">
-                  <widget class="QLineEdit" name="led_tcms_dh"/>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="led_tcms_hrt"/>
-                 </item>
-                 <item row="2" column="4">
-                  <widget class="QLabel" name="lbl_tcms_bstat">
-                   <property name="text">
-                    <string>制动反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="4" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_tractfbk">
-                   <property name="text">
-                    <string>牵引反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="3">
-                  <widget class="QLineEdit" name="led_tcms_mm"/>
-                 </item>
-                 <item row="1" column="5">
-                  <widget class="QLineEdit" name="led_tcms_tractfbk"/>
-                 </item>
-                 <item row="0" column="2" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_mm">
-                   <property name="text">
-                    <string>门控MM</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="4">
-                  <widget class="QLabel" name="lbl_tcms_doorstat">
-                   <property name="text">
-                    <string>车门状态</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="3">
-                  <widget class="QLineEdit" name="led_tcms_costspeedfbk"/>
-                 </item>
-                 <item row="2" column="2">
-                  <widget class="QLabel" name="lbl_tcms_keepbfbk">
-                   <property name="text">
-                    <string>保持制动反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="3">
-                  <widget class="QLineEdit" name="led_tcms_pm"/>
-                 </item>
-                 <item row="5" column="5">
-                  <widget class="QLineEdit" name="led_tcms_breakstat"/>
-                 </item>
-                 <item row="4" column="2" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_dh">
-                   <property name="text">
-                    <string>打滑发生</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="5">
-                  <widget class="QLineEdit" name="led_tcms_bfbk"/>
-                 </item>
-                 <item row="2" column="3">
-                  <widget class="QLineEdit" name="led_tcms_keepbfbk"/>
-                 </item>
-                 <item row="6" column="5">
-                  <widget class="QLineEdit" name="led_tcms_mandoorpm"/>
-                 </item>
-                 <item row="6" column="4">
-                  <widget class="QLabel" name="lbl_tcms_mandoorpm">
-                   <property name="text">
-                    <string>人工门允许</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="6" column="3">
-                  <widget class="QLineEdit" name="led_tcms_atpdoorpm"/>
-                 </item>
-                 <item row="6" column="2">
-                  <widget class="QLabel" name="lbl_tcms_atpdoorpm">
-                   <property name="text">
-                    <string>ATP门允许</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="6" column="1">
-                  <widget class="QLineEdit" name="led_tcms_weight"/>
-                 </item>
-                 <item row="6" column="0" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_weight">
-                   <property name="text">
-                    <string>车重</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="0" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_kz">
-                   <property name="text">
-                    <string>空转发生</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="1">
-                  <widget class="QLineEdit" name="led_tcms_kz"/>
-                 </item>
-                 <item row="4" column="0" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_rdoorfbk">
-                   <property name="text">
-                    <string>开右反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QLineEdit" name="led_tcms_rdoorfbk"/>
-                 </item>
-                 <item row="3" column="0" alignment="Qt::AlignHCenter">
-                  <widget class="QLabel" name="lbl_tcms_ldoorfbk">
-                   <property name="text">
-                    <string>开左反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QLineEdit" name="led_tcms_ldoorfbk"/>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="lbl_tcms_atovalid_fbk">
-                   <property name="text">
-                    <string>ATO有效反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QLineEdit" name="led_tcms_atovalid_fbk"/>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="lbl_tcms_startlampfbk">
-                   <property name="text">
-                    <string>启动灯反馈</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="led_tcms_startlampfbk"/>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_33">
+                   <item>
+                    <widget class="QLabel" name="lbl_tcms_pmt_state">
+                     <property name="text">
+                      <string>动车组不允许状态字</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="led_tcms_pmt_state"/>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>
@@ -558,28 +576,6 @@
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
-                 <widget class="QGroupBox" name="groupBox_6">
-                  <property name="title">
-                   <string>关键信息</string>
-                  </property>
-                 </widget>
-                 <widget class="QTableWidget" name="tableWidgetATPATO">
-                  <column>
-                   <property name="text">
-                    <string>时间</string>
-                   </property>
-                  </column>
-                  <column>
-                   <property name="text">
-                    <string>方向</string>
-                   </property>
-                  </column>
-                  <column>
-                   <property name="text">
-                    <string>数据包</string>
-                   </property>
-                  </column>
-                 </widget>
                 </widget>
                </item>
               </layout>
@@ -845,23 +841,6 @@ background-color: rgb(170, 170, 255);</string>
                     </layout>
                    </item>
                   </layout>
-                 </widget>
-                 <widget class="QTableWidget" name="tableWidgetWL">
-                  <column>
-                   <property name="text">
-                    <string>时间</string>
-                   </property>
-                  </column>
-                  <column>
-                   <property name="text">
-                    <string>方向</string>
-                   </property>
-                  </column>
-                  <column>
-                   <property name="text">
-                    <string>数据包</string>
-                   </property>
-                  </column>
                  </widget>
                 </widget>
                </item>
@@ -1326,7 +1305,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>5</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -1608,221 +1587,239 @@ selection-background-color: rgb(255, 170, 0);</string>
               <property name="title">
                <string>车辆-&gt;ATO</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_9">
-               <item row="5" column="2" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_pm_2">
-                 <property name="text">
-                  <string>动车组允许</string>
-                 </property>
-                </widget>
+              <layout class="QVBoxLayout" name="verticalLayout_17">
+               <item>
+                <layout class="QGridLayout" name="gridLayout_9">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="lbl_tcms_hrt_2">
+                   <property name="text">
+                    <string>TCMS心跳</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="led_tcms_hrt_2"/>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="lbl_tcms_mm_2">
+                   <property name="text">
+                    <string>门控MM</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="led_tcms_mm_2"/>
+                 </item>
+                 <item row="0" column="4">
+                  <widget class="QLabel" name="lbl_tcms_am_2">
+                   <property name="font">
+                    <font>
+                     <pointsize>9</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>门控AM</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="5">
+                  <widget class="QLineEdit" name="led_tcms_am_2"/>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="lbl_tcms_startlampfbk_2">
+                   <property name="text">
+                    <string>启动灯反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="led_tcms_startlampfbk_2"/>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="lbl_tcms_tbstat_2">
+                   <property name="text">
+                    <string>牵控状态反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="led_tcms_fbk_2"/>
+                 </item>
+                 <item row="1" column="4">
+                  <widget class="QLabel" name="lbl_tcms_tractfbk_2">
+                   <property name="text">
+                    <string>牵引反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="5">
+                  <widget class="QLineEdit" name="led_tcms_tractfbk_2"/>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="lbl_tcms_atovalid_fbk_2">
+                   <property name="text">
+                    <string>ATO有效反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="led_tcms_atovalid_fbk_2"/>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="lbl_tcms_keepbfbk_2">
+                   <property name="text">
+                    <string>保持制动反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="led_tcms_keepbfbk_2"/>
+                 </item>
+                 <item row="2" column="4">
+                  <widget class="QLabel" name="lbl_tcms_bstat_2">
+                   <property name="text">
+                    <string>制动反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="5">
+                  <widget class="QLineEdit" name="led_tcms_bfbk_2"/>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="lbl_tcms_ldoorfbk_2">
+                   <property name="text">
+                    <string>开左反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QLineEdit" name="led_tcms_ldoorfbk_2"/>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="lbl_tcms_costspeedfbk_2">
+                   <property name="text">
+                    <string>恒速反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="led_tcms_costspeedfbk_2"/>
+                 </item>
+                 <item row="3" column="4">
+                  <widget class="QLabel" name="lbl_tcms_doorstat_2">
+                   <property name="text">
+                    <string>车门状态</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="5">
+                  <widget class="QLineEdit" name="led_tcms_doorstat_2"/>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="lbl_tcms_rdoorfbk_2">
+                   <property name="text">
+                    <string>开右反馈</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QLineEdit" name="led_tcms_rdoorfbk_2"/>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="lbl_tcms_dh_2">
+                   <property name="text">
+                    <string>打滑发生</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="led_tcms_dh_2"/>
+                 </item>
+                 <item row="4" column="4">
+                  <widget class="QLabel" name="lbl_tcms_nunits_2">
+                   <property name="text">
+                    <string>编组信息</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="5">
+                  <widget class="QLineEdit" name="led_tcms_nunits_2"/>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="lbl_tcms_kz_2">
+                   <property name="text">
+                    <string>空转发生</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLineEdit" name="led_tcms_kz_2"/>
+                 </item>
+                 <item row="5" column="2">
+                  <widget class="QLabel" name="lbl_tcms_pm_2">
+                   <property name="text">
+                    <string>动车组允许</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3">
+                  <widget class="QLineEdit" name="led_tcms_pm_2"/>
+                 </item>
+                 <item row="5" column="4">
+                  <widget class="QLabel" name="lbl_tcms_breakstat_2">
+                   <property name="text">
+                    <string>主断状态</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="5">
+                  <widget class="QLineEdit" name="led_tcms_breakstat_2"/>
+                 </item>
+                 <item row="6" column="0">
+                  <widget class="QLabel" name="lbl_tcms_weight_2">
+                   <property name="text">
+                    <string>车重</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QLineEdit" name="led_tcms_weight_2"/>
+                 </item>
+                 <item row="6" column="2">
+                  <widget class="QLabel" name="lbl_tcms_atpdoorpm_2">
+                   <property name="text">
+                    <string>ATP门允许</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="3">
+                  <widget class="QLineEdit" name="led_tcms_atpdoorpm_2"/>
+                 </item>
+                 <item row="6" column="4">
+                  <widget class="QLabel" name="lbl_tcms_mandoorpm_2">
+                   <property name="text">
+                    <string>人工门允许</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="5">
+                  <widget class="QLineEdit" name="led_tcms_mandoorpm_2"/>
+                 </item>
+                </layout>
                </item>
-               <item row="5" column="4" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_breakstat_2">
-                 <property name="text">
-                  <string>主断状态</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="2" alignment="Qt::AlignHCenter">
-                <widget class="QLabel" name="lbl_tcms_tbstat_2">
-                 <property name="text">
-                  <string>牵控状态反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="3">
-                <widget class="QLineEdit" name="led_tcms_fbk_2"/>
-               </item>
-               <item row="4" column="4" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_nunits_2">
-                 <property name="text">
-                  <string>编组信息</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="4" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_am_2">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>门控AM</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_hrt_2">
-                 <property name="text">
-                  <string>TCMS心跳</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_costspeedfbk_2">
-                 <property name="text">
-                  <string>恒速反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="5">
-                <widget class="QLineEdit" name="led_tcms_doorstat_2"/>
-               </item>
-               <item row="0" column="5">
-                <widget class="QLineEdit" name="led_tcms_am_2"/>
-               </item>
-               <item row="4" column="5">
-                <widget class="QLineEdit" name="led_tcms_nunits_2"/>
-               </item>
-               <item row="4" column="3">
-                <widget class="QLineEdit" name="led_tcms_dh_2"/>
-               </item>
-               <item row="0" column="1">
-                <widget class="QLineEdit" name="led_tcms_hrt_2"/>
-               </item>
-               <item row="2" column="4" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_bstat_2">
-                 <property name="text">
-                  <string>制动反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="4" alignment="Qt::AlignRight|Qt::AlignVCenter">
-                <widget class="QLabel" name="lbl_tcms_tractfbk_2">
-                 <property name="text">
-                  <string>牵引反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="3">
-                <widget class="QLineEdit" name="led_tcms_mm_2"/>
-               </item>
-               <item row="1" column="5">
-                <widget class="QLineEdit" name="led_tcms_tractfbk_2"/>
-               </item>
-               <item row="0" column="2" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_mm_2">
-                 <property name="text">
-                  <string>门控MM</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="4" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_doorstat_2">
-                 <property name="text">
-                  <string>车门状态</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="3">
-                <widget class="QLineEdit" name="led_tcms_costspeedfbk_2"/>
-               </item>
-               <item row="2" column="2">
-                <widget class="QLabel" name="lbl_tcms_keepbfbk_2">
-                 <property name="text">
-                  <string>保持制动反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="3">
-                <widget class="QLineEdit" name="led_tcms_pm_2"/>
-               </item>
-               <item row="5" column="5">
-                <widget class="QLineEdit" name="led_tcms_breakstat_2"/>
-               </item>
-               <item row="4" column="2" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_dh_2">
-                 <property name="text">
-                  <string>打滑发生</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="5">
-                <widget class="QLineEdit" name="led_tcms_bfbk_2"/>
-               </item>
-               <item row="2" column="3">
-                <widget class="QLineEdit" name="led_tcms_keepbfbk_2"/>
-               </item>
-               <item row="6" column="5">
-                <widget class="QLineEdit" name="led_tcms_mandoorpm_2"/>
-               </item>
-               <item row="6" column="4" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_mandoorpm_2">
-                 <property name="text">
-                  <string>人工门允许</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="3">
-                <widget class="QLineEdit" name="led_tcms_atpdoorpm_2"/>
-               </item>
-               <item row="6" column="2" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_atpdoorpm_2">
-                 <property name="text">
-                  <string>ATP门允许</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="1">
-                <widget class="QLineEdit" name="led_tcms_weight_2"/>
-               </item>
-               <item row="6" column="0" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_weight_2">
-                 <property name="text">
-                  <string>车重</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="0" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_kz_2">
-                 <property name="text">
-                  <string>空转发生</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="1">
-                <widget class="QLineEdit" name="led_tcms_kz_2"/>
-               </item>
-               <item row="4" column="0" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_rdoorfbk_2">
-                 <property name="text">
-                  <string>开右反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="1">
-                <widget class="QLineEdit" name="led_tcms_rdoorfbk_2"/>
-               </item>
-               <item row="3" column="0" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_ldoorfbk_2">
-                 <property name="text">
-                  <string>开左反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QLineEdit" name="led_tcms_ldoorfbk_2"/>
-               </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="lbl_tcms_atovalid_fbk_2">
-                 <property name="text">
-                  <string>ATO有效反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QLineEdit" name="led_tcms_atovalid_fbk_2"/>
-               </item>
-               <item row="1" column="0" alignment="Qt::AlignRight">
-                <widget class="QLabel" name="lbl_tcms_startlampfbk_2">
-                 <property name="text">
-                  <string>启动灯反馈</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QLineEdit" name="led_tcms_startlampfbk_2"/>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_34">
+                 <item>
+                  <widget class="QLabel" name="lbl_tcms_pmt_state_2">
+                   <property name="text">
+                    <string>动车组不允许状态字</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_tcms_pmt_state_2"/>
+                 </item>
+                </layout>
                </item>
               </layout>
              </widget>

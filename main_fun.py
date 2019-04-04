@@ -47,7 +47,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pathlist = []
         self.BTM_cycle = []              # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0                    # 默认0是浏览模式，1是标注模式
-        self.ver = '2.9.8'               # 标示软件版本
+        self.ver = '2.9.9'               # 标示软件版本
         self.serdialog = SerialDlg()     # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)   # 操作串口对象
 
@@ -197,8 +197,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 如果初始界面实时
         self.fileOpen.setDisabled(True)  # 设置文件读取不可用
         self.cyclewin = Cyclewindow()
-        self.set_wl_zone_format()
-        self.set_atp_zone_format()
         self.realtime_plan_table_format()
         self.show()
 
@@ -235,10 +233,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 显示实时界面
     def showRealTimeUI(self):
         self.stackedWidget.setCurrentWidget(self.page_4)
-        self.btn_ato.clicked()
+        self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
         self.fileOpen.setDisabled(True)     # 设置文件读取不可用
         self.btn_plan.setDisabled(True)
         self.btn_train.setDisabled(True)
+        self.btn_filetab.setDisabled(True)
         # 如有转换重置右边列表
         self.actionView.trigger()
         self.tableWidget.clear()
@@ -246,6 +245,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeWidget.clear()
         self.tableWidgetPlan_2.clear()
         self.set_tree_fromat()
+        self.btn_filetab.setDisabled(True)
 
     # 显示离线界面
     def showOffLineUI(self):
@@ -619,6 +619,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.led_tcms_atpdoorpm.setText('异常值%s'%tcms2ato_stat[15])
                     self.led_tcms_mandoorpm.setText('异常值%s'%tcms2ato_stat[15])
+                # 不允许状态字
+                str_tcms = ''
+                str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
+                           '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
+                           'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
+                if tcms2ato_stat[16] == '00':
+                    self.led_tcms_pmt_state.setText('正常')
+                else:
+                    val_field = int(tcms2ato_stat[16], 16)
+                    for cnt in range(7, -1, -1):
+                        if val_field & (1 << cnt) != 0:
+                            str_tcms = str_tcms + str_raw[cnt]
+                    self.led_tcms_pmt_state.setText('异常原因:%s' % str_tcms)
         except Exception as err:
             self.Log(err)
             self.Log(tcms2ato_stat)
@@ -952,14 +965,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # utc转换器
     def show_utc_transfer(self):
         self.utctransfer.show()
-
-    # 设置无线相关区域
-    def set_wl_zone_format(self):
-        self.tableWidgetWL.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-
-    # 设置ATP相关区域
-    def set_atp_zone_format(self):
-        self.tableWidgetATPATO.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
 
     # 事件处理函数绘制统计区域的 车辆牵引制动统计图
     def show_statistics_mvb_delay(self):
@@ -2253,6 +2258,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.led_tcms_atpdoorpm_2.setText('异常值%s'%tcms2ato_stat[15])
                     self.led_tcms_mandoorpm_2.setText('异常值%s'%tcms2ato_stat[15])
+                # 不允许状态字
+                str_tcms = ''
+                str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
+                           '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
+                           'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
+                if tcms2ato_stat[16] == '00':
+                    self.led_tcms_pmt_state_2.setText('正常')
+                else:
+                    val_field = int(tcms2ato_stat[16], 16)
+                    for cnt in range(7, -1, -1):
+                        if val_field & (1 << cnt) != 0:
+                            str_tcms = str_tcms + str_raw[cnt]
+                    self.led_tcms_pmt_state_2.setText('异常原因:%s' % str_tcms)
         except Exception as err:
             self.Log(err)
             self.Log(tcms2ato_stat)
