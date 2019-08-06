@@ -140,6 +140,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_atp.clicked.connect(self.showoffRight_ATP)
         self.btn_statistics.clicked.connect(self.showoffRight_STATISTICS)
         self.btn_balise.clicked.connect(self.showoffRight_BALISE)
+        self.btn_io_info.clicked.connect(self.showoffRight_ato_IO)
 
         # 窗口设置初始化
         self.showOffLineUI()
@@ -242,7 +243,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableWidgetPlan_2.clear()
         self.set_tree_fromat()
 
-
     # 显示离线界面
     def showOffLineUI(self):
         self.stackedWidget.setCurrentWidget(self.page_3)
@@ -251,6 +251,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_plan.setEnabled(True)
         self.btn_train.setEnabled(True)
         self.btn_atp.setEnabled(True)
+        self.btn_filetab.setEnabled(True)
 
     # 显示控车情况
     def showOffRight_ATO(self):
@@ -275,6 +276,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 显示应答器信息
     def showoffRight_BALISE(self):
         self.stackedWidget_RightCol.setCurrentWidget(self.page_balise)
+
+    # 显示io统计信息
+    def showoffRight_ato_IO(self):
+        self.stackedWidget_RightCol.setCurrentWidget(self.page_ato_IO)
 
     # 显示统计接口情况
     def showoffRight_STATISTICS(self):
@@ -391,6 +396,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.realtime_fsm_show(fsm_list)
         # 显示主界面
         self.realtime_mvb_show(ato2tcms_ctrl, ato2tcms_stat, tcms2ato_stat)
+
+    # 显示ATP和应答器信息
+    def realtime_atp_balise_show(self, sp_list):
+        pass
+
+    # 显示IO信息内容
+    def realtime_atp_balise_show(self, io_list):
+        pass
+
 
     # 显示MVB数据
     def realtime_mvb_show(self, ato2tcms_ctrl=list, ato2tcms_stat=list, tcms2ato_stat=list):
@@ -927,7 +941,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.led_runtime.setText(str(time_remain/1000)+'s')
 
         except Exception as err:
-            self.Log(err)
+            self.Log(err,str(sys._getframe().f_lineno))
 
     # 设置实时绘图显示
     def realtime_plot_set(self, interval=int, plot_flag=bool):
@@ -976,7 +990,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             self.train_com_delay.measure_plot()
             self.train_com_delay.show()
-
 
     # 更新离线绘图事件标示
     def set_log_event(self):
@@ -1155,6 +1168,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.tableATPBTM.setItem(sp7_cnt, 1, item_balise_bum)
                     self.tableATPBTM.setItem(sp7_cnt, 2, item_adjpos)
                     sp7_cnt = sp7_cnt + 1
+            # 显示IO信息
+            self.Log("Begin search IO info")
+            self.set_io_page_content()
             # 文本显示
             if sp5_snipper == 0:
                 self.show_message("Info: N0 SP5 in log,no train data")
@@ -1176,6 +1192,60 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 pass
         except Exception as err:
             self.Log(err)
+
+    # 界面初始化后，加载显示IO信息，参考应答器显示
+    def set_io_page_content(self):
+        # 搜索IO信息
+        self.tb_ato_IN.clear()
+        self.tb_ato_IN.setHorizontalHeaderLabels([ '时间', '周期','采集信号','取值'])
+        self.tb_ato_OUT.clear()
+        self.tb_ato_OUT.setHorizontalHeaderLabels(['时间', '周期', '输出信号'])
+        cnt_in = 0
+        cnt_out = 0
+        item_in = []
+        item_out = []
+        try:
+            for c in self.log.cycle_dic.keys():
+                # io信息
+                if self.log.cycle_dic[c].io_in != ():
+                    # 填充表格
+                    c_show = self.log.cycle_dic[c]
+                    # 添加每行内容
+                    item_in.append([QtWidgets.QTableWidgetItem(c_show.time.split(" ")[1]),\
+                    QtWidgets.QTableWidgetItem(str(c_show.cycle_num)),\
+                    QtWidgets.QTableWidgetItem(c_show.io_in[0]),\
+                    QtWidgets.QTableWidgetItem(c_show.io_in[1])])
+                    # 计算行数
+                    cnt_in = cnt_in + 1
+                elif self.log.cycle_dic[c].io_out != []:
+
+                    # 填充表格
+                    c_show = self.log.cycle_dic[c]
+
+                    # 添加每行内容
+                    item_out.append([QtWidgets.QTableWidgetItem(c_show.time.split(" ")[1]),\
+                    QtWidgets.QTableWidgetItem(str(c_show.cycle_num)),\
+                    QtWidgets.QTableWidgetItem(c_show.io_out[0])])
+                    cnt_out = cnt_out + 1
+                else:
+                    pass
+        except Exception as err:
+            print(err)
+            print("cnt_in %d  cnt_out %d"%(cnt_in, cnt_out))
+        # 设置大小
+        self.tb_ato_IN.setRowCount(cnt_in)
+        self.tb_ato_IN.setColumnCount(4)
+        self.tb_ato_OUT.setRowCount(cnt_out)
+        self.tb_ato_OUT.setColumnCount(3)
+        # 填充
+        for i in range(len(item_in)):
+            for j in range(len(item_in[i])):
+                item_in[i][j].setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                self.tb_ato_IN.setItem(i, j, item_in[i][j])
+        for m in range(len(item_out)):
+            for n in range(len(item_out[m])):
+                item_out[m][n].setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                self.tb_ato_OUT.setItem(m, n, item_out[m][n])
 
     # 事件处理函数，计数器数值变化触发事件，绑定光标和内容更新
     def spin_value_changed(self):
@@ -2577,7 +2647,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_atp_gfx_dis.setText(sp_tpl[14].strip()+'m')
                 self.led_atp_target_v.setText(sp_tpl[6].strip()+'cm/s')
                 self.led_atp_ma.setText(sp_tpl[12].strip()+'m')
-                self.led_atp_stoperr.setText(sp_tpl[16].strip()+'cm')
+                self.led_atp_stoperr.setText(sp_tpl[17].strip()+'cm')
 
         if clsify == 5:
             if sp_tpl != ():
@@ -2889,10 +2959,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if filepath != ('', ''):
                     workbook = xlwt.Workbook()
                     sheet = workbook.add_sheet("ATO控制信息")
-                    tb_head = ['系统周期', '位置', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位', '车头坡度', '等效坡度'
-                               '牵引制动信号', '牵引制动反馈']
-                    tb_content = [self.log.cycle, self.log.s, self.log.atp_permit_v, self.log.ceilv, self.log.cmdv,
-                                  self.log.level, self.log.ramp, self.log.adjramp, self.log]
+                    tb_head = ['系统周期', '位置', '速度', 'ATP允许速度', 'ATP命令速度', 'ATO命令速度','ATO输出级位', '车头坡度', '等效坡度']
+                    tb_content = [self.log.cycle, self.log.s, self.log.v_ato, self.log.atp_permit_v, self.log.ceilv, self.log.cmdv,
+                                  self.log.level, self.log.ramp, self.log.adjramp]
                     for i, item in enumerate(tb_head):
                         sheet.write(0, i, item)
                         for j, content in enumerate(tb_content[i]):
@@ -2905,9 +2974,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.statusbar.showMessage(filepath[0] + "导出失败！")
 
     # 打印函数
-    def Log(self, msg):
+    def Log(self, msg, lino='num'):
         if str == type(msg):
-            print(msg + ',File:"' + __file__ + '",Line' + str(sys._getframe().f_lineno) +
+            print(msg + ',File:"' + __file__ + '",Line' + lino +
                ', in' + sys._getframe().f_code.co_name)
         else:
             print(msg)

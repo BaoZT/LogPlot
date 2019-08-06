@@ -55,6 +55,9 @@ class CycleLog(object):
         self.cycle_property = 0     # 1=序列完整，2=序列尾部缺失
         # 停车点
         self.stoppoint = []
+        # IO信息
+        self.io_in = ()
+        self.io_out = []
 
 
 # 文件处理类定义
@@ -163,7 +166,6 @@ class FileProcess(threading.Thread):
         self.lines = []
         self.cycle_dic = {}
         # 重置进度条
-
 
     # 输入： 文件路径
     def readkeyword(self, file):
@@ -382,6 +384,9 @@ class FileProcess(threading.Thread):
         pat_c44 = pat_list[22]
         pat_c45 = pat_list[23]
         pat_c46 = pat_list[24]
+        # io info
+        pat_io_in = pat_list[25]
+        pat_io_out = pat_list[26]
 
         # 数据包识别,提高效率
         if '[P->O]SP' in line:
@@ -391,15 +396,18 @@ class FileProcess(threading.Thread):
             elif pat_sp1.findall(line):
                 c.cycle_sp_dict[1] = pat_sp1.findall(line)[0]
             elif pat_sp2.findall(line):
-                l = re.split(',', line)
-                c.cycle_sp_dict[2] = tuple(l[1:])       # 保持与其他格式一致，从SP2后截取
                 try:
-                    if int(c.cycle_sp_dict[2][13]) == 1:             # 去除nid——packet是第13个字节
-                        c.gfx_flag = 1
-                        self.gfx_flag = 1
+                    if 'syn len = 0.' in line:
+                        pass
                     else:
-                        c.gfx_flag = 0
-                        self.gfx_flag = 0
+                        l = re.split(',', line)
+                        c.cycle_sp_dict[2] = tuple(l[1:])  # 保持与其他格式一致，从SP2后截取
+                        if int(c.cycle_sp_dict[2][13]) == 1:             # 去除nid——packet是第13个字节
+                            c.gfx_flag = 1
+                            self.gfx_flag = 1
+                        else:
+                            c.gfx_flag = 0
+                            self.gfx_flag = 0
                 except Exception as err:
                     print('gfx_err ')
             elif pat_sp5.findall(line):
@@ -444,6 +452,11 @@ class FileProcess(threading.Thread):
                 c.cycle_sp_dict[45] = pat_c45.findall(line)[0]
         elif 'MVB[' in line:
             self.mvb_research(c, line)
+        elif '[DOOR]' in line or '[MSG]' in line:
+            if pat_io_in.findall(line):
+                c.io_in = pat_io_in.findall(line)[0]
+            elif pat_io_out.findall(line):
+                c.io_out = pat_io_out.findall(line)
         else:
             ret = 0
         return ret
@@ -493,10 +506,14 @@ class FileProcess(threading.Thread):
         pat_c45 = re.compile('\[A->T\]C45')
         pat_c46 = re.compile('\[A->T\]C46')
 
+        # IO IN的信息
+        pat_io_in = re.compile('\[DOOR\]IO_IN_(\w+)=(\d)')
+        pat_io_out = re.compile('\[MSG\](OPEN+\s[LR])')
+
         # 添加列表
         pat_list = [pat_time, pat_fsm, pat_sc, pat_stop, pat_sp0, pat_sp1, pat_sp2, pat_sp5, pat_sp6, pat_sp7,
                     pat_sp8, pat_sp9, pat_sp131, pat_sp130, pat_sp132, pat_sp134, pat_c41, pat_c43, pat_c2,
-                    pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46]
+                    pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46, pat_io_in, pat_io_out]
 
         return pat_list
 
@@ -511,7 +528,6 @@ class FileProcess(threading.Thread):
         pat_rp4 = re.compile('\[RP4\](\d),(-?\d+),(-?\d+),(\d),(\d)')
 
         return [pat_rp1, pat_rp2, pat_rp2_comm, pat_rp3, pat_rp4]
-
 
     # 计算相邻周期加速度变化
     # <输出> 返回加速度处理结果
@@ -540,7 +556,7 @@ class FileProcess(threading.Thread):
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
             for ctrl_item in self.cycle_dic.keys():
-                # print('Comput ATP Permit %d' % ctrl_item)
+                # print('Comput ATP Permit %d len %d' % (ctrl_item,len(self.atp_permit_v)))
                 if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
                     c_num = self.cycle_dic[ctrl_item].cycle_num     # 获取周期号
                     # 如果有数据包
@@ -573,7 +589,6 @@ class FileProcess(threading.Thread):
         else:
             print('no ato ctrl,no atp permit v')
         # print('get atp permit v ok %d, %d'%(len(self.v_ato),len(self.atp_permit_v)))
-
 
     # <核心函数>
     # 建立ATO控制信息和周期的关系字典

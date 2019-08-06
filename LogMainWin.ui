@@ -1870,31 +1870,10 @@ selection-background-color: rgb(255, 170, 0);</string>
         </item>
         <item>
          <layout class="QGridLayout" name="gridLayout_6">
-          <item row="0" column="1">
-           <widget class="QPushButton" name="btn_train">
+          <item row="1" column="0">
+           <widget class="QPushButton" name="btn_atp">
             <property name="text">
-             <string>车辆接口MVB</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QPushButton" name="btn_filetab">
-            <property name="text">
-             <string>文件选择</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QPushButton" name="btn_ato">
-            <property name="text">
-             <string>ATO控车信息</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QPushButton" name="btn_plan">
-            <property name="text">
-             <string>计划信息</string>
+             <string>ATP接口信息</string>
             </property>
            </widget>
           </item>
@@ -1905,24 +1884,45 @@ selection-background-color: rgb(255, 170, 0);</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
+          <item row="0" column="2">
+           <widget class="QPushButton" name="btn_plan">
+            <property name="text">
+             <string>计划信息</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QPushButton" name="btn_ato">
+            <property name="text">
+             <string>ATO控车信息</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QPushButton" name="btn_filetab">
+            <property name="text">
+             <string>文件选择</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QPushButton" name="btn_train">
+            <property name="text">
+             <string>车辆接口MVB</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
            <widget class="QPushButton" name="btn_statistics">
             <property name="text">
              <string>记录统计信息</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QPushButton" name="btn_atp">
+          <item row="1" column="2">
+           <widget class="QPushButton" name="btn_io_info">
             <property name="text">
-             <string>ATP接口信息</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QPushButton" name="pushButton_2">
-            <property name="text">
-             <string>Reserved</string>
+             <string>IO相关信息</string>
             </property>
            </widget>
           </item>
@@ -1940,7 +1940,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>5</number>
+           <number>7</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -3538,6 +3538,102 @@ background-color: rgb(170, 170, 255);</string>
               <property name="title">
                <string>控制冲击率统计</string>
               </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="page_ato_IO">
+           <layout class="QVBoxLayout" name="verticalLayout_20">
+            <item>
+             <widget class="QGroupBox" name="gp_ato_IN">
+              <property name="title">
+               <string>ATO采集IO信息</string>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_50">
+               <item>
+                <widget class="QTableWidget" name="tb_ato_IN">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <attribute name="horizontalHeaderVisible">
+                  <bool>true</bool>
+                 </attribute>
+                 <attribute name="horizontalHeaderDefaultSectionSize">
+                  <number>75</number>
+                 </attribute>
+                 <column>
+                  <property name="text">
+                   <string>序号</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>时间</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>周期号</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>采集信号</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>取值</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="gp_ato_OUT">
+              <property name="title">
+               <string>ATO输出IO信息</string>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_51">
+               <item>
+                <widget class="QTableWidget" name="tb_ato_OUT">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <attribute name="horizontalHeaderDefaultSectionSize">
+                  <number>94</number>
+                 </attribute>
+                 <column>
+                  <property name="text">
+                   <string>序号</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>时间</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>周期号</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>输出信号</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
