@@ -170,7 +170,7 @@ class FileProcess(threading.Thread):
     # 输入： 文件路径
     def readkeyword(self, file):
         self.reset_vars()  # 重置所有变量
-        with open(file, 'r', encoding='utf-8',errors='ignore') as log:    # notepad++默认是ANSI编码,简洁且自带关闭
+        with open(file, 'r', encoding='utf-8', errors='ignore') as log:    # notepad++默认是ANSI编码,简洁且自带关闭
             self.lines = log.readlines()
             self.filename = file.split("/")[-1]
         log.close()                                      # 关闭文件

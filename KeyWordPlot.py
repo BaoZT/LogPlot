@@ -17,7 +17,6 @@ mpl.rcParams['font.sans-serif'] = ['SimHei']
 
 
 cursor_track_flag = 1   # 1=追踪，0=不追踪
-Lock = threading.Lock()
 
 # 光标类定义
 class SnaptoCursor(QtCore.QObject):
@@ -517,7 +516,6 @@ class Figure_Canvas_R(FigureCanvas):
         self.ax1_twin = self.axes1.twinx()         # 级位
         self.choice = [0, 0, 0, 0]                 # 全部绘制
 
-
     # 更新绘制需求
     def updatePaintSet(self, ch=list):
         self.choice[0] = ch[0]
@@ -535,8 +533,8 @@ class Figure_Canvas_R(FigureCanvas):
         '''
         self.ax1_twin.clear()
         self.axes1.clear()
-        Lock.acquire()
         tmp = np.fliplr(RealTimeExtension.paintList)
+
         if self.choice[0] == 1:
             self.axes1.plot(tmp[0, :], color='deeppink', linewidth=0.8)
         if self.choice[1] == 1:
@@ -545,7 +543,7 @@ class Figure_Canvas_R(FigureCanvas):
             self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8)
         if self.choice[3] == 1:
             self.ax1_twin.plot(tmp[3, :], color='b', linewidth=0.8)
-        Lock.release()
-        self.axes1.set_ylim(0, 10000)
-        self.ax1_twin.set_ylim(-7, 10)
-        self.axes1.legend(['ato',' atocmdv', 'atpcmdv', 'level'])
+
+        #self.axes1.set_ylim(0, 10000)
+        #self.ax1_twin.set_ylim(-8, 21)
+        self.axes1.legend(['ato', ' atocmdv', 'atpcmdv', 'level'])

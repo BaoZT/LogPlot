@@ -15,8 +15,10 @@ from ProtocolParse import MVBParse
 exit_flag = 0
 queueLock = threading.Lock()
 workQueue = queue.Queue(10000)
-newPaintList = np.zeros([4, 10])      # 新添加的参数
-paintList = np.zeros([4, 1000])       # 初始化1000个点用于绘图
+real_curve_buff = 10                                 # 每次绘图话添加的点数
+real_curve_all_buff = 10000                          # 每次绘画总点数
+newPaintList = np.zeros([4, real_curve_buff])        # 新添加的参数
+paintList = np.zeros([4, real_curve_all_buff])                     # 初始化1000个点用于绘图
 
 value = 0  # 速度值 测试用
 random.seed(10)
@@ -69,18 +71,21 @@ class SerialRead(threading.Thread, QtCore.QObject):
         self.fsm = []
         self.sc_ctrl = []
         self.stoppoint = []
+        self.sp2_real = ()
+        self.sp5_real = ()
+        self.sp131_real = ()
 
     # 串口成功打开才启动此线程
     def run(self):
         # 读取串口内容
-        # with open('序列6.txt','r') as f:
+        #with open('10291540-Serial-COM39.log', 'r') as f:   # 测试时放开
         while not exit_flag:
             s = time.time()
             # 有数据就读取
             try:
-                # time.sleep(0.01)              # 着两行代码用于读取文件
-                # line = f.readline()
-                line = self.ser.readline().decode('ansi').rstrip()    # 串口设置
+                #time.sleep(0.01)              # 着两行代码用于读取文件，测试时放开
+                #line = f.readline()
+                line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
                 queueLock.acquire()
                 if not workQueue.full():
                     workQueue.put(line)
@@ -100,7 +105,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
         # 匹配速度曲线信息
         result = self.pat_research(line)
         sc_ctrl = result[3]
-        if sc_ctrl != []:  # 如果匹配成功
+        if sc_ctrl:  # 如果匹配成功
             newPaintList[0, self.newPaintCnt] = sc_ctrl[1]
             newPaintList[1, self.newPaintCnt] = sc_ctrl[2]
             newPaintList[2, self.newPaintCnt] = sc_ctrl[3]
@@ -109,13 +114,12 @@ class SerialRead(threading.Thread, QtCore.QObject):
         else:
             pass
 
-        if self.newPaintCnt == 10:
-            paintList[:, 10:1000] = paintList[:, 0:990]
-            paintList[:, 0:10] = newPaintList[:, 0:10]
+        if self.newPaintCnt == real_curve_buff:
+            paintList[:, real_curve_buff:real_curve_all_buff] = paintList[:, 0:real_curve_all_buff-real_curve_buff]
+            paintList[:, 0:real_curve_buff] = newPaintList[:, 0:real_curve_buff]
 
             # 清除列表
             self.newPaintCnt = 0
-
             # 实时line匹配内容
 
     def pat_research(self, line):
@@ -141,23 +145,32 @@ class SerialRead(threading.Thread, QtCore.QObject):
             update_flag = 1
         elif self.mvb_research(line):
             update_flag = 1
-        elif self.pat_list[7].findall(line):
-            update_flag == 1
-            l = re.split(',', line)
-            temp = tuple(l[1:])          # 保持与其他格式一致，从SP2后截取
+        elif self.pat_list[8].findall(line):    # 这是SP2的正则解析情况
+            update_flag = 1
+            sp2 = re.split(',', line[:-1])      # 删除最后一个回车字符,按照逗号分隔
+            # 检查长度
+            temp = tuple(sp2[1:])          # 保持与其他格式一致，从SP2后截取
             try:
+                if len(sp2) == 27:
+                    self.sp2_real = temp
                 if int(temp[13]) == 1:   # 去除nid——packet是第13个字节
                     self.gfx_flag = 1
                 else:
                     self.gfx_flag = 0    # 包含真正过分相及错误数据
             except Exception as err:
                 print('gfx_err ')
+        elif self.pat_list[9].findall(line):  # 这是SP5的正则解析情况
+            update_flag = 1
+            self.sp5_real = self.pat_list[9].findall(line)[0]
+        elif self.pat_list[14].findall(line):  # 这是SP131的正则解析情况
+            update_flag = 1
+            self.sp131_real = self.pat_list[14].findall(line)[0]
 
         # 匹配计划，内部使用独立信号
         self.plan_research(line, self.cycle_num)
         result = (self.cycle_num, self.time_content, self.fsm, self.sc_ctrl, self.stoppoint,
                   self.ato2tcms_ctrl, self.ato2tcms_stat, self.tcms2ato_stat,
-                  self.gfx_flag)
+                  self.gfx_flag, self.sp2_real, self.sp5_real, self.sp131_real)
         # 发射信号
         if update_flag == 1:
             self.pat_show_singal.emit(result)
@@ -181,7 +194,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
                 real_idx = line.find('MVB[')
                 tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                 self.ato2tcms_ctrl = self.mvbParser.ato_tcms_parse(1025, tmp)
-                if self.ato2tcms_ctrl != []:
+                if self.ato2tcms_ctrl:
                     parse_flag = 1
         elif pat_ato_stat in line:
             if '@' in line:
@@ -190,7 +203,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
                 real_idx = line.find('MVB[')
                 tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                 self.ato2tcms_stat = self.mvbParser.ato_tcms_parse(1041, tmp)
-                if self.ato2tcms_stat != []:
+                if self.ato2tcms_stat:
                     parse_flag = 1
         elif pat_tcms_stat in line:
             if '@' in line:
@@ -247,7 +260,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
             else:
                 pass
             ret_plan = (self.rp1, (self.rp2,self.rp2_list), self.rp3, self.rp4,
-                        self.time_plan_remain,self.time_plan_count)
+                        self.time_plan_remain, self.time_plan_count)
         else:
             pass
         # 发送信号
@@ -273,10 +286,10 @@ class SerialRead(threading.Thread, QtCore.QObject):
             if idx in [2, 4, 6]:
                 temp_transfer_list[idx] = self.TransferUTC(t[idx])
             elif idx == 7:
-                if t[idx]=='1':
-                    temp_transfer_list[idx]='通过'
-                elif t[idx]=='2':
-                    temp_transfer_list[idx]='到发'
+                if t[idx] =='1':
+                    temp_transfer_list[idx] = '通过'
+                elif t[idx] =='2':
+                    temp_transfer_list[idx] = '到发'
                 else:
                     temp_transfer_list[idx] = '错误'
             elif idx == 8:
@@ -310,13 +323,11 @@ class RealPaintWrite(threading.Thread):
                 try:
                     s = time.time()
                     queueLock.acquire()
-                    if not workQueue.empty():
-                        line = workQueue.get()
+                    while not workQueue.empty():
+                        line = workQueue.get(block=False)
                         self.fileWrite(line, f)
-                        queueLock.release()
-                    else:
-                        queueLock.release()
-                        time.sleep(1)  # 队列为空等1s
+                    queueLock.release()
+                    time.sleep(1)  # 队列为空等1s
                     # print('out-%f' % (time.time() - s))
                 except Exception as err:
                     print(err)
@@ -327,13 +338,13 @@ class RealPaintWrite(threading.Thread):
             tmp = self.fileRename()
             os.rename(self.logFile, self.filepath + tmp)
 
-
     # 按行写入文件
     def fileWrite(self, line, f):
         self.logBuff.append(line)
         if len(self.logBuff) == 2000:
             for item in self.logBuff:
-                f.write(item + '\n')
+                f.write(item)
+                f.write('\n')
             # 写完后清空
             self.logBuff = []
         else:
@@ -342,7 +353,8 @@ class RealPaintWrite(threading.Thread):
     # 立即写入用于关断时候
     def fileFlush(self, f):
         for item in self.logBuff:
-            f.write(item + '\n')  # 由于记录中本身有回车，去掉\r\n
+            f.write(item)  # 由于记录中本身有回车，去掉\r\n
+        print("file exit flush!")
 
     # 每次测试完后重命名文件
     def fileRename(self):
