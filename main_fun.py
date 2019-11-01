@@ -47,14 +47,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pathlist = []
         self.BTM_cycle = []  # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0  # 默认0是浏览模式，1是标注模式
-        self.ver = '2.9.9'  # 标示软件版本
+        self.ver = '3.0.0'  # 标示软件版本
         self.serdialog = SerialDlg()  # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)  # 操作串口对象
 
         self.mvbdialog = MVBPortDlg()
         self.comboBox.addItems(self.serdialog.Port_List())  # 调用对象方法获取串口对象
         self.resize(1300, 700)
-        self.setWindowTitle('LogPlot-V' + self.ver)
+        self.setWindowTitle('LogPlot-V' + self.ver + ' Beta')
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
@@ -212,7 +212,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.file = path
                 self.statusbar.showMessage(path)
         else:
-            self.Log('Init file path')
+            self.Log('Init file path',__name__, sys._getframe().f_lineno)
             filepath = temp.join(self.pathlist[:-1])  # 纪录上一次的文件路径
             filepath = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', filepath)
             path = filepath[0]
@@ -337,8 +337,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 thPaintWrite = RealPaintWrite(self.savePath, tmpfilename, self.serport.port)  # 文件写入线程
                 thpaint = threading.Thread(target=self.run_paint)  # 绘图线程
                 # 链接显示
-                thRead.pat_show_singal.connect(self.realtime_Content_show)  # 界面显示处理
-                thRead.plan_show_singal.connect(self.realtime_plan_show)  # 局部变量无需考虑后续解绑
+                thPaintWrite.pat_show_singal.connect(self.realtime_Content_show)  # 界面显示处理
+                thPaintWrite.plan_show_singal.connect(self.realtime_plan_show)  # 局部变量无需考虑后续解绑
                 # 设置线程
                 thpaint.setDaemon(True)
                 thRead.setDaemon(True)
@@ -377,8 +377,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sp_real.realTimePlot()
                 self.sp_real.draw()
             except Exception as err:
-                self.Log(err)
+                self.Log(err,__name__, sys._getframe().f_lineno)
                 self.show_message('Error:绘图线程异常！')
+                print('thread paint info!' + str(time.time()))
         self.show_message('Info:绘图线程结束!')
 
     # 界面更新信号槽函数
@@ -642,8 +643,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.led_ctrl_starlamp.setText('异常值%s' % ato2tcms_ctrl[9])
         except Exception as err:
-            self.Log(err)
-            self.Log(ato2tcms_ctrl)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(ato2tcms_ctrl)
         # ATO2TCMS 状态信息
         try:
             if ato2tcms_stat != []:
@@ -659,8 +660,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_stat_tunnellen.setText(str(int(ato2tcms_stat[4], 16)))  # 隧道长度
                 self.led_stat_atospeed.setText(str(int(ato2tcms_stat[5], 16)))  # ato速度
         except Exception as err:
-            self.Log(err)
-            self.Log(ato2tcms_stat)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(ato2tcms_stat)
         # TCMS2ATO 状态信息
         try:
             if tcms2ato_stat != []:
@@ -818,50 +819,52 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             str_tcms = str_tcms + str_raw[cnt]
                     self.led_tcms_pmt_state.setText('异常原因:%s' % str_tcms)
         except Exception as err:
-            self.Log(err)
-            self.Log(tcms2ato_stat)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(tcms2ato_stat)
 
     # 右侧边栏显示
     def realtime_table_show(self, cycle_num=str, cycle_time=str, sc_ctrl=list, stoppoint=list, gfx_flag=int):
         item_value = []
         if sc_ctrl:
-            if 1 == int(sc_ctrl[19]):
+            if 1 == int(sc_ctrl[20]):
                 str_skip = 'Skip'
-            elif 2 == int(sc_ctrl[19]):
+            elif 2 == int(sc_ctrl[20]):
                 str_skip = 'No'
             else:
                 str_skip = 'None'
-            if 1 == int(sc_ctrl[20]):
+            if 1 == int(sc_ctrl[21]):
                 str_task = 'Task'
-            elif 2 == int(sc_ctrl[20]):
+            elif 2 == int(sc_ctrl[21]):
                 str_task = 'No'
             else:
                 str_task = 'None'
             # 装填vato,cmdv,atpcmdv
-            item_value.append(str(int(sc_ctrl[1])))  # 使用int的原因是只有整数精度，不多显示
-            item_value.append(str(int(sc_ctrl[2])))
-            item_value.append(str(int(sc_ctrl[3])))
-            item_value.append(str(int(sc_ctrl[4])))
-            item_value.append(str(int(sc_ctrl[5])))
-            item_value.append(str(int(sc_ctrl[16])))
-            item_value.append(str(int(sc_ctrl[0])))
-            item_value.append(str(int(sc_ctrl[10])))
-            item_value.append(str(int(sc_ctrl[11])))
-            item_value.append(str(int(sc_ctrl[12])))
-            item_value.append(str(int(sc_ctrl[14])))
-            item_value.append(str(int(sc_ctrl[15])))
+            item_value.append(str(int(sc_ctrl[1])))  # 当前速度使用int的原因是只有整数精度，不多显示
+            item_value.append(str(int(sc_ctrl[2])))  # ATO命令
+            item_value.append(str(int(sc_ctrl[3])))  # ATP命令
+            item_value.append(str(int(sc_ctrl[4])))  # ATP 允许速速度
+
+            item_value.append(str(int(sc_ctrl[5])))  # 估计级位
+            item_value.append(str(int(sc_ctrl[6])))  # 输出级位
+            item_value.append(str(int(sc_ctrl[17])))  # 状态机
+            item_value.append(str(int(sc_ctrl[0])))   # 当前位置
+            item_value.append(str(int(sc_ctrl[11])))  # 目标速度
+            item_value.append(str(int(sc_ctrl[12])))  # 目标位置
+            item_value.append(str(int(sc_ctrl[13])))  # MA终点
+            item_value.append(str(int(sc_ctrl[15])))  # ATO停车点
+            item_value.append(str(int(sc_ctrl[16])))  # 停车误差
             for idx3, value in enumerate(item_value):
                 self.tableWidget.setItem(idx3, 1, QtWidgets.QTableWidgetItem(value))
             # 除去中间3个，排在第15、16
-            self.tableWidget.setItem(15, 1, QtWidgets.QTableWidgetItem(str_skip))
-            self.tableWidget.setItem(16, 1, QtWidgets.QTableWidgetItem(str_task))
+            self.tableWidget.setItem(16, 1, QtWidgets.QTableWidgetItem(str_skip))
+            self.tableWidget.setItem(17, 1, QtWidgets.QTableWidgetItem(str_task))
             item_value.append(str_skip)
             item_value.append(str_task)
         # 停车点统计显示
         if stoppoint != []:
-            self.tableWidget.setItem(12, 1, QtWidgets.QTableWidgetItem(str(int(stoppoint[0]))))
-            self.tableWidget.setItem(13, 1, QtWidgets.QTableWidgetItem(str(int(stoppoint[1]))))
-            self.tableWidget.setItem(14, 1, QtWidgets.QTableWidgetItem(str(int(stoppoint[2]))))
+            self.tableWidget.setItem(13, 1, QtWidgets.QTableWidgetItem(str(int(stoppoint[0]))))
+            self.tableWidget.setItem(14, 1, QtWidgets.QTableWidgetItem(str(int(stoppoint[1]))))
+            self.tableWidget.setItem(15, 1, QtWidgets.QTableWidgetItem(str(int(stoppoint[2]))))
 
         self.label_2.setText(cycle_time)
         if cycle_num != '':
@@ -986,7 +989,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 实时操作时更新曲线选择
     def realtimeLineChoose(self):
         global load_flag
-        linelist = [0, 0, 0, 0]
+        linelist = [0, 0, 0, 0, 0]
         if load_flag == 0:
             if self.CBvato.isChecked():
                 linelist[0] = 1
@@ -1000,10 +1003,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 linelist[2] = 1
             else:
                 linelist[2] = 0
-            if self.CBlevel.isChecked():
+            if self.CBatppmtv.isChecked():
                 linelist[3] = 1
             else:
                 linelist[3] = 0
+            if self.CBlevel.isChecked():
+                linelist[4] = 1
+            else:
+                linelist[4] = 0
         else:
             pass
         self.sp_real.updatePaintSet(linelist)
@@ -1156,14 +1163,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         global load_flag
         if load_flag == 1:
             self.train_com_delay = Train_Com_MeasureDlg(None, self.log)
-            self.Log('Plot statistics info!')
+            self.Log('Plot statistics info!',__name__, sys._getframe().f_lineno)
 
             self.train_com_delay.measure_plot()
             self.train_com_delay.show()
 
     # 更新离线绘图事件标示
     def set_log_event(self):
-        self.Log('事件发生')
+        self.Log('event happen!',__name__, sys._getframe().f_lineno)
         # 获取事件信息，交由绘图模块完成绘图
 
     # 默认路径的更新，在文件树结构双击时也更新默认路径
@@ -1175,14 +1182,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，获取文件树结构中双击的文件路径和文件名
     def filetab_clicked(self, item_index):
-        self.Log("Select from file tab")
+        self.Log("Select from file tab",__name__, sys._getframe().f_lineno)
         if self.model.fileInfo(item_index).isDir():
             pass
         else:
             self.file = self.model.filePath(item_index)  # 带入modelIndex获取model的相关信息
             self.reset_logplot()
-            self.Log(self.model.fileName(item_index))
-            self.Log(self.model.filePath(item_index))
+            self.Log(self.model.fileName(item_index),__name__, sys._getframe().f_lineno)
+            self.Log(self.model.filePath(item_index),__name__, sys._getframe().f_lineno)
 
     # <待验证> 设置文件目录的格式大小
     def filetab_format(self):
@@ -1226,14 +1233,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionView.trigger()
         self.log = FileProcess.FileProcess(self.progressBar)  # 类的构造函数，函数中给出属性
         self.log.readkeyword(self.file)
-        self.Log('Preprocess file path!')
+        self.Log('Preprocess file path!',__name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
-        self.Log('Begin log read thread!')
+        self.Log('Begin log read thread!',__name__, sys._getframe().f_lineno)
         while self.log.is_alive():  # 由于文件读取线程和后面是依赖关系，不能立即继续执行
             time.sleep(1)
-            self.Log('Thread is running!')
+            self.Log('Thread is running!',__name__, sys._getframe().f_lineno)
             continue
-        self.Log('End log read thread!')
+        self.Log('End log read thread!',__name__, sys._getframe().f_lineno)
         # 处理返回结果
         if self.log.get_time_use() != []:
             [t1, t2, isok] = self.log.get_time_use()
@@ -1263,7 +1270,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 pass
         else:
-            self.Log('Err Can not get time use')
+            self.Log('Err Can not get time use',__name__, sys._getframe().f_lineno)
         return isok
 
     # 用于一些界面加载记录初始化后显示的内容,如数据包一次显示
@@ -1275,7 +1282,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         sp7_cnt = 0
         try:
             # ATP 右侧标签显示相关
-            self.Log("Begin init log show")
+            self.Log("Begin init log show",__name__, sys._getframe().f_lineno)
             # 初始化表格
             self.tableATPBTM.clear()
             self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值', '公里标'])
@@ -1295,7 +1302,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.BTM_cycle.append(c)
             self.tableATPBTM.setColumnCount(4)
             self.tableATPBTM.setRowCount(sp7_table_row_cnt)
-            self.Log("Begin search log key info")
+            self.Log("Begin search log key info",__name__, sys._getframe().f_lineno)
             # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
             for c in self.log.cycle_dic.keys():
                 if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
@@ -1339,7 +1346,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.tableATPBTM.setItem(sp7_cnt, 2, item_adjpos)
                     sp7_cnt = sp7_cnt + 1
             # 显示IO信息
-            self.Log("Begin search IO info")
+            self.Log("Begin search IO info",__name__, sys._getframe().f_lineno)
             self.set_io_page_content()
             # 文本显示
             if sp5_snipper == 0:
@@ -1361,7 +1368,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 pass
         except Exception as err:
-            self.Log(err)
+            self.Log(err,__name__, sys._getframe().f_lineno)
 
     # 界面初始化后，加载显示IO信息，参考应答器显示
     def set_io_page_content(self):
@@ -1400,7 +1407,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     pass
         except Exception as err:
-            print(err)
+            self.Log(err,__name__, sys._getframe().f_lineno)
             print("cnt_in %d  cnt_out %d" % (cnt_in, cnt_out))
         # 设置大小
         self.tb_ato_IN.setRowCount(cnt_in)
@@ -1479,7 +1486,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if load_flag == 1:
             self.ctrl_measure_status = 1  # 一旦单击则进入测量开始状态
             self.sp.setCursor(QtCore.Qt.WhatsThisCursor)
-            self.Log('start measure!')
+            self.Log('start measure!',__name__, sys._getframe().f_lineno)
         else:
             self.show_message("Info:记录未加载，不测量")
 
@@ -1503,7 +1510,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             # 获取终点索引，测量结束
             self.ctrl_measure_status = 3
-            self.Log('end measure!')
+            self.Log('end measure!',__name__, sys._getframe().f_lineno)
             # 更改图标
             if self.mode == 1:  # 标记模式
                 self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
@@ -1512,7 +1519,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # 如果是初始状态，则设置为启动
         if self.ctrl_measure_status == 1:
-            self.Log('begin measure!')
+            self.Log('begin measure!',__name__, sys._getframe().f_lineno)
             # 下面是当前鼠标坐标
             x, y = event.xdata, event.ydata
             # 速度位置曲线
@@ -1529,7 +1536,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         global cursor_in_flag
         cursor_in_flag = 1
         self.c_vato.move_signal.connect(self.set_table_content)  # 进入图后绑定光标触发
-        self.Log('connect ' + 'enter figure' + str(cursor_in_flag))
+        self.Log('connect ' + 'enter figure' ,__name__, sys._getframe().f_lineno)
 
     # 事件处理函数，更新光标进入图像标志,out=2
     def cursor_out_fig(self, event):
@@ -1538,8 +1545,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             self.c_vato.move_signal.disconnect(self.set_table_content)  # 离开图后解除光标触发
         except Exception as err:
-            self.Log(err)
-        self.Log('disconnect ' + 'leave figure' + str(cursor_in_flag))
+            self.Log(err,__name__, sys._getframe().f_lineno)
+        self.Log('disconnect ' + 'leave figure' , __name__, sys._getframe().f_lineno)
         # 测量立即终止，恢复初始态:
         if self.ctrl_measure_status > 0:
             self.ctrl_measure_status = 0
@@ -1548,7 +1555,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
             elif self.mode == 0:  # 浏览模式
                 self.sp.setCursor(QtCore.Qt.ArrowCursor)
-            self.Log('exit measure')
+            self.Log('exit measure',__name__, sys._getframe().f_lineno)
 
     # 绘制各种速度位置曲线
     def update_up_cure(self):
@@ -1561,17 +1568,17 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
                     or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
                 self.clear_axis()
-                self.Log("Mode Change recreate the paint")
+                self.Log("Mode Change recreate the paint",__name__, sys._getframe().f_lineno)
                 # 清除光标重新创建
                 if self.mode == 1:
                     # 重绘文字
                     self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
-                    self.Log("Update ctrl text ")
+                    self.Log("Update ctrl text ",__name__, sys._getframe().f_lineno)
                     if Mywindow.is_cursor_created == 1:
                         Mywindow.is_cursor_created = 0
                         del self.c_vato
                     self.tag_cursor_creat()
-                self.Log("Update Curve recreate curve and tag cursor ")
+                self.Log("Update Curve recreate curve and tag cursor ",__name__, sys._getframe().f_lineno)
                 # 处理ATO速度
                 if self.CBvato.isChecked():
                     self.sp.plotlog_vs(self.log, self.mode, curve_flag)
@@ -1700,7 +1707,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if sender.text() == '标注模式' and self.mode == 0:  # 由浏览模式进入标注模式不重绘范围
             self.mode = 1
             if load_flag == 1 and self.CBvato.isChecked():
-                self.Log("Mode Change excute!")
+                self.Log("Mode Change excute!",__name__, sys._getframe().f_lineno)
                 self.update_up_cure()
                 self.tag_cursor_creat()  # 只针对速度曲线
         elif sender.text() == '浏览模式' and self.mode == 1:  # 进入浏览模式重绘
@@ -1769,7 +1776,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 self.c_vato = SnaptoCursor(self.sp, self.sp.axes1, self.log.cycle, self.log.v_ato)  # 初始化一个光标
             self.c_vato.reset_cursor_plot()
-            self.Log("Link Signal to Tag Cursor")
+            self.Log("Link Signal to Tag Cursor",__name__, sys._getframe().f_lineno)
             self.cid1 = self.sp.mpl_connect('motion_notify_event', self.c_vato.mouse_move)
             self.cid2 = self.sp.mpl_connect('figure_enter_event', self.cursor_in_fig)
             self.cid3 = self.sp.mpl_connect('figure_leave_event', self.cursor_out_fig)
@@ -1789,7 +1796,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.move_signal.connect(self.set_ato_status_label)  # 标签
             self.c_vato.sim_move_singal.connect(self.set_ato_status_label)
             Mywindow.is_cursor_created = 1
-            self.Log("Mode changed Create tag cursor ")
+            self.Log("Mode changed Create tag cursor ",__name__, sys._getframe().f_lineno)
         elif self.mode == 0 and 1 == Mywindow.is_cursor_created:
             self.sp.mpl_disconnect(self.cid1)
             self.sp.mpl_disconnect(self.cid2)
@@ -1811,7 +1818,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.disconnect(self.set_ato_status_label)
             Mywindow.is_cursor_created = 0
             del self.c_vato
-            self.Log("Mode changed clear tag cursor ")
+            self.Log("Mode changed clear tag cursor ",__name__, sys._getframe().f_lineno)
         else:
             pass
 
@@ -2270,8 +2277,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         if tcms2ato_stat != []:
                             parse_flag = 1
         except Exception as err:
-            self.Log(err)
-            self.Log(ato2tcms_ctrl)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(ato2tcms_ctrl)
         # 显示
         # ATO2TCMS 控制信息
         try:
@@ -2337,8 +2344,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.led_ctrl_starlamp_2.setText('异常值%s' % ato2tcms_ctrl[9])
         except Exception as err:
-            self.Log(err)
-            self.Log(ato2tcms_ctrl)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(ato2tcms_ctrl)
         # ATO2TCMS 状态信息
         try:
             if ato2tcms_stat != []:
@@ -2354,8 +2361,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_stat_tunnellen_2.setText(str(int(ato2tcms_stat[4], 16)))  # 隧道长度
                 self.led_stat_atospeed_2.setText(str(int(ato2tcms_stat[5], 16)))  # ato速度
         except Exception as err:
-            self.Log(err)
-            self.Log(ato2tcms_stat)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(ato2tcms_stat)
         # TCMS2ATO 状态信息
         try:
             if tcms2ato_stat != []:
@@ -2513,8 +2520,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             str_tcms = str_tcms + str_raw[cnt]
                     self.led_tcms_pmt_state_2.setText('异常原因:%s' % str_tcms)
         except Exception as err:
-            self.Log(err)
-            self.Log(tcms2ato_stat)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(tcms2ato_stat)
 
     # 事件处理函数，设置计划信息
     def set_plan_page_content(self, idx):
@@ -2530,6 +2537,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         newPaintCnt = 0
         time_plan_remain = 0
         time_plan_count = 0
+        time_remain = 0
+        time_count = 0
         temp_transfer_list = []
         # 当周期系统时间
         cycle_os_time = self.log.cycle_dic[self.log.cycle[idx]].ostime_start
@@ -2567,18 +2576,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                 time_plan_remain, time_plan_count)
                 else:
                     pass
+            # 更新搜索完的记录信息,有数才存储
+            if ret_plan:
+                rp1 = ret_plan[0]
+                rp2 = ret_plan[1][0]
+                rp2_list = ret_plan[1][1]
+                rp3 = ret_plan[2]
+                rp4 = ret_plan[3]
+                # 运行时间和倒计时
+                time_remain = ret_plan[4]
+                time_count = ret_plan[5]
         except Exception as err:
-            self.Log(err)
-            self.Log(line)
-
-        rp1 = ret_plan[0]
-        rp2 = ret_plan[1][0]
-        rp2_list = ret_plan[1][1]
-        rp3 = ret_plan[2]
-        rp4 = ret_plan[3]
-        # 运行时间和倒计时
-        time_remain = ret_plan[4]
-        time_count = ret_plan[5]
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(line)
 
         # 临时变量
         rp2_temp_list = []
@@ -2657,8 +2667,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.led_runtime_2.setText(str(time_remain / 1000) + 's')
 
         except Exception as err:
-            self.Log(err)
-            self.Log(ret_plan)
+            self.Log(err,__name__, sys._getframe().f_lineno)
+            print(ret_plan)
 
     # 解析转化计划,参考实时解析实现
     def comput_plan_content(self, t=tuple):
@@ -2923,7 +2933,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.led_track.clear()
                     self.led_stop_d_JD.clear()
         except Exception as err:
-            self.Log(err)
+            self.Log(err,__name__, sys._getframe().f_lineno)
 
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):
@@ -2949,28 +2959,28 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             pass
         else:
             try:
-                self.Log('Init global vars')
+                self.Log('Init global vars',__name__, sys._getframe().f_lineno)
                 load_flag = 0  # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
                 curve_flag = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
-                self.Log('Init UI widgt')
+                self.Log('Init UI widgt',__name__, sys._getframe().f_lineno)
                 self.update_filetab()
                 self.reset_all_checkbox()
                 self.reset_text_edit()
                 self.mode = 0  # 恢复初始浏览模式
                 self.update_mvb_port_pat()  # 更新mvb索引端口信息
-                self.Log("Clear axes")
+                self.Log("Clear axes",__name__, sys._getframe().f_lineno)
                 self.sp.axes1.clear()
                 self.textEdit.clear()
-                self.Log('Init File log')
+                self.Log('Init File log',__name__, sys._getframe().f_lineno)
                 # 开始处理
                 is_ato_control = self.log_process()
-                self.Log("End all file process")
+                self.Log("End all file process",__name__, sys._getframe().f_lineno)
                 if is_ato_control == 0:
                     load_flag = 1  # 记录加载且ATO控车
                     self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                     self.CBvato.setChecked(True)
                     self.win_init_log_processed()  # 记录加载成功且有控车时，初始化显示一些内容
-                    self.Log('Set View mode and choose Vato')
+                    self.Log('Set View mode and choose Vato',__name__, sys._getframe().f_lineno)
                 elif is_ato_control == 1:
                     load_flag = 2  # 记录加载但是ATO没有控车
                     reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
@@ -3146,12 +3156,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.statusbar.showMessage(filepath[0] + "导出失败！")
 
     # 打印函数
-    def Log(self, msg, lino='num'):
+    def Log(self, msg=str, fun=str, lino=int):
         if str == type(msg):
-            print(msg + ',File:"' + __file__ + '",Line' + lino +
-                  ', in' + sys._getframe().f_code.co_name)
+            print(msg + ',File:"' + __file__ + '",Line' + str(lino) +
+                  ', in' + fun)
         else:
             print(msg)
+            print(',File:"' + __file__ + '",Line' + str(lino) +
+            ', in' + fun)
 
     # 由于pyinstaller不能打包直接打包图片资源的缺陷，QtDesigner自动生成的图标代码实际无法打包，需在目录下放置图标文件夹
     # 所以通过手动生成的qrc文件（QtDesigner也可以，未试验），通过PyRrc5转为py资源文件

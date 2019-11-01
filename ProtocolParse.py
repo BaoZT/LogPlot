@@ -47,15 +47,17 @@ class MVBParse(object):
         stream_list = stream.split(identifier)       # 分隔字节流
         stream = ''.join(stream_list)                # 生成连续的字节流，一个占位是4位
         # 根据格式列表切片按字节8位
-        for item in form:
-            content_str_list.append(stream[adder:adder + 2*item])
-            adder += 2*item
-
-            try:
-                tmp = int(stream[adder:adder + 2*item], 16)
-            except Exception as err:
-                err_flag = 1
-                print(err)
+        if (len(stream)/2) == len(form):
+            for item in form:
+                content_str_list.append(stream[adder:adder + 2*item])
+                adder += 2*item
+                try:
+                    tmp = int(stream[adder:adder + 2*item], 16)
+                except Exception as err:
+                    err_flag = 1
+                    print(err)
+        else:
+            content_str_list = []
         # 如果有错误重置
         if err_flag == 1:
             content_str_list = []

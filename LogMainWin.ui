@@ -1374,25 +1374,55 @@ background-color: rgb(170, 170, 255);</string>
                          <verstretch>0</verstretch>
                         </sizepolicy>
                        </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>60</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
                        <property name="baseSize">
                         <size>
                          <width>0</width>
                          <height>0</height>
                         </size>
                        </property>
+                       <property name="frameShape">
+                        <enum>QFrame::StyledPanel</enum>
+                       </property>
+                       <property name="frameShadow">
+                        <enum>QFrame::Plain</enum>
+                       </property>
+                       <property name="lineWidth">
+                        <number>3</number>
+                       </property>
                        <property name="autoScroll">
                         <bool>true</bool>
                        </property>
+                       <attribute name="horizontalHeaderCascadingSectionResizes">
+                        <bool>true</bool>
+                       </attribute>
                        <attribute name="horizontalHeaderDefaultSectionSize">
                         <number>62</number>
                        </attribute>
+                       <attribute name="horizontalHeaderHighlightSections">
+                        <bool>true</bool>
+                       </attribute>
                        <attribute name="horizontalHeaderMinimumSectionSize">
-                        <number>18</number>
+                        <number>85</number>
                        </attribute>
                        <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
                         <bool>false</bool>
                        </attribute>
                        <attribute name="horizontalHeaderStretchLastSection">
+                        <bool>true</bool>
+                       </attribute>
+                       <attribute name="verticalHeaderCascadingSectionResizes">
                         <bool>true</bool>
                        </attribute>
                        <column>
@@ -1979,8 +2009,20 @@ selection-background-color: rgb(255, 170, 0);</string>
                <property name="styleSheet">
                 <string notr="true">background-color: rgb(230, 230, 255);</string>
                </property>
+               <attribute name="headerCascadingSectionResizes">
+                <bool>true</bool>
+               </attribute>
                <attribute name="headerDefaultSectionSize">
                 <number>80</number>
+               </attribute>
+               <attribute name="headerHighlightSections">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="headerMinimumSectionSize">
+                <number>120</number>
+               </attribute>
+               <attribute name="headerStretchLastSection">
+                <bool>true</bool>
                </attribute>
                <column>
                 <property name="text">
@@ -2616,6 +2658,27 @@ background-color: rgb(170, 170, 255);</string>
             </item>
             <item>
              <widget class="QTableWidget" name="tableWidgetPlan_2">
+              <property name="lineWidth">
+               <number>2</number>
+              </property>
+              <property name="gridStyle">
+               <enum>Qt::SolidLine</enum>
+              </property>
+              <property name="sortingEnabled">
+               <bool>false</bool>
+              </property>
+              <attribute name="horizontalHeaderVisible">
+               <bool>false</bool>
+              </attribute>
+              <attribute name="horizontalHeaderCascadingSectionResizes">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderCascadingSectionResizes">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderStretchLastSection">
+               <bool>false</bool>
+              </attribute>
               <row>
                <property name="text">
                 <string>段序号</string>
@@ -3484,6 +3547,15 @@ background-color: rgb(170, 170, 255);</string>
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <attribute name="horizontalHeaderMinimumSectionSize">
+                  <number>80</number>
+                 </attribute>
+                 <attribute name="verticalHeaderMinimumSectionSize">
+                  <number>30</number>
+                 </attribute>
+                 <attribute name="verticalHeaderStretchLastSection">
+                  <bool>true</bool>
+                 </attribute>
                  <column>
                   <property name="text">
                    <string>时间</string>
@@ -3562,7 +3634,16 @@ background-color: rgb(170, 170, 255);</string>
                   <bool>true</bool>
                  </attribute>
                  <attribute name="horizontalHeaderDefaultSectionSize">
-                  <number>75</number>
+                  <number>71</number>
+                 </attribute>
+                 <attribute name="horizontalHeaderMinimumSectionSize">
+                  <number>50</number>
+                 </attribute>
+                 <attribute name="verticalHeaderMinimumSectionSize">
+                  <number>30</number>
+                 </attribute>
+                 <attribute name="verticalHeaderStretchLastSection">
+                  <bool>false</bool>
                  </attribute>
                  <column>
                   <property name="text">
@@ -3610,6 +3691,15 @@ background-color: rgb(170, 170, 255);</string>
                  </property>
                  <attribute name="horizontalHeaderDefaultSectionSize">
                   <number>94</number>
+                 </attribute>
+                 <attribute name="horizontalHeaderMinimumSectionSize">
+                  <number>45</number>
+                 </attribute>
+                 <attribute name="verticalHeaderMinimumSectionSize">
+                  <number>30</number>
+                 </attribute>
+                 <attribute name="verticalHeaderStretchLastSection">
+                  <bool>false</bool>
                  </attribute>
                  <column>
                   <property name="text">

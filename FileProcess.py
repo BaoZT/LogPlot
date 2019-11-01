@@ -15,6 +15,7 @@
 
 """
 import re
+import sys
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
 from ProtocolParse import MVBParse
@@ -123,8 +124,8 @@ class FileProcess(threading.Thread):
                 isok = iscycleok               # 当出现重新启机时，返回启机行号
             self.time_use = [t1, t2, isok]
         except Exception as err:
-            print(err)
-            print('err in log process!')
+            print('err in log process! ')
+            self.Log(err,__name__, sys._getframe().f_lineno)
 
     def get_time_use(self):
         return self.time_use
@@ -192,7 +193,7 @@ class FileProcess(threading.Thread):
                     cycle_start = int(raw_start[1].split('----')[0])
                     break
                 except Exception as err:
-                    print(err)
+                    self.Log(err,__name__, sys._getframe().f_lineno)
             else:
                 begin_idx = begin_idx - 1
         # 文件结束位置
@@ -203,7 +204,7 @@ class FileProcess(threading.Thread):
                     cycle_end = int(raw_end[1].split('---')[0])
                     break
                 except Exception as err:
-                    print(err)
+                    self.Log(err,__name__, sys._getframe().f_lineno)
             else:
                 end_idx = end_idx + 1
         # 边界是否只包含一个周期
@@ -397,10 +398,8 @@ class FileProcess(threading.Thread):
                 c.cycle_sp_dict[1] = pat_sp1.findall(line)[0]
             elif pat_sp2.findall(line):
                 try:
-                    if 'syn len = 0.' in line:
-                        pass
-                    else:
-                        l = re.split(',', line)
+                    l = re.split(',', line)
+                    if len(tuple(l[1:])) == 26:            # 出去nid_packet一共是26个数字
                         c.cycle_sp_dict[2] = tuple(l[1:])  # 保持与其他格式一致，从SP2后截取
                         if int(c.cycle_sp_dict[2][13]) == 1:             # 去除nid——packet是第13个字节
                             c.gfx_flag = 1
@@ -409,7 +408,8 @@ class FileProcess(threading.Thread):
                             c.gfx_flag = 0
                             self.gfx_flag = 0
                 except Exception as err:
-                    print('gfx_err ')
+                    print('gfx err')
+                    self.Log(err, __name__, sys._getframe().f_lineno)
             elif pat_sp5.findall(line):
                 c.cycle_sp_dict[5] = pat_sp5.findall(line)[0]
             elif pat_sp6.findall(line):
@@ -721,7 +721,7 @@ class FileProcess(threading.Thread):
                             c.break_status = 1          # 主断路器断开
                     parse_flag = 1
         except Exception as err:
-            print(err)
+            self.Log(err,__name__, sys._getframe().f_lineno)
         return parse_flag
 
     # <已废弃>
@@ -791,7 +791,7 @@ class FileProcess(threading.Thread):
                 self.a = np.append(self.a, 0)
         except Exception as err:
             print('transfer process error:')
-            print(err)
+            self.Log(err,__name__, sys._getframe().f_lineno)
 
     # <已废弃>
     # 搜索SC所在行
@@ -820,7 +820,7 @@ class FileProcess(threading.Thread):
                         pass
             except Exception as err:
                 print('read_file error:')
-                print(err)
+                self.Log(err,__name__, sys._getframe().f_lineno)
             # 进度条计算
             cnt = cnt + 1
             if int(cnt % bar_cnt) == 0:
@@ -828,3 +828,10 @@ class FileProcess(threading.Thread):
                 self.pbar.setValue(bar)
             else:
                 pass
+    # 打印函数
+    def Log(self, msg=str, fun=str, lino=int):
+        if str == type(msg):
+            print(msg + ',File:"' + __file__ + '",Line' + str(lino) +
+                  ', in' + fun)
+        else:
+            print(msg)

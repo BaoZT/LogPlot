@@ -514,7 +514,7 @@ class Figure_Canvas_R(FigureCanvas):
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.ax1_twin = self.axes1.twinx()         # 级位
-        self.choice = [0, 0, 0, 0]                 # 全部绘制
+        self.choice = [0, 0, 0, 0, 0]              # 列车速度，ATO命令速度，ATP命令速度， ATP允许速度， 输出级位
 
     # 更新绘制需求
     def updatePaintSet(self, ch=list):
@@ -522,6 +522,7 @@ class Figure_Canvas_R(FigureCanvas):
         self.choice[1] = ch[1]
         self.choice[2] = ch[2]
         self.choice[3] = ch[3]
+        self.choice[4] = ch[4]
         print(self.choice)
 
     # 实时绘制曲线
@@ -542,8 +543,11 @@ class Figure_Canvas_R(FigureCanvas):
         if self.choice[2] == 1:
             self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8)
         if self.choice[3] == 1:
-            self.ax1_twin.plot(tmp[3, :], color='b', linewidth=0.8)
+            self.axes1.plot(tmp[3, :], color='b', linewidth=0.8)
+        if self.choice[4] == 1:
+            self.ax1_twin.plot(tmp[4, :], color='red', linewidth=0.8)
 
         #self.axes1.set_ylim(0, 10000)
         #self.ax1_twin.set_ylim(-8, 21)
-        self.axes1.legend(['ato', ' atocmdv', 'atpcmdv', 'level'])
+        self.axes1.legend(['ato', ' atocmdv', 'atpcmdv', 'atppmtv'] )
+        self.ax1_twin.legend(['level'])
