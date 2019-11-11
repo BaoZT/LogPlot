@@ -1,15 +1,14 @@
-import matplotlib
-import serial
-import datetime
 import os
-import threading
 import queue
-import time
-import re
-import numpy as np
 import random
-from FileProcess import FileProcess
+import re
+import threading
+import time
+
+import numpy as np
 from PyQt5 import QtCore
+
+from FileProcess import FileProcess
 from ProtocolParse import MVBParse
 
 exit_flag = 0
@@ -43,7 +42,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
             #lines = f.readlines()
             #lines.reverse()
         while not exit_flag:
-            s = time.time()
+            #s = time.time()
             # 有数据就读取
             try:
                 #time.sleep(0.001)              # 着两行代码用于读取文件，测试时放开
@@ -117,7 +116,6 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     def run(self):
         # 打开文件等待写入logFile
         with open(self.logFile, 'w') as f:
-
             while not exit_flag:
                 try:
                     s = time.time()
@@ -140,11 +138,12 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
 
     # 按行写入文件
     def fileWrite(self, line, f):
-        self.logBuff.append(line)
+        if '\n' in line:
+            pass
+        else:
+            self.logBuff.append(line+'\n')
         if len(self.logBuff) == 500:
-            for item in self.logBuff:
-                f.write(item)
-                f.write('\n')
+            f.writelines(self.logBuff)
             # 写完后清空
             self.logBuff = []
             #print('thread write info!' + str(time.time()))
@@ -263,8 +262,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 返回用于画图
         return result
 
-        # 解析MVB内容
-
+    # 解析MVB内容
     def mvb_research(self, line):
         global pat_ato_ctrl
         global pat_ato_stat
@@ -297,12 +295,11 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                 real_idx = line.find('MVB[')
                 tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
                 self.tcms2ato_stat = self.mvbParser.ato_tcms_parse(1032, tmp)
-                if self.tcms2ato_stat != []:
+                if self.tcms2ato_stat:
                     parse_flag = 1
         return parse_flag
 
-        # 提取计划内容
-
+    # 提取计划内容
     def plan_research(self, line, cycle_num):
         update_flag = 0
         ret_plan = ()
@@ -357,8 +354,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 返回用于指示解析结果
         return update_flag
 
-        # 解析utc
-
+    # 解析utc
     @staticmethod
     def TransferUTC(t=str):
         ltime = time.localtime(int(t))

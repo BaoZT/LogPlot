@@ -42,7 +42,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.initUI()
         self.icon_from_file()
         self.file = ''
-        self.savePath = os.getcwd() + '\\'  # 实时存储的文件保存路径（文件夹）,增加斜线直接添加文件名即可
+        self.savePath = os.getcwd()  # 实时存储的文件保存路径（文件夹）,增加斜线直接添加文件名即可
         self.savefilename = ''  # 实时存储的写入文件名(含路径)
         self.pathlist = []
         self.BTM_cycle = []  # 存储含有BTM的周期号，用于操作计数器间接索引
@@ -295,7 +295,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 主界面的串口显示,立即更新路径
     def showlogSave(self):
-        self.savePath = QtWidgets.QFileDialog.getExistingDirectory(directory=os.getcwd()) + '\\'
+        self.savePath = QtWidgets.QFileDialog.getExistingDirectory(directory=os.getcwd())
         self.lineEdit.setText(self.savePath)
 
     # 实时绘设置
@@ -304,6 +304,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 连接或断开按钮
     def btnLinkorBreak(self):
+        # 初始化串口
         ser_is_open = 0
         if Mywindow.LinkBtnStatus == 0:
             RealTimeExtension.exit_flag = 0
@@ -333,6 +334,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     elif reply == 2097152:
                         break
             if ser_is_open == 1:
+                self.savePath = self.lineEdit.text() + '\\'      # 更新路径选择窗口内容
+                self.savePath = self.savePath.replace('//', '/')
+                self.savePath = self.savePath.replace('/', '\\')
                 thRead = SerialRead('COMThread', self.serport)  # 串口数据读取解析线程
                 thPaintWrite = RealPaintWrite(self.savePath, tmpfilename, self.serport.port)  # 文件写入线程
                 thpaint = threading.Thread(target=self.run_paint)  # 绘图线程
@@ -347,6 +351,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 thRead.start()
                 thPaintWrite.start()
                 self.is_realtime_paint = True  # 允许绘图
+
                 thpaint.start()
                 self.show_message('Info:读取记录及绘图线程启动成功！')
             else:
@@ -1242,7 +1247,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             continue
         self.Log('End log read thread!',__name__, sys._getframe().f_lineno)
         # 处理返回结果
-        if self.log.get_time_use() != []:
+        if self.log.get_time_use():
             [t1, t2, isok] = self.log.get_time_use()
             self.show_message("Info:预处理耗时:" + str(t1) + 's')
             # 记录中模式有AOR或AOS
@@ -3162,8 +3167,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                   ', in' + fun)
         else:
             print(msg)
-            print(',File:"' + __file__ + '",Line' + str(lino) +
-            ', in' + fun)
+            print(',File:"' + __file__ + '",Line' + str(lino) + ', in' + fun)
 
     # 由于pyinstaller不能打包直接打包图片资源的缺陷，QtDesigner自动生成的图标代码实际无法打包，需在目录下放置图标文件夹
     # 所以通过手动生成的qrc文件（QtDesigner也可以，未试验），通过PyRrc5转为py资源文件

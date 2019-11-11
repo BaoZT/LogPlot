@@ -558,9 +558,15 @@
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="4,6">
             <item>
              <widget class="QGroupBox" name="groupBox_3">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="title">
                <string>ATO-ATP</string>
               </property>
@@ -1376,8 +1382,8 @@ background-color: rgb(170, 170, 255);</string>
                        </property>
                        <property name="minimumSize">
                         <size>
-                         <width>60</width>
-                         <height>30</height>
+                         <width>80</width>
+                         <height>100</height>
                         </size>
                        </property>
                        <property name="maximumSize">
@@ -1513,7 +1519,7 @@ background-color: rgb(170, 170, 255);</string>
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
-                  <height>150</height>
+                  <height>120</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -1970,7 +1976,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>7</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -3631,7 +3637,7 @@ background-color: rgb(170, 170, 255);</string>
                   </sizepolicy>
                  </property>
                  <attribute name="horizontalHeaderVisible">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </attribute>
                  <attribute name="horizontalHeaderDefaultSectionSize">
                   <number>71</number>

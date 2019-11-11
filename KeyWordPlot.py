@@ -2,12 +2,11 @@
 
 # encoding: utf-8
 
-import FileProcess
 import matplotlib
+from PyQt5 import QtCore, QtWidgets
+import FileProcess
 import RealTimeExtension
-import threading
-import numpy as np
-from PyQt5 import QtCore, QtGui, QtWidgets
+
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -15,8 +14,8 @@ plt.rcParams['axes.unicode_minus'] = False        # 解决Matplotlib绘图中，
 from pylab import *                             # 解决matplotlib绘图，汉字显示不正常的问题
 mpl.rcParams['font.sans-serif'] = ['SimHei']
 
-
 cursor_track_flag = 1   # 1=追踪，0=不追踪
+
 
 # 光标类定义
 class SnaptoCursor(QtCore.QObject):
@@ -515,6 +514,14 @@ class Figure_Canvas_R(FigureCanvas):
         FigureCanvas.updateGeometry(self)
         self.ax1_twin = self.axes1.twinx()         # 级位
         self.choice = [0, 0, 0, 0, 0]              # 列车速度，ATO命令速度，ATP命令速度， ATP允许速度， 输出级位
+        self.l_vato = []
+        self.l_atocmdv = []
+        self.l_atpcmdv = []
+        self.l_atppmtv = []
+        self.l_level = []
+        self.init_realtime_plot()
+        self.axes1.set_ylim(0, 10000)
+        self.ax1_twin.set_ylim(-8, 21)
 
     # 更新绘制需求
     def updatePaintSet(self, ch=list):
@@ -525,6 +532,19 @@ class Figure_Canvas_R(FigureCanvas):
         self.choice[4] = ch[4]
         print(self.choice)
 
+    def init_realtime_plot(self):
+        tmp = np.fliplr(np.zeros([5, 10000]) )
+        #if self.choice[0] == 1:
+        self.l_vato = self.axes1.plot(tmp[0, :], color='deeppink', linewidth=0.8)
+        #if self.choice[1] == 1:
+        self.l_atocmdv = self.axes1.plot(tmp[1, :], color='green', linewidth=0.8)
+        #if self.choice[2] == 1:
+        self.l_atpcmdv = self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8)
+        #if self.choice[3] == 1:
+        self.l_atppmtv = self.axes1.plot(tmp[3, :], color='b', linewidth=0.8)
+        #if self.choice[4] == 1:
+        self.l_level = self.ax1_twin.plot(tmp[4, :], color='red', linewidth=0.8)
+
     # 实时绘制曲线
     def realTimePlot(self):
         '''
@@ -532,22 +552,21 @@ class Figure_Canvas_R(FigureCanvas):
         :param choice: 1=绘制，0=不绘制 [Vato,Vatocmd,Vatpcmd,Level]
         :return: None
         '''
-        self.ax1_twin.clear()
-        self.axes1.clear()
+
+        #self.ax1_twin.clear()
+        #self.axes1.clear()
         tmp = np.fliplr(RealTimeExtension.paintList)
 
         if self.choice[0] == 1:
-            self.axes1.plot(tmp[0, :], color='deeppink', linewidth=0.8)
+            self.l_vato[0].set_ydata(tmp[0, :])
         if self.choice[1] == 1:
-            self.axes1.plot(tmp[1, :], color='green', linewidth=0.8)
+            self.l_atocmdv[0].set_ydata(tmp[1, :])
         if self.choice[2] == 1:
-            self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8)
+            self.l_atpcmdv[0].set_ydata(tmp[2, :])
         if self.choice[3] == 1:
-            self.axes1.plot(tmp[3, :], color='b', linewidth=0.8)
+            self.l_atppmtv[0].set_ydata(tmp[3, :])
         if self.choice[4] == 1:
-            self.ax1_twin.plot(tmp[4, :], color='red', linewidth=0.8)
+            self.l_level[0].set_ydata(tmp[4, :])
 
-        #self.axes1.set_ylim(0, 10000)
-        #self.ax1_twin.set_ylim(-8, 21)
         self.axes1.legend(['ato', ' atocmdv', 'atpcmdv', 'atppmtv'] )
         self.ax1_twin.legend(['level'])
