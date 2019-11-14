@@ -16,12 +16,13 @@
 """
 import re
 import sys
-from PyQt5.QtWidgets import QProgressBar
-from PyQt5 import QtCore
-from ProtocolParse import MVBParse
-import numpy as np
 import threading
 import time
+
+import numpy as np
+from PyQt5.QtWidgets import QProgressBar
+
+from ProtocolParse import MVBParse
 
 pat_ato_ctrl = ''
 pat_ato_stat = ''
@@ -63,7 +64,7 @@ class CycleLog(object):
 
 # 文件处理类定义
 class FileProcess(threading.Thread):
-    # contructor
+    # constructors
     def __init__(self, pbar=QProgressBar):
         # 线程处理
         threading.Thread.__init__(self)

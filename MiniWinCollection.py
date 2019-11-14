@@ -20,10 +20,11 @@
 
 '''
 import matplotlib
+
+from CycleInfo import Ui_MainWindow as CycleWin
 from MVBParser import Ui_MainWindow as MVBParserWin
 from Measure import Ui_MainWindow as MeasureWin
-from CycleInfo import Ui_MainWindow as CycleWin
-from PyQt5 import QtCore, QtGui, QtWidgets
+
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from ProtocolParse import MVBParse
@@ -34,7 +35,6 @@ import matplotlib.pyplot as plt
 import FileProcess
 import serial
 import serial.tools.list_ports
-import datetime
 import time
 import re
 import numpy as np

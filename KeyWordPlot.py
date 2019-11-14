@@ -506,7 +506,7 @@ class Figure_Canvas_R(FigureCanvas):
     def __init__(self, parent=None, width=20, height=10, dpi=100):
         self.fig = plt.figure(figsize=(width, height), dpi=100, frameon=False)
         FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
-        self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.040, right=0.96, hspace=0.17, wspace=0.25)
+        self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.052, right=0.96, hspace=0.17, wspace=0.25)
         self.axes1 = self.fig.add_subplot(111)  # 画速度曲线
         self.setParent(parent)
         self.line_list = {}                     # 键值对存储曲线
@@ -520,7 +520,8 @@ class Figure_Canvas_R(FigureCanvas):
         self.l_atppmtv = []
         self.l_level = []
         self.init_realtime_plot()
-        self.axes1.set_ylim(0, 10000)
+        self.axes1.set_ylim(-100, 10000, auto=True)
+        #self.axes1.set_yticks(list(range(-100, 10000, 500)), True)
         self.ax1_twin.set_ylim(-8, 21)
 
     # 更新绘制需求
@@ -534,29 +535,22 @@ class Figure_Canvas_R(FigureCanvas):
 
     def init_realtime_plot(self):
         tmp = np.fliplr(np.zeros([5, 10000]) )
-        #if self.choice[0] == 1:
-        self.l_vato = self.axes1.plot(tmp[0, :], color='deeppink', linewidth=0.8)
-        #if self.choice[1] == 1:
-        self.l_atocmdv = self.axes1.plot(tmp[1, :], color='green', linewidth=0.8)
-        #if self.choice[2] == 1:
-        self.l_atpcmdv = self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8)
-        #if self.choice[3] == 1:
-        self.l_atppmtv = self.axes1.plot(tmp[3, :], color='b', linewidth=0.8)
-        #if self.choice[4] == 1:
-        self.l_level = self.ax1_twin.plot(tmp[4, :], color='red', linewidth=0.8)
+        # 初始绘图获得曲线句柄
+        self.l_vato = self.axes1.plot(tmp[0, :], color='deeppink', linewidth=0.8, label='vato')
+        self.l_atocmdv = self.axes1.plot(tmp[1, :], color='green', linewidth=0.8, label='atocmdv')
+        self.l_atpcmdv = self.axes1.plot(tmp[2, :], color='orange', linewidth=0.8, label='atpcmdv')
+        self.l_atppmtv = self.axes1.plot(tmp[3, :], color='b', linewidth=0.8, label='atppmtv')
+        self.l_level = self.ax1_twin.plot(tmp[4, :], color='red', linewidth=0.8, label='level')
 
     # 实时绘制曲线
     def realTimePlot(self):
-        '''
+        """
         根据指示绘制图，由外界选择
         :param choice: 1=绘制，0=不绘制 [Vato,Vatocmd,Vatpcmd,Level]
         :return: None
-        '''
-
-        #self.ax1_twin.clear()
-        #self.axes1.clear()
+        """
         tmp = np.fliplr(RealTimeExtension.paintList)
-
+        # 重置曲线
         if self.choice[0] == 1:
             self.l_vato[0].set_ydata(tmp[0, :])
         if self.choice[1] == 1:
@@ -567,6 +561,6 @@ class Figure_Canvas_R(FigureCanvas):
             self.l_atppmtv[0].set_ydata(tmp[3, :])
         if self.choice[4] == 1:
             self.l_level[0].set_ydata(tmp[4, :])
-
-        self.axes1.legend(['ato', ' atocmdv', 'atpcmdv', 'atppmtv'] )
-        self.ax1_twin.legend(['level'])
+        # 绘制标签
+        self.axes1.legend(loc='upper left')
+        self.ax1_twin.legend(loc='upper right')

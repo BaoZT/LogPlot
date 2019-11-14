@@ -38,33 +38,35 @@ class SerialRead(threading.Thread, QtCore.QObject):
     # 串口成功打开才启动此线程
     def run(self):
         # 读取串口内容
-        #with open('10291540-Serial-COM39.log', 'r') as f:   # 测试时放开
-            #lines = f.readlines()
-            #lines.reverse()
-        while not exit_flag:
-            #s = time.time()
-            # 有数据就读取
-            try:
-                #time.sleep(0.001)              # 着两行代码用于读取文件，测试时放开
-                #line = lines.pop()
-                line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
-                queueLock.acquire()
-                if not workQueue.full():
-                    workQueue.put(line, block=False)
-                    queueLock.release()
-                    #print('thread read info!' + str(time.time()))
-                else:
-                    queueLock.release()
-                    print('queue is full!')
-                    # 处理画图信息
-            except Exception as err:
-                    print(err)
+        with open('10291540-Serial-COM39.log', 'r') as f:   # 测试时放开
+            lines = f.readlines()
+            lines.reverse()
+            while not exit_flag:
+                #s = time.time()
+                # 有数据就读取
+                try:
+                    time.sleep(0.0001)              # 着两行代码用于读取文件，测试时放开
+                    line = lines.pop()
+                    #line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
+                    queueLock.acquire()
+                    if not workQueue.full():
+                        workQueue.put(line, block=False)
+                        queueLock.release()
+                        #print('thread read info!' + str(time.time()))
+                    else:
+                        queueLock.release()
+                        print('queue is full!')
+                        # 处理画图信息
+                except Exception as err:
+                        print(err)
 
 
 class RealPaintWrite(threading.Thread, QtCore.QObject):
 
-    pat_show_singal = QtCore.pyqtSignal(tuple)
-    plan_show_singal = QtCore.pyqtSignal(tuple)      # 计划显示使用的信号
+    pat_show_signal = QtCore.pyqtSignal(tuple)
+    plan_show_signal = QtCore.pyqtSignal(tuple)      # 计划显示使用的信号
+    io_show_signal = QtCore.pyqtSignal(tuple)
+    sp7_show_signal = QtCore.pyqtSignal(tuple)
 
     def __init__(self, filepath=str, filenamefmt=str, portname=str):
         threading.Thread.__init__(self, )
@@ -111,6 +113,11 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.sp2_real = ()
         self.sp5_real = ()
         self.sp131_real = ()
+        # io 信息
+        self.io_in_real = ()
+        self.io_out_real = []
+        # btm信息
+        self.sp7_real=()
 
     # 串口成功打开才启动该线程
     def run(self):
@@ -177,8 +184,8 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                           + self.portname
         return tmpfilename
 
+    #生成计算曲线
     def paintProcess(self, line):
-
         # 控车信息，显示信息，周期信息等
         # 匹配速度曲线信息
         result = self.pat_research(line)
@@ -196,7 +203,6 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         if self.newPaintCnt == real_curve_buff:
             paintList[:, real_curve_buff:real_curve_all_buff] = paintList[:, 0:real_curve_all_buff - real_curve_buff]
             paintList[:, 0:real_curve_buff] = newPaintList[:, 0:real_curve_buff]
-
             # 清除列表
             self.newPaintCnt = 0
             # 实时line匹配内容
@@ -248,19 +254,68 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         elif self.pat_list[14].findall(line):  # 这是SP131的正则解析情况
             update_flag = 1
             self.sp131_real = self.pat_list[14].findall(line)[0]
-
-        # 匹配计划，内部使用独立信号
-        self.plan_research(line, self.cycle_num)
+        # 生成信号结果
         result = (self.cycle_num, self.time_content, self.fsm, self.sc_ctrl, self.stoppoint,
                   self.ato2tcms_ctrl, self.ato2tcms_stat, self.tcms2ato_stat,
                   self.gfx_flag, self.sp2_real, self.sp5_real, self.sp131_real)
         # 发射信号
         if update_flag == 1:
-            self.pat_show_singal.emit(result)
-        else:
-            pass
+            self.pat_show_signal.emit(result)
+        # 匹配计划，内部使用独立信号
+        self.plan_research(line, self.cycle_num)
+        # io 独立信号
+        self.pat_io_research(line)
+        # btm独立信号
+        self.pat_btm_research(line)
         # 返回用于画图
         return result
+
+    # IO查询
+    def pat_io_research(self, line):
+        result = ()
+        update_flag = 0
+        # 查找或清空
+        if self.pat_list[27].findall(line):
+            self.io_in_real = self.pat_list[27].findall(line)[0]
+            update_flag = 1
+        else:
+            self.io_in_real = ()
+        # 查找或清空
+        if self.pat_list[28].findall(line):
+            self.io_out_real = self.pat_list[28].findall(line)
+            update_flag = 1
+        else:
+            self.io_out_real = ()
+        # 组合数据,前面安装时间和周期
+        result = (self.cycle_num, self.time_content, self.io_in_real, self.io_out_real)
+        # 发送信号
+        if update_flag == 1:
+            self.io_show_signal.emit(result)
+        else:
+            pass
+
+    # btm查询
+    def pat_btm_research(self, line):
+        if len(self.sp2_real) == 26:
+            mile_stone = self.sp2_real[23]    # 获取公里标，逗号分隔后，除去nid后第22个
+        else:
+            mile_stone = ''
+        result = ()
+        update_flag = 0
+        # 解析基本参数，相对于离线解析，模板中增加了周期开始和结束的识别
+        # 所以模板序号
+        if self.pat_list[11].findall(line):
+            self.sp7_real = self.pat_list[11].findall(line)[0]
+            update_flag = 1
+        else:
+            pass
+        # 组合数据
+        result = (self.time_content, self.sp7_real, mile_stone)
+        # 发送信号
+        if update_flag == 1:
+            self.sp7_show_signal.emit(result)
+        else:
+            pass
 
     # 解析MVB内容
     def mvb_research(self, line):
@@ -348,7 +403,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             pass
         # 发送信号
         if update_flag == 1:
-            self.plan_show_singal.emit(ret_plan)
+            self.plan_show_signal.emit(ret_plan)
         else:
             pass
         # 返回用于指示解析结果

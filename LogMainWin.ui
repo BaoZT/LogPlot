@@ -1516,10 +1516,16 @@ background-color: rgb(170, 170, 255);</string>
               </item>
               <item>
                <widget class="QWidget" name="widget_2" native="true">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>1</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
-                  <height>120</height>
+                  <height>110</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -1976,7 +1982,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>6</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -3599,14 +3605,14 @@ background-color: rgb(170, 170, 255);</string>
               <widget class="QPushButton" name="btn_mvb_delay_plot">
                <property name="geometry">
                 <rect>
-                 <x>290</x>
+                 <x>280</x>
                  <y>20</y>
-                 <width>101</width>
-                 <height>23</height>
+                 <width>151</width>
+                 <height>41</height>
                 </rect>
                </property>
                <property name="text">
-                <string>图形绘制</string>
+                <string>离线响应图形绘制</string>
                </property>
               </widget>
              </widget>
@@ -3643,7 +3649,7 @@ background-color: rgb(170, 170, 255);</string>
                   <number>71</number>
                  </attribute>
                  <attribute name="horizontalHeaderMinimumSectionSize">
-                  <number>50</number>
+                  <number>80</number>
                  </attribute>
                  <attribute name="verticalHeaderMinimumSectionSize">
                   <number>30</number>
@@ -3699,7 +3705,7 @@ background-color: rgb(170, 170, 255);</string>
                   <number>94</number>
                  </attribute>
                  <attribute name="horizontalHeaderMinimumSectionSize">
-                  <number>45</number>
+                  <number>60</number>
                  </attribute>
                  <attribute name="verticalHeaderMinimumSectionSize">
                   <number>30</number>
