@@ -38,27 +38,29 @@ class SerialRead(threading.Thread, QtCore.QObject):
     # 串口成功打开才启动此线程
     def run(self):
         # 读取串口内容
-        with open('10291540-Serial-COM39.log', 'r') as f:   # 测试时放开
-            lines = f.readlines()
-            lines.reverse()
-            while not exit_flag:
-                #s = time.time()
-                # 有数据就读取
-                try:
-                    time.sleep(0.0001)              # 着两行代码用于读取文件，测试时放开
-                    line = lines.pop()
-                    #line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
-                    queueLock.acquire()
-                    if not workQueue.full():
-                        workQueue.put(line, block=False)
+        #with open('20180726132709_Serial-COM20-3-2.txt', 'r') as f:   # 测试时放开
+            #lines = f.readlines()
+            #lines.reverse()
+        while not exit_flag:
+            #s = time.time()
+            # 有数据就读取
+            try:
+                #time.sleep(0.001)              # 着两行代码用于读取文件，测试时放开
+                #line = lines.pop()
+                line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
+                queueLock.acquire()
+                if not workQueue.full():
+                    try:
+                        workQueue.put_nowait(line)
                         queueLock.release()
-                        #print('thread read info!' + str(time.time()))
-                    else:
-                        queueLock.release()
-                        print('queue is full!')
-                        # 处理画图信息
-                except Exception as err:
+                    except Exception as err:
                         print(err)
+                        queueLock.release()
+                else:
+                    queueLock.release()
+                    # 处理画图信息
+            except Exception as err:
+                    print(err)
 
 
 class RealPaintWrite(threading.Thread, QtCore.QObject):
@@ -67,6 +69,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     plan_show_signal = QtCore.pyqtSignal(tuple)      # 计划显示使用的信号
     io_show_signal = QtCore.pyqtSignal(tuple)
     sp7_show_signal = QtCore.pyqtSignal(tuple)
+    sdu_show_signal = QtCore.pyqtSignal(tuple)
 
     def __init__(self, filepath=str, filenamefmt=str, portname=str):
         threading.Thread.__init__(self, )
@@ -117,25 +120,27 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.io_in_real = ()
         self.io_out_real = []
         # btm信息
-        self.sp7_real=()
+        self.sp7_real = ()
+        # 测速测距
+        self.sdu_ato = []
+        self.sdu_atp = []
+        self.state_machine = 0  # 测速测距检查使用的状态机
 
     # 串口成功打开才启动该线程
     def run(self):
         # 打开文件等待写入logFile
         with open(self.logFile, 'w') as f:
             while not exit_flag:
-                try:
-                    s = time.time()
-                    queueLock.acquire()
-                    while not workQueue.empty():
-                        line = workQueue.get(block=False)
-                        self.fileWrite(line, f)
-                        self.paintProcess(line)
-                    queueLock.release()
-                    time.sleep(0.001)
-                    #print('thread analysis info!' + str(time.time()))
-                except Exception as err:
-                    print(err)
+                if not workQueue.empty():
+                    try:
+                        line = workQueue.get_nowait()
+                    except Exception as err:
+                        print(err)
+                    self.fileWrite(line, f)
+                    self.paintProcess(line)
+                else:
+                    time.sleep(0.1)
+                #print('thread analysis info!' + str(time.time()))
             # 清空缓存
             self.fileFlush(f)
             # 线程停止
@@ -184,7 +189,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                           + self.portname
         return tmpfilename
 
-    #生成计算曲线
+    #生成计算曲线和调用模板匹配
     def paintProcess(self, line):
         # 控车信息，显示信息，周期信息等
         # 匹配速度曲线信息
@@ -207,6 +212,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             self.newPaintCnt = 0
             # 实时line匹配内容
 
+    # 模板识别
     def pat_research(self, line):
         update_flag = 0
         # 解析基本参数，相对于离线解析，模板中增加了周期开始和结束的识别
@@ -267,8 +273,35 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.pat_io_research(line)
         # btm独立信号
         self.pat_btm_research(line)
+        # 测速测距识别
+        self.pat_sdu_research(line)
         # 返回用于画图
         return result
+
+    # 测速测距识别
+    def pat_sdu_research(self, line):
+        result = ()
+        # 查找或清空
+        if self.pat_list[30].findall(line):
+            self.sdu_atp = self.pat_list[30].findall(line)[0]
+            self.state_machine = 1
+            # 查找或清空
+        if self.pat_list[29].findall(line):
+            self.sdu_ato = self.pat_list[29].findall(line)[0]
+            # 如果已经收到了sdu_ato
+            if self.state_machine == 1:
+                self.state_machine = 2    # 置状态机为2.收到ATP
+        # 组合数据,前面安装时间和周期
+        result = (self.sdu_ato, self.sdu_atp)
+
+        # 收集到sdu_ato和sdu_atp, 终止状态机，发送信号清空
+        if self.state_machine == 2:
+            self.sdu_show_signal.emit(result)
+            self.state_machine = 0
+            self.sdu_ato = []
+            self.sdu_atp = []
+        else:
+            pass
 
     # IO查询
     def pat_io_research(self, line):

@@ -510,11 +510,14 @@ class FileProcess(threading.Thread):
         # IO IN的信息
         pat_io_in = re.compile('\[DOOR\]IO_IN_(\w+)=(\d)')
         pat_io_out = re.compile('\[MSG\](OPEN+\s[LR])')
+        # sdu 信息
+        p_ato_sdu = re.compile('v&p_ato:(\d+),(\d+)')
+        p_atp_sdu = re.compile('v&p_atp:(-?\d+),(-?\d+)')
 
         # 添加列表
         pat_list = [pat_time, pat_fsm, pat_sc, pat_stop, pat_sp0, pat_sp1, pat_sp2, pat_sp5, pat_sp6, pat_sp7,
                     pat_sp8, pat_sp9, pat_sp131, pat_sp130, pat_sp132, pat_sp134, pat_c41, pat_c43, pat_c2,
-                    pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46, pat_io_in, pat_io_out]
+                    pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46, pat_io_in, pat_io_out, p_ato_sdu, p_atp_sdu]
 
         return pat_list
 

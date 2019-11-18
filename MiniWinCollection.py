@@ -664,7 +664,7 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
 
         self.OpenButton.clicked.connect(self.PlotSet)
 
-        self.plot_cycle_time.setValue(3)
+        self.plot_cycle_time.setValue(1)
         self.plot_flag.setChecked(True)
         self.resize(180, 80)
 

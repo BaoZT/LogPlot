@@ -28,7 +28,7 @@ from RealTimeExtension import SerialRead, RealPaintWrite
 load_flag = 0  # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
 cursor_in_flag = 0  # 区分光标是否在图像内,初始化为0,in=1，out=2
 curve_flag = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
-cur_interface = 0 #  当前界面， 1=离线界面，2=在线界面
+cur_interface = 0  # 当前界面， 1=离线界面，2=在线界面
 
 # 主界面类
 class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -86,13 +86,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.utctransfer = UTCTransferDlg()
         # 绘图界面设置器
         self.realtime_plot_dlg = RealTimePlotDlg()  # 实时绘图界面设置
-        self.realtime_plot_interval = 3  # 默认3s绘图
+        self.realtime_plot_interval = 1  # 默认1s绘图
         self.is_realtime_paint = False  # 实时绘图否
         self.realtime_plot_dlg.realtime_plot_set_signal.connect(self.realtime_plot_set)
         # 实时btm和io
         self.real_io_in_list = []
         self.real_io_out_list = []
         self.real_btm_list = []
+        # 实时速传检测
+        self.sdu_info_s = [0, 0]  # ato 速传位置， atp速传位置
 
         self.widget.setFocus()
         self.fileOpen.triggered.connect(self.showDialog)
@@ -344,7 +346,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.serdialog.OpenButton.click()
             self.serport.port = self.comboBox.currentText()
             # 当串口没有打开过
-            ser_is_open = 1   # 测试时打开
+            #ser_is_open = 1   # 测试时打开
             while ser_is_open == 0:
                 try:
                     self.serport.open()
@@ -372,6 +374,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 thPaintWrite.plan_show_signal.connect(self.realtime_plan_show)  # 局部变量无需考虑后续解绑
                 thPaintWrite.sp7_show_signal.connect(self.realtime_btm_show)  # 应答器更新
                 thPaintWrite.io_show_signal.connect(self.realtime_io_show)  # io信息更新
+                thPaintWrite.sdu_show_signal.connect(self.realtime_sdu_show) # sdu 信息更新
                 # 设置线程
                 thpaint.setDaemon(True)
                 thRead.setDaemon(True)
@@ -454,7 +457,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.lbl_door_pmt_2.setStyleSheet("background-color: rgb(255, 0, 0);")
             # ATP停准停稳状态
             if sp_tpl[16].strip() == '0':
-                self.lbl_atp_stop_ok_2.setText('未停稳')
+                self.lbl_atp_stop_ok_2.setText('车未停稳')
                 self.lbl_atp_stop_ok_2.setStyleSheet("background-color: rgb(255, 0, 0);")
             elif sp_tpl[16].strip() == '1':
                 self.lbl_atp_stop_ok_2.setText('停稳未停准')
@@ -497,7 +500,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             # ATP等级/模式
             if sp_tpl[8].strip() == '1':
-                self.lbl_atp_level_2.setText('CTCS2')
+                self.lbl_atp_level_2.setText('CTCS 2')
 
                 if sp_tpl[9].strip() == '1':
                     self.lbl_atp_mode_2.setText('待机模式')
@@ -518,7 +521,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif sp_tpl[9].strip() == '11':
                     self.lbl_atp_mode_2.setText('休眠模式')
             elif sp_tpl[8].strip() == '3':
-                self.lbl_atp_level_2.setText('CTCS3')
+                self.lbl_atp_level_2.setText('CTCS 3')
 
                 if sp_tpl[9].strip() == '6':
                     self.lbl_atp_mode_2.setText('待机模式')
@@ -592,13 +595,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.lbl_ato_radio_2.setStyleSheet("background-color: rgb(255, 0, 0);")
 
             if sp_tpl[5].strip() == '1':
-                self.lbl_ato_session_2.setText('未连接')
+                self.lbl_ato_session_2.setText('无线中断')
                 self.lbl_ato_session_2.setStyleSheet("background-color: rgb(255, 0, 0);")
             elif sp_tpl[5].strip() == '2':
                 self.lbl_ato_session_2.setText('正在呼叫')
                 self.lbl_ato_session_2.setStyleSheet("background-color: rgb(170, 170, 255);")
             elif sp_tpl[5].strip() == '3':
-                self.lbl_ato_session_2.setText('正常连接')
+                self.lbl_ato_session_2.setText('无线连接')
                 self.lbl_ato_session_2.setStyleSheet("background-color: rgb(0, 255, 127);")
 
             if sp_tpl[0].strip() == '1':
@@ -1146,6 +1149,47 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 for m in range(len(self.real_io_out_list[row_in_idx])):
                     self.real_io_out_list[row_in_idx][m].setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
                     self.tb_ato_OUT.setItem(row_in_idx, m, self.real_io_out_list[row_in_idx][m])
+
+    # 显示测速测距
+    def realtime_sdu_show(self, ret_sdu=tuple):
+        if ret_sdu:
+            ato_sdu = ret_sdu[0]
+            atp_sdu = ret_sdu[1]
+            # 检查并计算
+            if ato_sdu and atp_sdu:
+                # 计算速度和速度误差
+                ato_v = abs(int(ato_sdu[0]))
+                ato_s = abs(int(atp_sdu[1]))
+                self.led_ato_sdu.setText(str(ato_v)+'cm/s')
+                ato_v_kilo = int(ato_sdu[0]) * 9 / 250.0
+                self.lcd_ato_sdu.display(str(float('%.1f'% ato_v_kilo)))
+                # atp速度和公里情况
+                atp_v = abs(int(atp_sdu[0]))
+                atp_s = abs(int(atp_sdu[1]))
+                self.led_atp_sdu.setText(str(atp_v)+'cm/s')
+                atp_v_kilo = int(ato_sdu[0]) * 9 / 250.0
+                self.lcd_atp_sdu.display(str(float('%.1f'% atp_v_kilo)))
+                # 计算测速测距偏差
+                self.led_sdu_err.setText(str(abs(ato_v - atp_v))+'cm/s')
+                # 判断情况
+                if (ato_v - atp_v) < -28: # 若偏低1km/h
+                    self.lbl_sdu_judge.setText("ATO速度偏低")
+                    self.lbl_sdu_judge.setStyleSheet("background-color: rgb(255, 255, 0);")
+                elif(ato_v - atp_v) > 28: # 若偏高1km/h
+                    self.lbl_sdu_judge.setText("ATO速度偏高")
+                    self.lbl_sdu_judge.setStyleSheet("background-color: rgb(255, 0, 0);")
+                else:
+                    self.lbl_sdu_judge.setText("速传速度一致")
+                    self.lbl_sdu_judge.setStyleSheet("background-color: rgb(170, 170, 255);")
+                # 判断位置
+                self.led_ato_s_delta.setText(str(ato_s - self.sdu_info_s[0])+'cm')
+                self.sdu_info_s[0] = ato_s
+                self.led_atp_s_delta.setText(str(ato_s - self.sdu_info_s[1])+'cm')
+                self.sdu_info_s[1] = atp_s
+                self.led_sdu_s_err.setText(str((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1]))+'cm')
+
+
+
 
     # 显示计划信息
     def realtime_plan_show(self, ret_plan=tuple):

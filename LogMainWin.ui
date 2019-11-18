@@ -26,7 +26,7 @@
        </property>
        <widget class="QStackedWidget" name="stackedWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="page_3">
          <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -1957,7 +1957,7 @@ selection-background-color: rgb(255, 170, 0);</string>
           <item row="1" column="3">
            <widget class="QPushButton" name="btn_statistics">
             <property name="text">
-             <string>记录统计信息</string>
+             <string>统计监测</string>
             </property>
            </widget>
           </item>
@@ -1982,7 +1982,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>6</number>
+           <number>7</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -3602,26 +3602,216 @@ background-color: rgb(170, 170, 255);</string>
               <property name="title">
                <string>车辆网络响应时延</string>
               </property>
-              <widget class="QPushButton" name="btn_mvb_delay_plot">
-               <property name="geometry">
-                <rect>
-                 <x>280</x>
-                 <y>20</y>
-                 <width>151</width>
-                 <height>41</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>离线响应图形绘制</string>
-               </property>
-              </widget>
+              <layout class="QHBoxLayout" name="horizontalLayout_57">
+               <item>
+                <widget class="QPushButton" name="btn_mvb_delay_plot">
+                 <property name="text">
+                  <string>离线响应图形绘制</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
             <item>
              <widget class="QGroupBox" name="groupBox_5">
               <property name="title">
-               <string>控制冲击率统计</string>
+               <string>ATO/ATP测速测距监测</string>
               </property>
+              <layout class="QVBoxLayout" name="verticalLayout_22">
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_52">
+                 <item>
+                  <widget class="QLabel" name="lbl_ato_sdu">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(142, 255, 150);</string>
+                   </property>
+                   <property name="text">
+                    <string>ATO速传测速值</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_ato_sdu">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>25</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLCDNumber" name="lcd_ato_sdu"/>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_mile_stone">
+                   <property name="text">
+                    <string>km/h</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_53">
+                 <item>
+                  <widget class="QLabel" name="lbl_atp_sdu">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(255, 193, 242);</string>
+                   </property>
+                   <property name="text">
+                    <string>ATP速传测速值</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_atp_sdu">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>25</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLCDNumber" name="lcd_atp_sdu"/>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_mile_stone_2">
+                   <property name="text">
+                    <string>km/h</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_56">
+                 <item>
+                  <widget class="QLabel" name="lbl_ato_s_delta">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(142, 255, 150);</string>
+                   </property>
+                   <property name="text">
+                    <string>ATO测距增量</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_ato_s_delta">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>25</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_atp_s_delta">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(255, 193, 242);</string>
+                   </property>
+                   <property name="text">
+                    <string>ATP测距增量</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_atp_s_delta">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>25</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_54">
+                 <item>
+                  <widget class="QLabel" name="lbl_sdu_err">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(235, 255, 160);</string>
+                   </property>
+                   <property name="text">
+                    <string>测距-绝对值</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_sdu_err">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>25</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_sdu_judge">
+                   <property name="text">
+                    <string>监测结果</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_55">
+                 <item>
+                  <widget class="QLabel" name="lbl_sdu_s_err">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(235, 255, 160);</string>
+                   </property>
+                   <property name="text">
+                    <string>测距-绝对值</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="led_sdu_s_err">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>25</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_sdu_s_judge">
+                   <property name="text">
+                    <string>监测结果</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
@@ -3643,7 +3833,7 @@ background-color: rgb(170, 170, 255);</string>
                   </sizepolicy>
                  </property>
                  <attribute name="horizontalHeaderVisible">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </attribute>
                  <attribute name="horizontalHeaderDefaultSectionSize">
                   <number>71</number>
