@@ -1183,9 +1183,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.lbl_sdu_judge.setStyleSheet("background-color: rgb(170, 170, 255);")
                 # 判断位置
                 self.led_ato_s_delta.setText(str(ato_s - self.sdu_info_s[0])+'cm')
-                self.sdu_info_s[0] = ato_s
                 self.led_atp_s_delta.setText(str(ato_s - self.sdu_info_s[1])+'cm')
-                self.sdu_info_s[1] = atp_s
                 self.led_sdu_s_err.setText(str((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1]))+'cm')
 
                 # 判断情况
@@ -1198,6 +1196,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.lbl_sdu_s_judge.setText("测距速度一致")
                     self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(170, 170, 255);")
+                # 记录刷新
+                self.sdu_info_s[0] = ato_s
+                self.sdu_info_s[1] = atp_s
+
     # 显示计划信息
     def realtime_plan_show(self, ret_plan=tuple):
         rp1 = ret_plan[0]
