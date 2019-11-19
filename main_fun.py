@@ -346,7 +346,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.serdialog.OpenButton.click()
             self.serport.port = self.comboBox.currentText()
             # 当串口没有打开过
-            #ser_is_open = 1   # 测试时打开
+            ser_is_open = 1   # 测试时打开
             while ser_is_open == 0:
                 try:
                     self.serport.open()
@@ -380,8 +380,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 thRead.setDaemon(True)
                 thPaintWrite.setDaemon(True)
                 # 开启线程
-                thRead.start()
                 thPaintWrite.start()
+                thRead.start()
                 self.is_realtime_paint = True  # 允许绘图
 
                 thpaint.start()
@@ -1187,9 +1187,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_atp_s_delta.setText(str(ato_s - self.sdu_info_s[1])+'cm')
                 self.sdu_info_s[1] = atp_s
                 self.led_sdu_s_err.setText(str((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1]))+'cm')
-
-
-
 
     # 显示计划信息
     def realtime_plan_show(self, ret_plan=tuple):

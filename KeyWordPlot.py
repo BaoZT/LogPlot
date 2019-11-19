@@ -506,7 +506,7 @@ class Figure_Canvas_R(FigureCanvas):
     def __init__(self, parent=None, width=20, height=10, dpi=100):
         self.fig = plt.figure(figsize=(width, height), dpi=100, frameon=False)
         FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
-        self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.052, right=0.96, hspace=0.17, wspace=0.25)
+        self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.052, right=0.95, hspace=0.17, wspace=0.25)
         self.axes1 = self.fig.add_subplot(111)  # 画速度曲线
         self.setParent(parent)
         self.line_list = {}                     # 键值对存储曲线
@@ -520,6 +520,8 @@ class Figure_Canvas_R(FigureCanvas):
         self.l_atppmtv = []
         self.l_level = []
         self.init_realtime_plot(np.zeros([5, 10000]))
+        self.bt = -100
+        self.top = 10000
 
     # 更新绘制需求
     def updatePaintSet(self, ch=list):
@@ -533,7 +535,6 @@ class Figure_Canvas_R(FigureCanvas):
             # 更新
             self.choice = ch[:]
             self.init_realtime_plot(np.fliplr(RealTimeExtension.paintList))
-
         print(self.choice)
 
     # 重置绘图
@@ -549,10 +550,21 @@ class Figure_Canvas_R(FigureCanvas):
             self.l_atppmtv = self.axes1.plot(tmp[3, :], color='b', linewidth=0.8, label='atppmtv')
         if self.choice[4]:
             self.l_level = self.ax1_twin.plot(tmp[4, :], color='red', linewidth=0.8, label='level')
+        #绘制档位辅助线
+        self.ax1_twin.axhline(y=-1, xmin=0, xmax=1, color='black', ls='--', linewidth=0.7)  # B1 km/h
+        self.ax1_twin.axhline(y=-2, xmin=0, xmax=1, color='black', ls='--', linewidth=0.5)  # B2 km/h
+        self.ax1_twin.axhline(y=-3, xmin=0, xmax=1, color='black', ls='--', linewidth=0.5)  # B3 km/h
+        self.ax1_twin.axhline(y=-4, xmin=0, xmax=1, color='black', ls='--', linewidth=0.7)  # B4 km/h
+        self.ax1_twin.axhline(y=-5, xmin=0, xmax=1, color='black', ls='--', linewidth=0.5)  # B5 km/h
+        self.ax1_twin.axhline(y=-6, xmin=0, xmax=1, color='black', ls='--', linewidth=0.5)  # B6 km/h
+        self.ax1_twin.axhline(y=-7, xmin=0, xmax=1, color='black', ls='--', linewidth=0.7)  # B7 km/h
+        self.ax1_twin.set_ylabel("ATO输出级位")
         # 当有曲线绘制时
         if sum(self.choice) > 0:
-            self.axes1.set_ylim(-100, 10000)
+            #self.axes1.set_ylim(-100, 10000)
             self.ax1_twin.set_ylim(-8, 21)
+            self.ax1_twin.set_yticks([-7, -6, -4, -3, -2, -1], minor=True)
+            self.ax1_twin.set_yticklabels(['B7', 'B6', 'B4', 'B3', 'B2', 'B1'], fontdict={'fontsize': 8}, minor=True)
             self.axes1.legend(loc='upper left')
             # 只有选中级位才能更新这个
             if self.choice[4]:
@@ -577,3 +589,7 @@ class Figure_Canvas_R(FigureCanvas):
             self.l_atppmtv[0].set_ydata(tmp[3, :])
         if self.choice[4] == 1:
             self.l_level[0].set_ydata(tmp[4, :])
+        # 尝试曲线轴自适应？？？
+        [self.bt, self.top] = self.axes1.set_ylim(auto=True)
+        self.axes1.set_ylim(bottom=self.bt, top=self.top)
+        print([self.bt, self.top])

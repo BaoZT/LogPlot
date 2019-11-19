@@ -1,6 +1,5 @@
 import os
 import queue
-import random
 import re
 import threading
 import time
@@ -19,9 +18,6 @@ real_curve_all_buff = 10000                          # 每次绘画总点数
 newPaintList = np.zeros([5, real_curve_buff])        # 新添加的参数
 paintList = np.zeros([5, real_curve_all_buff])                     # 初始化1000个点用于绘图
 
-value = 0  # 速度值 测试用
-random.seed(10)
-
 pat_ato_ctrl = ''
 pat_ato_stat = ''
 pat_tcms_Stat = ''
@@ -38,29 +34,24 @@ class SerialRead(threading.Thread, QtCore.QObject):
     # 串口成功打开才启动此线程
     def run(self):
         # 读取串口内容
-        #with open('20180726132709_Serial-COM20-3-2.txt', 'r') as f:   # 测试时放开
-            #lines = f.readlines()
-            #lines.reverse()
-        while not exit_flag:
-            #s = time.time()
-            # 有数据就读取
-            try:
-                #time.sleep(0.001)              # 着两行代码用于读取文件，测试时放开
-                #line = lines.pop()
-                line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
-                queueLock.acquire()
+        with open('10291540-Serial-COM39.log') as f:
+            while not exit_flag:
+                # 有数据就读取
+                try:
+                    line = f.readline()
+                    time.sleep(0.01)
+                    #line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
+                except UnicodeDecodeError as err:
+                    print("serial read err")
+                    print(err)
+                # 若队列未满，则继续加入
                 if not workQueue.full():
                     try:
-                        workQueue.put_nowait(line)
-                        queueLock.release()
+                        workQueue.put(line, block=True)   # 必须读到数据
                     except Exception as err:
                         print(err)
-                        queueLock.release()
                 else:
-                    queueLock.release()
-                    # 处理画图信息
-            except Exception as err:
-                    print(err)
+                    print("recv queue full!")
 
 
 class RealPaintWrite(threading.Thread, QtCore.QObject):
@@ -136,11 +127,13 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                         line = workQueue.get_nowait()
                     except Exception as err:
                         print(err)
+                    # 防止数据处理过程中被刷新
+                    #queueLock.acquire()
                     self.fileWrite(line, f)
                     self.paintProcess(line)
+                    #queueLock.release()
                 else:
                     time.sleep(0.1)
-                #print('thread analysis info!' + str(time.time()))
             # 清空缓存
             self.fileFlush(f)
             # 线程停止
@@ -150,22 +143,17 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
 
     # 按行写入文件
     def fileWrite(self, line, f):
-        if '\n' in line:
-            pass
-        else:
-            self.logBuff.append(line+'\n')
-        if len(self.logBuff) == 500:
-            f.writelines(self.logBuff)
-            # 写完后清空
-            self.logBuff = []
-            #print('thread write info!' + str(time.time()))
-        else:
-            pass
+        try:
+            f.write(line+'\n')   # 重新添加回车写入
+        except Exception as err:
+            print('write info err' + str(time.time()))
+            print(err)
 
     # 立即写入用于关断时候
     def fileFlush(self, f):
         for item in self.logBuff:
             f.write(item)  # 由于记录中本身有回车，去掉\r\n
+        f.flush()
         print("file exit flush!")
 
     # 每次测试完后重命名文件
@@ -445,8 +433,12 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     # 解析utc
     @staticmethod
     def TransferUTC(t=str):
-        ltime = time.localtime(int(t))
-        timeStr = time.strftime("%H:%M:%S", ltime)
+        try:
+            ltime = time.localtime(int(t))
+            timeStr = time.strftime("%H:%M:%S", ltime)
+        except Exception as err:
+            print('plan transfer t err ：'+ t)
+            print(err)
         return timeStr
 
     # 解析转化计划

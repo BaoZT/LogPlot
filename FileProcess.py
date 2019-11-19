@@ -577,7 +577,7 @@ class FileProcess(threading.Thread):
                                 for c in range(c_num_start, c_num):
                                     # 如果有数据包
                                     if 2 in self.cycle_dic[c].cycle_sp_dict.keys():
-                                        temp_p = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())      # 非首次投入ATO周期，无SP2包
+                                        temp_p = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())  # 非首次投入ATO周期，无SP2包
                                         print('ato cycle no sp2, find before aom!')
                                         break
                                     else:
