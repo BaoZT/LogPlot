@@ -1188,6 +1188,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sdu_info_s[1] = atp_s
                 self.led_sdu_s_err.setText(str((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1]))+'cm')
 
+                # 判断情况
+                if ((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) < -6: # 若偏低6cm
+                    self.lbl_sdu_s_judge.setText("ATO测距偏低")
+                    self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(255, 255, 0);")
+                elif((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) > 6: # 若偏高6cm
+                    self.lbl_sdu_s_judge.setText("ATO测距偏高")
+                    self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(255, 0, 0);")
+                else:
+                    self.lbl_sdu_s_judge.setText("测距速度一致")
+                    self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(170, 170, 255);")
     # 显示计划信息
     def realtime_plan_show(self, ret_plan=tuple):
         rp1 = ret_plan[0]

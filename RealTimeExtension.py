@@ -38,7 +38,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
             while not exit_flag:
                 # 有数据就读取
                 try:
-                    line = f.readline()
+                    line = f.readline().rstrip()
                     time.sleep(0.01)
                     #line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
                 except UnicodeDecodeError as err:

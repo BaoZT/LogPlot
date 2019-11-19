@@ -589,7 +589,8 @@ class Figure_Canvas_R(FigureCanvas):
             self.l_atppmtv[0].set_ydata(tmp[3, :])
         if self.choice[4] == 1:
             self.l_level[0].set_ydata(tmp[4, :])
-        # 尝试曲线轴自适应？？？
-        [self.bt, self.top] = self.axes1.set_ylim(auto=True)
-        self.axes1.set_ylim(bottom=self.bt, top=self.top)
-        print([self.bt, self.top])
+        # 尝试曲线轴自适应
+        self.axes1.relim()  # 重新计算坐标轴限制
+        self.axes1.autoscale_view(scalex=False, scaley=True)   # 重新适应纵轴
+
+

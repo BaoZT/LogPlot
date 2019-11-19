@@ -832,6 +832,7 @@ class FileProcess(threading.Thread):
                 self.pbar.setValue(bar)
             else:
                 pass
+
     # 打印函数
     def Log(self, msg=str, fun=str, lino=int):
         if str == type(msg):
