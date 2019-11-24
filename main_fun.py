@@ -346,7 +346,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.serdialog.OpenButton.click()
             self.serport.port = self.comboBox.currentText()
             # 当串口没有打开过
-            ser_is_open = 1   # 测试时打开
+            #ser_is_open = 1   # 测试时打开
             while ser_is_open == 0:
                 try:
                     self.serport.open()

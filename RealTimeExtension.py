@@ -34,24 +34,24 @@ class SerialRead(threading.Thread, QtCore.QObject):
     # 串口成功打开才启动此线程
     def run(self):
         # 读取串口内容
-        with open('10291540-Serial-COM39.log') as f:
-            while not exit_flag:
-                # 有数据就读取
+        #with open('10291540-Serial-COM39.log') as f:
+        while not exit_flag:
+            # 有数据就读取
+            try:
+                #line = f.readline().rstrip()
+                #time.sleep(0.01)
+                line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
+            except UnicodeDecodeError as err:
+                print("serial read err")
+                print(err)
+            # 若队列未满，则继续加入
+            if not workQueue.full():
                 try:
-                    line = f.readline().rstrip()
-                    time.sleep(0.01)
-                    #line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
-                except UnicodeDecodeError as err:
-                    print("serial read err")
+                    workQueue.put(line, block=True)   # 必须读到数据
+                except Exception as err:
                     print(err)
-                # 若队列未满，则继续加入
-                if not workQueue.full():
-                    try:
-                        workQueue.put(line, block=True)   # 必须读到数据
-                    except Exception as err:
-                        print(err)
-                else:
-                    print("recv queue full!")
+            else:
+                print("recv queue full!")
 
 
 class RealPaintWrite(threading.Thread, QtCore.QObject):
