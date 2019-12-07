@@ -25,6 +25,9 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QStackedWidget" name="stackedWidget">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
         <property name="currentIndex">
          <number>0</number>
         </property>
@@ -1982,7 +1985,7 @@ selection-background-color: rgb(255, 170, 0);</string>
            <string notr="true"/>
           </property>
           <property name="currentIndex">
-           <number>7</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="stackedWidgetPage1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -3833,7 +3836,7 @@ background-color: rgb(170, 170, 255);</string>
                   </sizepolicy>
                  </property>
                  <attribute name="horizontalHeaderVisible">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </attribute>
                  <attribute name="horizontalHeaderDefaultSectionSize">
                   <number>71</number>

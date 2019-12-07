@@ -23,6 +23,7 @@ class Ui_MainWindow(object):
         self.splitter.setOrientation(QtCore.Qt.Vertical)
         self.splitter.setObjectName("splitter")
         self.stackedWidget = QtWidgets.QStackedWidget(self.splitter)
+        self.stackedWidget.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.stackedWidget.setObjectName("stackedWidget")
         self.page_3 = QtWidgets.QWidget()
         self.page_3.setObjectName("page_3")
@@ -2092,7 +2093,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         self.stackedWidget.setCurrentIndex(0)
-        self.stackedWidget_RightCol.setCurrentIndex(7)
+        self.stackedWidget_RightCol.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):

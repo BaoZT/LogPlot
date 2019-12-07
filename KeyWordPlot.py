@@ -208,7 +208,8 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         self.axes1.legend(loc='upper left')
         if self.ax1_twin.get_lines():
             self.ax1_twin.legend(loc='upper right')
-        self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.049, right=0.969, hspace=0.17, wspace=0.25)
+        self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.049, right=0.969, hspace=0.17, wspace=0.25)
+        #self.fig.tight_layout()
 
     # 绘制加速度相关信息
     def plotlog_sa(self, ob=FileProcess, cmd=int):
@@ -461,7 +462,6 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                         temp_pos_list.append(pos_list[idx])  # 添加对应位置
                 self.event_plot_dic['PLAN'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
 
-
     # 绘制事件信息
     def plot_event_in_cords(self, cmd=int):
         # 需要绘图
@@ -472,7 +472,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                     if k == 'BTM' and self.event_plot_flag_dic['BTM'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
-                                               marker='^',color='gold')
+                                               marker='^', color='gold')
                         else:
                             self.axes1.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][1]),
                                                marker='^', color='gold')

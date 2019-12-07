@@ -53,7 +53,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.mvbdialog = MVBPortDlg()
         self.comboBox.addItems(self.serdialog.Port_List())  # 调用对象方法获取串口对象
-        self.resize(1300, 700)
+        #self.resize(1300, 700)
         self.setWindowTitle('LogPlot-V' + self.ver + ' Beta')
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -95,7 +95,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.real_btm_list = []
         # 实时速传检测
         self.sdu_info_s = [0, 0]  # ato 速传位置， atp速传位置
-
         self.widget.setFocus()
         self.fileOpen.triggered.connect(self.showDialog)
         self.fileClose.triggered.connect(self.close_figure)
@@ -205,7 +204,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def showDialog(self):
         temp = '/'
         global curve_flag
-        is_ato_control = 1
         global load_flag
         if len(self.pathlist) == 0:
             filepath = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', 'd:/', "txt files(*.txt *.log)")
@@ -233,7 +231,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 显示实时界面
     def showRealTimeUI(self):
-        global  cur_interface
+        global cur_interface
         cur_interface = 2
         self.stackedWidget.setCurrentWidget(self.page_4)
         self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
@@ -1399,15 +1397,20 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         isok = 2  # 0=ato控车，1=没有控车,2=没有周期
         isdone = 0
         self.actionView.trigger()
-        self.log = FileProcess.FileProcess(self.progressBar)  # 类的构造函数，函数中给出属性
+        # 读取文件
+        # 创建文件读取对象
+        self.log = FileProcess.FileProcess()  # 类的构造函数，函数中给出属性
+        # 绑定信号量
+        self.log.bar_show_signal.connect(self.progressBar.setValue)
+        self.log.end_result_signal.connect(self.log_process_result)
+        # 读取文件
         self.log.readkeyword(self.file)
         self.Log('Preprocess file path!', __name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
         self.Log('Begin log read thread!', __name__, sys._getframe().f_lineno)
-        while self.log.is_alive():  # 由于文件读取线程和后面是依赖关系，不能立即继续执行
-            time.sleep(1)
-            self.Log('Thread is running!', __name__, sys._getframe().f_lineno)
-            continue
+
+    # 文件处理线程执行完响应方法
+    def log_process_result(self):
         self.Log('End log read thread!', __name__, sys._getframe().f_lineno)
         # 处理返回结果
         if self.log.get_time_use():
@@ -1439,7 +1442,39 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 pass
         else:
             self.Log('Err Can not get time use', __name__, sys._getframe().f_lineno)
+        # 后续弹窗提示
+        self.after_log_process(isok)
         return isok
+
+    # 文件加载后处理方法
+    def after_log_process(self, is_ato_control):
+        global load_flag
+        self.Log("End all file process", __name__, sys._getframe().f_lineno)
+        try:
+            if is_ato_control == 0:
+                load_flag = 1  # 记录加载且ATO控车
+                self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
+                self.CBvato.setChecked(True)
+                self.win_init_log_processed()  # 记录加载成功且有控车时，初始化显示一些内容
+                self.Log('Set View mode and choose Vato', __name__, sys._getframe().f_lineno)
+            elif is_ato_control == 1:
+                load_flag = 2  # 记录加载但是ATO没有控车
+                reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                          "无曲线",
+                                                          "注意：记录中ATO没有控车！ATO处于非AOM和AOR模式！",
+                                                          QtWidgets.QMessageBox.Yes)
+            elif is_ato_control == 2:
+                load_flag = 0  # 记录加载但是没有检测到周期
+            else:
+                reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                          "待处理",
+                                                          "注意：记录中包含ATO重新上下电过程，列车绝对位置重叠"
+                                                          "需手动分解记录！\nATO记录启机行号:Line：" + str(is_ato_control),
+                                                          QtWidgets.QMessageBox.Yes)
+
+        except Exception as err:
+            self.textEdit.setPlainText(' Error Line ' + str(err.start) + ':' + err.reason + '\n')
+            self.textEdit.append('Process file failure! \nPlease Predeal the file!')
 
     # 用于一些界面加载记录初始化后显示的内容,如数据包一次显示
     def win_init_log_processed(self):
@@ -3147,7 +3182,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as err:
                 self.Log(err, __name__, sys._getframe().f_lineno)
 
-
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):
         self.CBacc.setChecked(False)
@@ -3186,28 +3220,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.textEdit.clear()
                 self.Log('Init File log', __name__, sys._getframe().f_lineno)
                 # 开始处理
-                is_ato_control = self.log_process()
-                self.Log("End all file process", __name__, sys._getframe().f_lineno)
-                if is_ato_control == 0:
-                    load_flag = 1  # 记录加载且ATO控车
-                    self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
-                    self.CBvato.setChecked(True)
-                    self.win_init_log_processed()  # 记录加载成功且有控车时，初始化显示一些内容
-                    self.Log('Set View mode and choose Vato', __name__, sys._getframe().f_lineno)
-                elif is_ato_control == 1:
-                    load_flag = 2  # 记录加载但是ATO没有控车
-                    reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
-                                                              "无曲线",
-                                                              "注意：记录中ATO没有控车！ATO处于非AOM和AOR模式！",
-                                                              QtWidgets.QMessageBox.Yes)
-                elif is_ato_control == 2:
-                    load_flag = 0  # 记录加载但是没有检测到周期
-                else:
-                    reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
-                                                              "待处理",
-                                                              "注意：记录中包含ATO重新上下电过程，列车绝对位置重叠"
-                                                              "需手动分解记录！\nATO记录启机行号:Line：" + str(is_ato_control),
-                                                              QtWidgets.QMessageBox.Yes)
+                self.log_process()
             except Exception as err:
                 self.textEdit.setPlainText(' Error Line ' + str(err.start) + ':' + err.reason + '\n')
                 self.textEdit.append('Process file failure! \nPlease Predeal the file!')

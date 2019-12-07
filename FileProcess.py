@@ -21,6 +21,7 @@ import time
 
 import numpy as np
 from PyQt5.QtWidgets import QProgressBar
+from PyQt5 import QtCore
 
 from ProtocolParse import MVBParse
 
@@ -63,10 +64,13 @@ class CycleLog(object):
 
 
 # 文件处理类定义
-class FileProcess(threading.Thread):
+class FileProcess(threading.Thread, QtCore.QObject):
+    bar_show_signal = QtCore.pyqtSignal(int)
+    end_result_signal = QtCore.pyqtSignal(bool)
     # constructors
-    def __init__(self, pbar=QProgressBar):
+    def __init__(self):
         # 线程处理
+        super(QtCore.QObject, self).__init__()    ## 必须这样实例化？ 而不是父类？？？统一认识
         threading.Thread.__init__(self)
         self.daemon = True
         self.mvbParser = MVBParse()
@@ -94,7 +98,6 @@ class FileProcess(threading.Thread):
         self.stoperr = -32768
         self.stop_error = []
         self.filename = ''
-        self.pbar = pbar
         # 文件读取结果
         self.lines = []
         self.cycle_dic = {}
@@ -124,9 +127,12 @@ class FileProcess(threading.Thread):
             else:
                 isok = iscycleok               # 当出现重新启机时，返回启机行号
             self.time_use = [t1, t2, isok]
+            # 发送结束信号
+            self.end_result_signal.emit(True)
         except Exception as err:
             print('err in log process! ')
-            self.Log(err,__name__, sys._getframe().f_lineno)
+            self.Log(err, __name__, sys._getframe().f_lineno)
+            self.end_result_signal.emit(True)
 
     def get_time_use(self):
         return self.time_use
@@ -194,7 +200,7 @@ class FileProcess(threading.Thread):
                     cycle_start = int(raw_start[1].split('----')[0])
                     break
                 except Exception as err:
-                    self.Log(err,__name__, sys._getframe().f_lineno)
+                    self.Log(err, __name__, sys._getframe().f_lineno)
             else:
                 begin_idx = begin_idx - 1
         # 文件结束位置
@@ -205,7 +211,7 @@ class FileProcess(threading.Thread):
                     cycle_end = int(raw_end[1].split('---')[0])
                     break
                 except Exception as err:
-                    self.Log(err,__name__, sys._getframe().f_lineno)
+                    self.Log(err, __name__, sys._getframe().f_lineno)
             else:
                 end_idx = end_idx + 1
         # 边界是否只包含一个周期
@@ -244,7 +250,7 @@ class FileProcess(threading.Thread):
         bar = 0
         bar_cnt = int(len(self.lines) / 50)
         if bar_cnt == 0:
-            self.pbar.setValue(50)     # 文本很短，直接赋值进度条
+            self.bar_show_signal.emit(50)     # 文本很短，直接赋值进度条
             bar_flag = 0
         else:
             bar_flag = 1
@@ -260,7 +266,7 @@ class FileProcess(threading.Thread):
                 cnt = cnt + 1
                 if int(cnt % bar_cnt) == 0:
                     bar = bar + 1
-                    self.pbar.setValue(bar)
+                    self.bar_show_signal.emit(bar)
                 else:
                     pass
             # 搜索周期
@@ -268,7 +274,7 @@ class FileProcess(threading.Thread):
             e_r = pat_cycle_end.findall(line)
             if (s_r != []) or (e_r != []):              # 是周期边界
                 # 找到周期开始
-                if s_r != []:
+                if s_r:
                     s_r_list = list(s_r[0])
                     # 未搜索到周期终点时找到起点
                     if content_flag == 1:                       # 如果之前已经置1但没有置回，没有找到周期结尾，下周期开始
@@ -603,7 +609,7 @@ class FileProcess(threading.Thread):
         bar_flag = 0
         bar_cnt = int(len(self.cycle_dic.keys()) / 50)
         if bar_cnt == 0:
-            self.pbar.setValue(100)
+            self.bar_show_signal.emit(100)
             bar_flag = 0
         else:
             bar_flag = 1
@@ -619,7 +625,7 @@ class FileProcess(threading.Thread):
                     cnt = cnt + 1
                     if int(cnt % bar_cnt) == 0:
                         bar = bar + 1
-                        self.pbar.setValue(bar)
+                        self.bar_show_signal.emit(bar)
                     else:
                         pass
             ret = 1     # 有周期，不一定有控车
@@ -746,7 +752,7 @@ class FileProcess(threading.Thread):
             cmdv = int(ato_info[2])
             ceilv = int(ato_info[3])
             level = int(ato_info[4])
-            ramp  = int(ato_info[8])
+            ramp = int(ato_info[8])
             statmachine = int(ato_info[17])
             #增加位置信息
             v_target = int(ato_info[10])
@@ -829,7 +835,7 @@ class FileProcess(threading.Thread):
             cnt = cnt + 1
             if int(cnt % bar_cnt) == 0:
                 bar = bar + 1
-                self.pbar.setValue(bar)
+                self.bar_show_signal.emit(bar)
             else:
                 pass
 
