@@ -54,7 +54,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.mvbdialog = MVBPortDlg()
         self.comboBox.addItems(self.serdialog.Port_List())  # 调用对象方法获取串口对象
         #self.resize(1300, 700)
-        self.setWindowTitle('LogPlot-V' + self.ver + ' Beta')
+        self.setWindowTitle('LogPlot-V' + self.ver)
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
@@ -68,6 +68,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.bubble_status = 0  # 控车悬浮气泡状态，0=停靠，1=跟随
         self.tag_latest_pos_idx = 0  # 悬窗最近一次索引，用于状态改变或曲线改变时立即刷新使用，最近一次
         self.pat_plan = FileProcess.FileProcess.creat_plan_pattern()  # 计划解析模板
+        self.pat_list = FileProcess.FileProcess.create_all_pattern()  # 获取所有解析模板
 
         self.ctrl_measure_status = 0  # 控车曲线测量状态，0=初始态，1=测量起始态，2=进行中 ,3=测量终止态
         # 在线绘图
@@ -1992,9 +1993,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.connect(self.set_train_page_content)
             self.c_vato.move_signal.connect(self.set_plan_page_content)
             self.c_vato.sim_move_singal.connect(self.set_plan_page_content)
-            self.c_vato.move_signal.connect(self.set_ATP_page_content)
             self.c_vato.sim_move_singal.connect(self.set_ATP_page_content)
-
+            self.c_vato.move_signal.connect(self.set_ATP_page_content)
+            self.c_vato.move_signal.connect(self.set_sdu_info_content)
+            self.c_vato.sim_move_singal.connect(self.set_sdu_info_content)
             self.c_vato.move_signal.connect(self.set_ato_status_label)  # 标签
             self.c_vato.sim_move_singal.connect(self.set_ato_status_label)
             Mywindow.is_cursor_created = 1
@@ -2015,9 +2017,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.disconnect(self.set_plan_page_content)
             self.c_vato.move_signal.disconnect(self.set_ATP_page_content)
             self.c_vato.sim_move_singal.disconnect(self.set_ATP_page_content)
-
-            self.c_vato.move_signal.disconnect(self.set_ato_status_label)  # 标签
+            self.c_vato.move_signal.disconnect(self.set_ato_status_label)
             self.c_vato.sim_move_singal.disconnect(self.set_ato_status_label)
+            self.c_vato.move_signal.disconnect(self.set_sdu_info_content)  # 标签
+            self.c_vato.sim_move_singal.disconnect(self.set_sdu_info_content)
             Mywindow.is_cursor_created = 0
             del self.c_vato
             self.Log("Mode changed clear tag cursor ", __name__, sys._getframe().f_lineno)
@@ -3181,6 +3184,44 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.led_stop_d_JD.clear()
             except Exception as err:
                 self.Log(err, __name__, sys._getframe().f_lineno)
+
+    # 事件处理函数，显示测速测距信息
+    def set_sdu_info_content(self, idx):
+        stat_machine = 0
+        sdu_ato = []
+        sdu_atp = []
+        result = ()
+        # sdu Info 解析表
+        p_ato_sdu = self.pat_list[27]
+        p_atp_sdu = self.pat_list[28]
+
+        for line in self.log.cycle_dic[self.log.cycle[idx]].cycle_all_info:
+            if 'v&p' in line:
+                try:
+                    # 查找或清空
+                    if p_atp_sdu.findall(line):
+                        sdu_atp = p_atp_sdu.findall(line)[0]
+                        state_machine = 1
+                        # 查找或清空
+                    if p_ato_sdu.findall(line):
+                        sdu_ato = p_ato_sdu.findall(line)[0]
+                        # 如果已经收到了sdu_ato
+                        if state_machine == 1:
+                            state_machine = 2  # 置状态机为2.收到ATP
+                    # 组合数据,前面安装时间和周期
+                    result = (sdu_ato, sdu_atp)
+
+                    # 收集到sdu_ato和sdu_atp, 终止状态机，发送信号清空
+                    if state_machine == 2:
+                        self.realtime_sdu_show(result)
+                        state_machine = 0
+                        sdu_ato = []
+                        sdu_atp = []
+                    else:
+                        pass
+                except Exception as err:
+                    self.Log(err, __name__, sys._getframe().f_lineno)
+
 
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):

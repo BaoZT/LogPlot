@@ -67,6 +67,7 @@ class CycleLog(object):
 class FileProcess(threading.Thread, QtCore.QObject):
     bar_show_signal = QtCore.pyqtSignal(int)
     end_result_signal = QtCore.pyqtSignal(bool)
+
     # constructors
     def __init__(self):
         # 线程处理
@@ -181,7 +182,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
         with open(file, 'r', encoding='utf-8', errors='ignore') as log:    # notepad++默认是ANSI编码,简洁且自带关闭
             self.lines = log.readlines()
             self.filename = file.split("/")[-1]
-        log.close()                                      # 关闭文件
 
     # 找出当前行所在的周期，针对单次搜索
     # 输入： 行索引
@@ -258,7 +258,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         length = len(self.lines)
         for index, line in enumerate(self.lines):
             # 如果有启机过程立即判断
-            if '############' in line:        # 非0情况下说明有重新启机，返回行号
+            if '#################' in line:        # 非0情况下说明有重新启机，返回行号
                 restart_idx = index
                 restart_flag = 1
             # 进度条计算
