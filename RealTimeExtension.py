@@ -303,7 +303,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             self.io_in_real = ()
         # 查找或清空
         if self.pat_list[28].findall(line):
-            self.io_out_real = self.pat_list[28].findall(line)
+            self.io_out_real = self.pat_list[28].findall(line)[0]
             update_flag = 1
         else:
             self.io_out_real = ()

@@ -30,6 +30,7 @@ cursor_in_flag = 0  # 区分光标是否在图像内,初始化为0,in=1，out=2
 curve_flag = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
 cur_interface = 0  # 当前界面， 1=离线界面，2=在线界面
 
+
 # 主界面类
 class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     is_cursor_created = 0
@@ -1137,9 +1138,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # IO输出信号
             io_out_real = ret_io[3]
             if io_out_real:
-                self.real_io_out_list.append([QtWidgets.QTableWidgetItem(time.split(" ")[1]), \
-                                              QtWidgets.QTableWidgetItem(str(cycle_num)), \
-                                              QtWidgets.QTableWidgetItem(io_out_real[0])])
+                for it in io_in_real:
+                    if it != '':
+                        self.real_io_out_list.append([QtWidgets.QTableWidgetItem(time.split(" ")[1]), \
+                                                      QtWidgets.QTableWidgetItem(str(cycle_num)), \
+                                                      QtWidgets.QTableWidgetItem(it)])
+                    else:
+                        pass
                 # 填充
                 row_in_idx = len(self.real_io_out_list) - 1
                 self.tb_ato_OUT.setRowCount(len(self.real_io_out_list))
@@ -1161,13 +1166,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 ato_s = abs(int(atp_sdu[1]))
                 self.led_ato_sdu.setText(str(ato_v)+'cm/s')
                 ato_v_kilo = int(ato_sdu[0]) * 9 / 250.0
-                self.lcd_ato_sdu.display(str(float('%.1f'% ato_v_kilo)))
+                self.lcd_ato_sdu.display(str(float('%.1f' % ato_v_kilo)))
                 # atp速度和公里情况
                 atp_v = abs(int(atp_sdu[0]))
                 atp_s = abs(int(atp_sdu[1]))
                 self.led_atp_sdu.setText(str(atp_v)+'cm/s')
-                atp_v_kilo = int(ato_sdu[0]) * 9 / 250.0
-                self.lcd_atp_sdu.display(str(float('%.1f'% atp_v_kilo)))
+                atp_v_kilo = int(atp_sdu[0]) * 9 / 250.0
+                self.lcd_atp_sdu.display(str(float('%.1f' % atp_v_kilo)))
                 # 计算测速测距偏差
                 self.led_sdu_err.setText(str(abs(ato_v - atp_v))+'cm/s')
                 # 判断情况
@@ -1601,12 +1606,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif self.log.cycle_dic[c].io_out:
                     # 填充表格
                     c_show = self.log.cycle_dic[c]
-
-                    # 添加每行内容
-                    item_out.append([QtWidgets.QTableWidgetItem(c_show.time.split(" ")[1]), \
-                                     QtWidgets.QTableWidgetItem(str(c_show.cycle_num)), \
-                                     QtWidgets.QTableWidgetItem(c_show.io_out[0])])
-                    cnt_out = cnt_out + 1
+                    for it in c_show.io_out:
+                        if it != '':
+                            # 添加每行内容
+                            item_out.append([QtWidgets.QTableWidgetItem(c_show.time.split(" ")[1]), \
+                                             QtWidgets.QTableWidgetItem(str(c_show.cycle_num)), \
+                                             QtWidgets.QTableWidgetItem(it)])
+                            cnt_out = cnt_out + 1
                 else:
                     pass
         except Exception as err:
@@ -3221,7 +3227,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         pass
                 except Exception as err:
                     self.Log(err, __name__, sys._getframe().f_lineno)
-
 
     # 重置主界面所有的选择框
     def reset_all_checkbox(self):
