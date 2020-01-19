@@ -48,7 +48,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pathlist = []
         self.BTM_cycle = []  # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0  # 默认0是浏览模式，1是标注模式
-        self.ver = '3.0.0'  # 标示软件版本
+        self.ver = '3.0.1'  # 标示软件版本
         self.serdialog = SerialDlg()  # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)  # 操作串口对象
 
@@ -159,6 +159,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(self.filetab_clicked)
         self.tableATPBTM.itemClicked.connect(self.BTM_selected_info)
+        self.tb_ato_IN.horizontalHeader().setVisible(True)
 
     def initUI(self):
 
@@ -1140,8 +1141,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if io_out_real:
                 for it in io_in_real:
                     if it != '':
-                        self.real_io_out_list.append([QtWidgets.QTableWidgetItem(time.split(" ")[1]), \
-                                                      QtWidgets.QTableWidgetItem(str(cycle_num)), \
+                        self.real_io_out_list.append([QtWidgets.QTableWidgetItem(time.split(" ")[1]),\
+                                                      QtWidgets.QTableWidgetItem(str(cycle_num)),\
                                                       QtWidgets.QTableWidgetItem(it)])
                     else:
                         pass
@@ -1163,7 +1164,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if ato_sdu and atp_sdu:
                 # 计算速度和速度误差
                 ato_v = abs(int(ato_sdu[0]))
-                ato_s = abs(int(atp_sdu[1]))
+                ato_s = abs(int(ato_sdu[1]))
                 self.led_ato_sdu.setText(str(ato_v)+'cm/s')
                 ato_v_kilo = int(ato_sdu[0]) * 9 / 250.0
                 self.lcd_ato_sdu.display(str(float('%.1f' % ato_v_kilo)))
@@ -1187,11 +1188,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.lbl_sdu_judge.setStyleSheet("background-color: rgb(170, 170, 255);")
                 # 判断位置
                 self.led_ato_s_delta.setText(str(ato_s - self.sdu_info_s[0])+'cm')
-                self.led_atp_s_delta.setText(str(ato_s - self.sdu_info_s[1])+'cm')
+                self.led_atp_s_delta.setText(str(atp_s - self.sdu_info_s[1])+'cm')
                 self.led_sdu_s_err.setText(str((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1]))+'cm')
 
                 # 判断情况
-                if ((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) < -6: # 若偏低6cm
+                if ((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) < -6:  # 若偏低6cm
                     self.lbl_sdu_s_judge.setText("ATO测距偏低")
                     self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(255, 255, 0);")
                 elif((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) > 6: # 若偏高6cm
@@ -1414,6 +1415,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Log('Preprocess file path!', __name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
         self.Log('Begin log read thread!', __name__, sys._getframe().f_lineno)
+        self.show_message('文件加载中...')
 
     # 文件处理线程执行完响应方法
     def log_process_result(self):
@@ -1461,6 +1463,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 load_flag = 1  # 记录加载且ATO控车
                 self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                 self.CBvato.setChecked(True)
+                self.show_message('界面准备中...')
                 self.win_init_log_processed()  # 记录加载成功且有控车时，初始化显示一些内容
                 self.Log('Set View mode and choose Vato', __name__, sys._getframe().f_lineno)
             elif is_ato_control == 1:
@@ -1489,6 +1492,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         sp5_tpl = ()
         sp5_snipper = 0
         sp7_cnt = 0
+        bar = 95
+        cnt = 0
+        bar_cnt = int(len(self.log.cycle_dic.keys()) / 5)  # 从90%开始，界面准备占比10%
         try:
             # ATP 右侧标签显示相关
             self.Log("Begin init log show", __name__, sys._getframe().f_lineno)
@@ -1514,6 +1520,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
             # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
             for c in self.log.cycle_dic.keys():
+                # 计算进度条
+                cnt = cnt + 1
+                if int(cnt % bar_cnt) == 0:
+                    bar = bar + 1
+                    self.progressBar.setValue(bar)
+                else:
+                    pass
                 if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
                     sp5_tpl = self.log.cycle_dic[c].cycle_sp_dict[5]
                     self.set_atp_info_win(sp5_tpl, 5)
@@ -2261,7 +2274,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 所有通信数据包,考虑通过两层循环来实现
             for k in self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict.keys():
                 # P->O 数据包
-                if k < 10:
+                if k < 10 or k >= 1000:
                     if is_p2o_create == 0:
                         root1 = QtWidgets.QTreeWidgetItem(self.treeWidget)
                         root1.setText(0, 'ATP -> ATO')
@@ -2338,6 +2351,17 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         item_sp9.setText(0, 'SP' + str(k))
                         # 未来填充
                         root1.addChild(item_sp9)
+                    elif k == 1001:
+                        item_c2ato_p1 = QtWidgets.QTreeWidgetItem()
+                        item_c2ato_p1.setText(0, 'P' + str(k-1000))
+                        txt1001 = ['q_atopermit', 'q_leftdoorpermit','q_rightdoorpermit', 'v_target', 'd_target', 'o_accmu',
+                                'v_normal',  'v_permitted', 'd_ma', 'm_ms_cmd', 'd_neu_sec','m_low_frequency',
+                                'atp_stop_error']
+                        for index2, field in enumerate((self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k])):
+                            item_field = QtWidgets.QTreeWidgetItem(item_c2ato_p1)  # 以该数据包作为父节点
+                            item_field.setText(2, str(int(field)))  # 转换去除空格
+                            item_field.setText(1, txt1001[index2])
+                        root1.addChild(item_c2ato_p1)
                     root1.setExpanded(True)
                 # O->P 数据包
                 elif 100 < k < 140:
@@ -2660,15 +2684,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # 空转打滑
                 if tcms2ato_stat[10][0] == 'A':
                     self.led_tcms_kz_2.setText('空转')
+                    self.led_tcms_kz_2.setStyleSheet("background-color:rgb(255, 0, 0);")
                 elif tcms2ato_stat[10][0] == '0':
                     self.led_tcms_kz_2.setText('未发生')
+                    self.led_tcms_kz_2.setStyleSheet("background-color:rgb(219, 255, 227);")
                 else:
                     self.led_tcms_kz_2.setText('异常值%s' % tcms2ato_stat[10][0])
 
                 if tcms2ato_stat[10][1] == 'A':
                     self.led_tcms_dh_2.setText('打滑')
+                    self.led_tcms_dh_2.setStyleSheet("background-color:rgb(255, 0, 0);")
                 elif tcms2ato_stat[10][1] == '0':
                     self.led_tcms_dh_2.setText('未发生')
+                    self.led_tcms_dh_2.setStyleSheet("background-color:rgb(219, 255, 227);")
                 else:
                     self.led_tcms_dh_2.setText('异常值%s' % tcms2ato_stat[10][1])
                 # 编组信息
@@ -2917,6 +2945,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if k == 2:
                 sp2_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
                 self.set_atp_info_win(sp2_tpl, 2)
+            elif k == 1001:
+                c2ato_p1_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
+                self.set_atp_info_win(c2ato_p1_tpl, 1001)
             elif k == 5:
                 sp5_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
                 self.set_atp_info_win(sp5_tpl, 5)
@@ -3040,6 +3071,29 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_atp_target_v.setText(sp_tpl[6].strip() + 'cm/s')
                 self.led_atp_ma.setText(sp_tpl[12].strip() + 'm')
                 self.led_atp_stoperr.setText(sp_tpl[17].strip() + 'cm')
+
+        if clsify == 1001:
+            # 门允许状态
+            if sp_tpl[1].strip() == '1':  # 左门允许
+                self.lbl_door_pmt.setText('左门允许')
+                self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
+            elif sp_tpl[2].strip() == '1':  # 右门允许
+                self.lbl_door_pmt.setText('右门允许')
+                self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
+            else:
+                self.lbl_door_pmt.setText('无门允许')
+                self.lbl_door_pmt.setStyleSheet("background-color: rgb(255, 0, 0);")
+
+            self.led_atp_target_v.setText(sp_tpl[3].strip() + 'cm/s')
+            self.led_atp_target_dis.setText(sp_tpl[4].strip() + 'cm')
+            self.led_atp_gfx_dis.setText(sp_tpl[10].strip() + 'm')
+            self.led_atp_ma.setText(sp_tpl[8].strip() + 'm')
+            self.led_atp_stoperr.setText(sp_tpl[12].strip() + 'cm')
+            # 设置ATP速传sdu
+            atp_s = int(sp_tpl[5].strip())
+            self.led_atp_sdu.setText(sp_tpl[6].strip() + 'cm/s')  # atp速度
+            self.led_atp_s_delta.setText(str(atp_s - self.sdu_info_s[1]) + 'cm')
+            self.sdu_info_s[1] = atp_s
 
         if clsify == 5:
             if sp_tpl != ():

@@ -8,6 +8,8 @@ import FileProcess
 import RealTimeExtension
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
+matplotlib.rcParams['xtick.direction'] = 'in'
+matplotlib.rcParams['ytick.direction'] = 'in'
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 plt.rcParams['axes.unicode_minus'] = False        # 解决Matplotlib绘图中，负号不正常显示问题
@@ -186,25 +188,28 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             # 如果绘图范围是默认值，还没有绘图，是默认路径
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
                 self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])  # 由于绘制直线会从0开始绘制，这里重置范围
-                self.axes1.set_ylim(-200, 10000)
             else:
                 self.axes1.set_xlim(x_lim[0], x_lim[1])
                 self.axes1.set_ylim(y_lim[0], y_lim[1])
-            self.axes1.set_xlabel('列车位置cm')
-            self.axes1.set_ylabel('列车速度cm/s')
+            self.axes1.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
+            self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename+" "+"速度-位置曲线")
         else:
             self.plot_event_in_cords(cmd)
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
                 self.axes1.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])  # 重置范围
-                self.axes1.set_ylim(-200, 10000)
             else:
                 self.axes1.set_xlim(x_lim[0], x_lim[1])
                 self.axes1.set_ylim(y_lim[0], y_lim[1])
-            self.axes1.set_xlabel('ATO周期')
-            self.axes1.set_ylabel('列车速度cm/s')
+            self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
+            self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
-        # 公共绘制部分
+        # 公共纵坐标部分
+        #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 10))], minor=False)
+        #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 1))], minor=True)
+        #self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 10))], fontdict={'fontsize': 10}, minor=False)
+        # self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 1))], fontdict={'fontsize': 8}, minor=True)
+        #self.axes1.set_ylim(-200, ob.atp_permit_v.max() + 200)
         self.axes1.legend(loc='upper left')
         if self.ax1_twin.get_lines():
             self.ax1_twin.legend(loc='upper right')
@@ -233,13 +238,13 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     def plot_cord2(self, ob=FileProcess, cmd=int):
         if cmd == 0:
             self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])
-            self.axes1.set_xlabel('列车位置cm')
+            self.axes1.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename)
             if self.axes1.get_lines():
                 self.axes1.legend(loc='upper left')
         else:
             self.axes1.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])
-            self.axes1.set_xlabel('ATO周期')
+            self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
             if self.axes1.get_lines():
                 self.axes1.legend(loc='upper left')
@@ -378,7 +383,6 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                             bbox=props)
         else:
             pass
-
 
     # 计算并设置事件绘制信息及标志
     def set_event_info_plot(self, event_dic=dict, cycle_dic=dict, pos_list=list, cycle_list=list):

@@ -130,7 +130,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
             self.time_use = [t1, t2, isok]
             # 发送结束信号
             self.end_result_signal.emit(True)
+            # 读取结束后清空文件缓冲
+            self.lines = []
         except Exception as err:
+            # 读取结束后清空文件缓冲
+            self.lines = []
             print('err in log process! ')
             self.Log(err, __name__, sys._getframe().f_lineno)
             self.end_result_signal.emit(True)
@@ -171,17 +175,27 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.gfx_flag = 0
         # 读取耗时
         self.time_use = []
-        # 文件读取结果
-        self.lines = []
-        self.cycle_dic = {}
-        # 重置进度条
 
     # 输入： 文件路径
     def readkeyword(self, file):
         self.reset_vars()  # 重置所有变量
         with open(file, 'r', encoding='utf-8', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
             self.lines = log.readlines()
+            #print(self.bufcount(log))
             self.filename = file.split("/")[-1]
+
+    # 获取文件行数
+    @staticmethod
+    def bufcount(f):
+        lines = 0
+        buf_size = 1024 * 1024
+        read_f = f.read  # loop optimization
+        buf = read_f(buf_size)
+        while buf:
+            lines += buf.count('\n')
+            buf = read_f(buf_size)
+        return lines
+
 
     # 找出当前行所在的周期，针对单次搜索
     # 输入： 行索引
@@ -241,6 +255,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         ret = 0
         # 创建周期号模板
         patlist = self.create_all_pattern()
+        pat_extend_list = self.create_extend_pattern()
         pat_cycle_end = re.compile('---CORE_TARK CY_E (\d+),(\d+).')  # 周期起点匹配，括号匹配取出ostime和周期号，最后可以任意匹配
         pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
         bar_flag = 0
@@ -248,9 +263,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 计算进度条判断
         cnt = 0
         bar = 0
-        bar_cnt = int(len(self.lines) / 50)
+        bar_cnt = int(len(self.lines) / 70)
         if bar_cnt == 0:
-            self.bar_show_signal.emit(50)  # 文本很短，直接赋值进度条
+            self.bar_show_signal.emit(70)  # 文本很短，直接赋值进度条
             bar_flag = 0
         else:
             bar_flag = 1
@@ -322,9 +337,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
                                 self.cycle_dic[c.cycle_num] = c
             elif content_flag == 1:
                 ret = 1  # 有周期!!!
-                r = self.match_log_packet_contect(c, line, patlist)
+                r = self.match_log_packet_contect(c, line, patlist, pat_extend_list)
                 if r == 0:  # 如果不成功，才继续
-                    r = self.match_log_basic_content(c, line, patlist)
+                    r = self.match_log_basic_content(c, line, patlist, pat_extend_list)
             else:
                 # 属于记录开始和结尾残损周期，不记录丢弃
                 pass
@@ -335,7 +350,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
     # <输出> ret  解析1=成功，0=失败
-    def match_log_basic_content(self, c=CycleLog, line=str, pat_list=list):
+    def match_log_basic_content(self, c=CycleLog, line=str, pat_list=list, pat_extend_list=list):
         # 北京时间
         ret = 1
         pat_time = pat_list[0]
@@ -361,11 +376,13 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
     # <输出> ret  解析1=成功，0=失败
-    def match_log_packet_contect(self, c=CycleLog, line=str, pat_list=list):
+    def match_log_packet_contect(self, c=CycleLog, line=str, pat_list=list, pat_extend_list=list):
         ret = 1
         # 先无条件设置状态
         c.gfx_flag = self.gfx_flag
         c.break_status = self.break_status
+        # 扩展表达式C2ATO
+        pat_c2ato_p1 = pat_extend_list[0]
         # ATP->ATO 数据包
         pat_sp0 = pat_list[4]
         pat_sp1 = pat_list[5]
@@ -397,7 +414,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         pat_io_out = pat_list[26]
 
         # 数据包识别,提高效率
-        if '[P->O]SP' in line:
+        if '[P->O]' in line:
             # ATP->ATO数据包匹配过程
             if pat_sp0.findall(line):
                 c.cycle_sp_dict[0] = pat_sp0.findall(line)[0]
@@ -417,6 +434,15 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 except Exception as err:
                     print('gfx err')
                     self.Log(err, __name__, sys._getframe().f_lineno)
+            # 兼容C2ATO内容
+            elif pat_c2ato_p1.findall(line):
+                c.cycle_sp_dict[1001] = pat_c2ato_p1.findall(line)[0]  # C2ATO数据包ID增加1000，用于区分高铁ATO数据包
+                if int(c.cycle_sp_dict[1001][9]) == 1:  # 去除nid——packet是第13个字节
+                    c.gfx_flag = 1
+                    self.gfx_flag = 1
+                else:
+                    c.gfx_flag = 0
+                    self.gfx_flag = 0
             elif pat_sp5.findall(line):
                 c.cycle_sp_dict[5] = pat_sp5.findall(line)[0]
             elif pat_sp6.findall(line):
@@ -467,6 +493,18 @@ class FileProcess(threading.Thread, QtCore.QObject):
         else:
             ret = 0
         return ret
+
+    # 创建C2ATO识别模板
+    # <输出> 返回C2ATO模板
+    @staticmethod
+    def create_extend_pattern():
+        pat_list = []
+        pat_c2ato_p1 = re.compile('\[P->O\]P1:pmt\s?(-?\d),ldoorp(\d),\s?rdoorp(\d),tv(\d+),ts(\d+),s(\d+),v(\d+),'
+                                  'pv(\d+),d_ma(\d+),\s?gfx_cmd(\d),gfx_s(\d+),m_low_frequency(\d+),'
+                                  'atp_stop_err(-?\d+)')
+        pat_list = [pat_c2ato_p1]
+
+        return pat_list
 
     # 创建构建模板序列
     # <输出> 返回模板列表
@@ -545,13 +583,25 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # 计算相邻周期加速度变化
     # <输出> 返回加速度处理结果
     def comput_acc(self):
+        cnt = 0
+        bar = 81
         temp_delta_v = np.array([])
         temp_delta_s = np.array([])
         # 计算分子分母
         temp_delta_v = 0.5 * (self.v_ato[1:] ** 2 - self.v_ato[:-1] ** 2)
         temp_delta_s = self.s[1:] - self.s[:-1]
+        # 进度条
+        bar_cnt = int(len(temp_delta_s) / 4)
         # 加速度计算处理
         for idx, item in enumerate(temp_delta_s):
+            # 进度条计算
+            cnt = cnt + 1
+            if int(cnt % bar_cnt) == 0:
+                bar = bar + 1
+                self.bar_show_signal.emit(bar)
+            else:
+                pass
+            # 主逻辑
             if item == 0:
                 self.a = np.append(self.a, 0)
             else:
@@ -565,10 +615,20 @@ class FileProcess(threading.Thread, QtCore.QObject):
         c_num = 0
         temp_p = 1
         c_num_start = 0
-
+        cnt = 0
+        bar = 85
+        # 进度条
+        bar_cnt = int(len(self.cycle_dic.keys()) / 10)
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
             for ctrl_item in self.cycle_dic.keys():
+                # 进度条计算
+                cnt = cnt + 1
+                if int(cnt % bar_cnt) == 0:
+                    bar = bar + 1
+                    self.bar_show_signal.emit(bar)
+                else:
+                    pass
                 # print('Comput ATP Permit %d len %d' % (ctrl_item,len(self.atp_permit_v)))
                 if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
                     c_num = self.cycle_dic[ctrl_item].cycle_num  # 获取周期号
@@ -576,6 +636,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     if 2 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
                         temp_p = int(self.cycle_dic[ctrl_item].cycle_sp_dict[2][11])
                         self.atp_permit_v = np.append(self.atp_permit_v, temp_p)  # 添加
+                    elif 1001 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
+                        temp_p = int(self.cycle_dic[ctrl_item].cycle_sp_dict[1001][7])
+                        self.atp_permit_v = np.append(self.atp_permit_v, temp_p)  # 添加C2ATO
                     else:
                         # 首次获取，当周期无SP2
                         if temp_p == 1:
@@ -587,6 +650,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
                                     # 如果有数据包
                                     if 2 in self.cycle_dic[c].cycle_sp_dict.keys():
                                         temp_p = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())  # 非首次投入ATO周期，无SP2包
+                                        print('ato cycle no sp2, find before aom!')
+                                        break
+                                    else:
+                                        pass
+                                    if 1001 in self.cycle_dic[c].cycle_sp_dict.keys():
+                                        temp_p = int(self.cycle_dic[c].cycle_sp_dict[1001][7].strip())  # 非首次投入ATO周期，无SP2包
                                         print('ato cycle no sp2, find before aom!')
                                         break
                                     else:
@@ -608,11 +677,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def create_ctrl_cycle_list(self):
         ret = 2  # 用于标记创建结果,2=无周期无结果，1=有周期无控车，0=有周期有控车
         cnt = 0
-        bar = 50
+        bar = 70
         bar_flag = 0
-        bar_cnt = int(len(self.cycle_dic.keys()) / 50)
+        bar_cnt = int(len(self.cycle_dic.keys()) / 10)
         if bar_cnt == 0:
-            self.bar_show_signal.emit(100)
+            self.bar_show_signal.emit(80)
             bar_flag = 0
         else:
             bar_flag = 1
@@ -672,6 +741,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 self.skip = mat[:, 19]
                 self.mtask = mat[:, 20]
                 print('Slip Ctrl Matrix')
+                self.bar_show_signal.emit(81)
                 # 计算加速度
                 self.comput_acc()
                 print('Comput Train Acc')
@@ -850,3 +920,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                   ', in' + fun)
         else:
             print(msg)
+
+
+def cycle():
+    return None
