@@ -48,7 +48,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pathlist = []
         self.BTM_cycle = []  # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0  # 默认0是浏览模式，1是标注模式
-        self.ver = '3.0.1'  # 标示软件版本
+        self.ver = '3.0.2'  # 标示软件版本
         self.serdialog = SerialDlg()  # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)  # 操作串口对象
 
@@ -159,6 +159,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(self.filetab_clicked)
         self.tableATPBTM.itemClicked.connect(self.BTM_selected_info)
+        self.tableATPBTM.itemDoubleClicked.connect(self.BTM_selected_cursor_go)
         self.tb_ato_IN.horizontalHeader().setVisible(True)
 
     def initUI(self):
@@ -1406,12 +1407,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionView.trigger()
         # 读取文件
         # 创建文件读取对象
-        self.log = FileProcess.FileProcess()  # 类的构造函数，函数中给出属性
+        self.log = FileProcess.FileProcess(self.file)  # 类的构造函数，函数中给出属性
         # 绑定信号量
         self.log.bar_show_signal.connect(self.progressBar.setValue)
         self.log.end_result_signal.connect(self.log_process_result)
         # 读取文件
-        self.log.readkeyword(self.file)
         self.Log('Preprocess file path!', __name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
         self.Log('Begin log read thread!', __name__, sys._getframe().f_lineno)
@@ -1663,7 +1663,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if c.control != ():
                     info = list(c.control)
                     if curve_flag == 0:
-                        # 先更新坐标轴范围
+                        # 先更新坐标轴范围（索引0和1是位置速度）
                         xy_lim = self.sp.update_cord_with_cursor((int(info[0]), int(info[1])), self.sp.axes1.get_xlim(),
                                                                  self.sp.axes1.get_ylim())
                         # 如果超出范围再更新
@@ -2091,13 +2091,22 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 前提是必须有周期，字典能查到
             if idx in self.log.cycle_dic.keys():
                 c_num = self.log.cycle_dic[idx].cycle_num
-                for line in self.log.cycle_dic[idx].cycle_all_info:
-                    self.cyclewin.textEdit.append(line[:-1])
+                with open(self.file, 'r', encoding='utf-8', errors='ignore') as f:  # notepad++默认是ANSI编码
+                    f.seek(self.log.cycle_dic[idx].file_begin_offset, 0)
+                    lines = f.readline()   # f.read调用f.readline计算的偏移量，实际多读（每行多一个字节），怀疑为python缺陷
+                    while lines:
+                        if self.log.cycle_dic[idx].file_end_offset == f.tell():   # 模拟readline读取过程，逻辑保持一致
+                            break
+                        else:
+                            lines = lines + f.readline()
+                    self.cyclewin.textEdit.setText(lines)
                 # 周期完整性
                 if self.log.cycle_dic[idx].cycle_property == 1:
                     self.cyclewin.statusBar.showMessage(str(c_num) + '周期序列完整！')
                 elif self.log.cycle_dic[idx].cycle_property == 2:
                     self.cyclewin.statusBar.showMessage(str(c_num) + '周期尾部缺失！')
+                elif self.log.cycle_dic[idx].cycle_property == 3:
+                    self.cyclewin.statusBar.showMessage(str(c_num) + '周期头部缺失！')
                 else:
                     self.cyclewin.statusBar.showMessage('记录异常！')  # 清除上一次显示内容
                 print_flag = 1
@@ -2477,7 +2486,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         tcms2ato_stat = []
         # 读取该周期内容
         try:
-            for line in self.log.cycle_dic[self.log.cycle[idx]].cycle_all_info:
+            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_mvb_lines:
                 pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
                 pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
                 pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
@@ -2783,7 +2792,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cycle_os_time = self.log.cycle_dic[self.log.cycle[idx]].ostime_start
         # 读取该周期内容
         try:
-            for line in self.log.cycle_dic[self.log.cycle[idx]].cycle_all_info:
+            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_rp_lines:
                 # 提高解析效率,当均更新时才发送信号
                 if '[RP' in line:
                     if self.pat_plan[0].findall(line):
@@ -3152,13 +3161,22 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     elif sp_tpl[7].strip() == '3':
                         self.lbl_ato_ctrl_stat.setText('慢行策略')
 
-    # 事件处理函数，应答器表格选中事件,调用光标
-    def BTM_selected_info(self, row_item):
+    # 事件处理函数，双击跳转
+    def BTM_selected_cursor_go(self, row_item):
         global cur_interface
-        if cur_interface == 1:
+        if cur_interface == 1 and self.mode == 1:  # 必须标记模式:
             c_num = self.BTM_cycle[row_item.row()]
             try:
                 self.spinBox.setValue(c_num)
+            except Exception as err:
+                self.Log(err, __name__, sys._getframe().f_lineno)
+
+    # 事件处理函数，应答器表格选中事件显示
+    def BTM_selected_info(self, row_item):
+        global cur_interface
+        if cur_interface == 1 and self.mode == 1:  # 必须标记模式:
+            c_num = self.BTM_cycle[row_item.row()]
+            try:
                 if 7 in self.log.cycle_dic[c_num].cycle_sp_dict.keys():
                     c_show_sp7 = self.log.cycle_dic[c_num]
                     # JD正常刷颜色
@@ -3185,13 +3203,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         self.led_track.setText(c_show_sp7.cycle_sp_dict[7][7])
                         scale = int(c_show_sp7.cycle_sp_dict[7][4])
                         d_stop = int(c_show_sp7.cycle_sp_dict[7][8])
-                        if scale == 0:
-                            scale = 10
-                        elif scale == 1:
-                            scale = 100
-                        elif scale == 2:
-                            scale = 1000
-                        self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
+                        if d_stop != 32767:
+                            if scale == 0:
+                                scale = 10
+                            elif scale == 1:
+                                scale = 100
+                            elif scale == 2:
+                                scale = 1000
+                            self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
+                        else:
+                            self.led_stop_d_JD.setText('无效值')
                     else:
                         self.led_with_c13.setText('无')
                         self.led_with_c13.setStyleSheet("background-color: rgb(100, 100, 100);")
@@ -3208,7 +3229,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if cur_sp7[3].strip() == '13':
                     self.led_with_c13.setText('有')
                     self.led_with_c13.setStyleSheet("background-color: rgb(225, 0, 0);")
-                    # 站台位置
+                    # 站台侧位置
                     platform_pos = int(cur_sp7[5])
                     if platform_pos == 0:
                         self.led_platform_pos.setText('左侧')
@@ -3228,13 +3249,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.led_track.setText(cur_sp7[7])
                     scale = int(cur_sp7[4])
                     d_stop = int(cur_sp7[8])
-                    if scale == 0:
-                        scale = 10
-                    elif scale == 1:
-                        scale = 100
-                    elif scale == 2:
-                        scale = 1000
-                    self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
+                    if d_stop != 32767:
+                        if scale == 0:
+                            scale = 10
+                        elif scale == 1:
+                            scale = 100
+                        elif scale == 2:
+                            scale = 1000
+                        self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
+                    else:
+                        self.led_stop_d_JD.setText('无效值')
                 else:
                     self.led_with_c13.setText('无')
                     self.led_with_c13.setStyleSheet("background-color: rgb(100, 100, 100);")
@@ -3255,7 +3279,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         p_ato_sdu = self.pat_list[27]
         p_atp_sdu = self.pat_list[28]
 
-        for line in self.log.cycle_dic[self.log.cycle[idx]].cycle_all_info:
+        for line in self.log.cycle_dic[self.log.cycle[idx]].raw_sdu_lines:
             if 'v&p' in line:
                 try:
                     # 查找或清空

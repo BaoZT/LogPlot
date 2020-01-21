@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['main_fun.py'],
-             pathex=['E:\\99 My Python Projects\\LogPlot'],
+             pathex=['E:\\99-MyPythonProjects\\LogPlot'],
              binaries=[],
              datas=[],
              hiddenimports=[],
@@ -30,4 +30,4 @@ exe = EXE(pyz,
           upx=True,
           upx_exclude=[],
           runtime_tmpdir=None,
-          console=True , icon='IconFiles\\BZT.ico')
+          console=False , icon='IconFiles\\BZT.ico')

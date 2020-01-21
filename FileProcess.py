@@ -43,17 +43,16 @@ class CycleLog(object):
         # 主断及分相说明
         self.break_status = 0
         self.gfx_flag = 0
-        # mvb消息解析
-        self.ato2tcms_stat = []
-        self.ato2tcms_ctrl = []
-        self.tcms2ato_stat = []
         # 控制信息相关
         self.control = ()
         self.fsm = ()
         self.time = ''
         self.cycle_num = 0
-        self.cycle_all_info = []  # 存储当周期所有信息，二次处理
-        self.cycle_sp_dict = {}  # 存储每个
+        self.cycle_sp_dict = {}  # 数据包存储数据
+        # 二次解析原始记录
+        self.raw_mvb_lines = []
+        self.raw_rp_lines = []
+        self.raw_sdu_lines = []
         # 周期属性
         self.cycle_property = 0  # 1=序列完整，2=序列尾部缺失
         # 停车点
@@ -61,7 +60,10 @@ class CycleLog(object):
         # IO信息
         self.io_in = ()
         self.io_out = []
-
+        # 当周期所有信息，使用File指针读取减少内存占用
+        self.file_begin_offset = 0
+        self.file_end_offset = 0
+        self.cycle_all_info = []  # 当周期所有信息，二次处理
 
 # 文件处理类定义
 class FileProcess(threading.Thread, QtCore.QObject):
@@ -69,7 +71,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     end_result_signal = QtCore.pyqtSignal(bool)
 
     # constructors
-    def __init__(self):
+    def __init__(self, filename):
         # 线程处理
         super(QtCore.QObject, self).__init__()  ## 必须这样实例化？ 而不是父类？？？统一认识
         threading.Thread.__init__(self)
@@ -100,13 +102,16 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.stop_error = []
         self.filename = ''
         # 文件读取结果
-        self.lines = []
         self.cycle_dic = {}
         # 主断及分相是保持的变化才变
         self.break_status = 0
         self.gfx_flag = 0
         # 读取耗时
         self.time_use = []
+        # 文件总行数
+        self.file_lines_count = 0
+        # 文件名
+        self.file = filename
 
     def run(self):
         try:
@@ -114,7 +119,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
             islistok = 1
             isok = 2
             start = time.clock()
-            iscycleok = self.create_cycle_dic()  # 创建了周期字典
+            iscycleok = self.readkeyword(self.file)
+            #iscycleok = self.create_cycle_dic()  # 创建了周期字典
             print('Create cycle dic!')
             t1 = time.clock() - start
             start = time.clock()  # 更新计时起点
@@ -130,11 +136,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
             self.time_use = [t1, t2, isok]
             # 发送结束信号
             self.end_result_signal.emit(True)
-            # 读取结束后清空文件缓冲
-            self.lines = []
         except Exception as err:
-            # 读取结束后清空文件缓冲
-            self.lines = []
             print('err in log process! ')
             self.Log(err, __name__, sys._getframe().f_lineno)
             self.end_result_signal.emit(True)
@@ -168,7 +170,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.stop_error = []
         # 文件读取结果
         self.filename = ''
-        self.lines = []
         self.cycle_dic = {}
         # 主断及分相是保持的变化才变
         self.break_status = 0
@@ -178,12 +179,14 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
     # 输入： 文件路径
     def readkeyword(self, file):
+        ret = 0            # 函数返回值，切割结果
         self.reset_vars()  # 重置所有变量
         with open(file, 'r', encoding='utf-8', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
-            self.lines = log.readlines()
-            #print(self.bufcount(log))
+            #self.lines = log.readlines()
+            self.file_lines_count = self.bufcount(log)  # 获取文件总行数
+            ret = self.create_cycle_dic_dync(log)
             self.filename = file.split("/")[-1]
-
+        return ret
     # 获取文件行数
     @staticmethod
     def bufcount(f):
@@ -194,58 +197,137 @@ class FileProcess(threading.Thread, QtCore.QObject):
         while buf:
             lines += buf.count('\n')
             buf = read_f(buf_size)
+        f.seek(0, 0)   # back to head
         return lines
 
-
-    # 找出当前行所在的周期，针对单次搜索
-    # 输入： 行索引
-    # 返回： 该行所在周期[起始索引，终点索引，周期号]
-    def find_cycle_border(self, index):
-        begin_idx = index
-        end_idx = index
-        cycle_start = -1
-        cycle_end = -2
-        cycle_num = -1
-        # 文件开始位置
-        while begin_idx > 0:
-            if '---CORE_TARK CY_B' in self.lines[begin_idx]:
-                try:
-                    raw_start = self.lines[begin_idx].split(',')  # 分隔系统时间和周期号,如果打印残缺就会合并周期
-                    cycle_start = int(raw_start[1].split('----')[0])
-                    break
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                begin_idx = begin_idx - 1
-        # 文件结束位置
-        while end_idx < len(self.lines) - 1:
-            if '---CORE_TARK CY_E' in self.lines[end_idx]:  # 分隔周期结束的时间和周期号
-                try:
-                    raw_end = self.lines[end_idx].split(',')
-                    cycle_end = int(raw_end[1].split('---')[0])
-                    break
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                end_idx = end_idx + 1
-        # 边界是否只包含一个周期
-        if cycle_end != -2 and cycle_start != -1:
-            # 周期号一致
-            if cycle_start == cycle_end:  # 搜索成功周期
-                cycle_num = cycle_start
-            else:
-                if abs(cycle_end - index) < abs(index - cycle_start):  # 更接近end周期号
-                    cycle_num = cycle_end
-                else:
-                    cycle_num = cycle_start
-        elif cycle_end == -2 and cycle_start != -1:  # 记录末尾，搜到头，没有搜索到结尾
-            end_idx = -1
-        elif cycle_end != -2 and cycle_start == -1:  # 记录开始，搜到尾，没有搜到头
-            begin_idx = -1
+    def create_cycle_dic_dync(self, f):
+        """
+        根据传入的文件句柄，动态解析信息记录周期的地址，用于打印查询
+        注意：1. 函数能够检查获取完整的周期
+             2. 函数能够检测并获取 头部缺失尾部存在 的残存单个周期, 按照尾标记周期
+             3. 函数能够检测并获取 尾部缺失头部存在 的残存单个周期， 按照头部标记周期
+             4. 对于连续连续出现的尾部缺失和头部缺失，导致周期合并的情况，逻辑上无法判断，全部丢弃
+        :param f: 文件句柄
+        :return: 周期分割结果
+        """
+        ret = 0
+        content_search_state = 0   # 周期搜索状态，0=未知，1=搜索周期头，2=搜索周期尾
+        restart_idx = 0   # 软件重启的行号
+        restart_flag = 0  # 软件重启标志
+        # 创建周期号模板
+        pat_list = self.create_all_pattern()
+        pat_extend_list = self.create_extend_pattern()
+        pat_cycle_end = re.compile('---CORE_TARK CY_E (\d+),(\d+).')  # 周期起点匹配，括号匹配取出ostime和周期号，最后可以任意匹配
+        pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
+        # 设置每次读取行数
+        last_cycle_end_offset = f.tell()                # 初始化最近一次周期结束的指针偏移量
+        # 计算进度条判断
+        cnt = 0
+        bar = 0
+        bar_cnt = int(self.file_lines_count / 70)
+        if bar_cnt == 0:
+            self.bar_show_signal.emit(70)  # 文本很短，直接赋值进度条
+            bar_flag = 0
         else:
-            begin_idx = -1  # 头尾都找不到，空记录
-            end_idx = -1
-        return begin_idx, end_idx, cycle_num
+            bar_flag = 1
+        # 记录当前行的文件指针偏移量
+        cur_line_head_offset = f.tell()
+        line = f.readline()
+        cur_line_tail_offset = f.tell()
+        # 当前行号
+        index = 0
+        # 当读到数据时
+        while line:
+            index = index + 1                         # 计算当前行号
+            # 如果有启机过程立即判断
+            if '################' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
+                restart_idx = index
+                restart_flag = 1
+            # 可计算的进度条
+            if bar_flag == 1:
+                cnt = cnt + 1
+                if int(cnt % bar_cnt) == 0:
+                    bar = bar + 1
+                    self.bar_show_signal.emit(bar)
+                else:
+                    pass
+            # 搜索周期
+            s_r = pat_cycle_start.findall(line)
+            e_r = pat_cycle_end.findall(line)
+            # 检查是否周期头
+            if s_r:
+                s_r_list = list(s_r[0])                # 获取匹配的元组，转为列表
+                # 检查状态机
+                if content_search_state == 0 or content_search_state == 1:  # 未知或搜头状态下搜到周期头
+                    c = CycleLog()
+                    c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
+                    c.ostime_start = int(s_r_list[0])  # 格式0是系统时间
+                    c.cycle_num = int(s_r_list[1])     # 格式1是周期号
+                    content_search_state = 2           # 开始周期尾继续搜寻内容！
+                else:                                  # 搜索周期尾时搜到周期头，结束上一周期
+                    c.file_end_offset = cur_line_head_offset   # 残尾周期的结束偏移
+                    c.ostime_end = 0                   # 0为特殊值，代表未搜索到
+                    c.cycle_property = 2               # 设置该周期属性，尾部缺失
+                    # 添加周期时检查唯一性，否则立即返回
+                    if self.check_cycle_exist(c, restart_flag):    # 假如已存在ATO控制的
+                        return restart_idx
+                    else:
+                        self.cycle_dic[c.cycle_num] = c
+                    # 同时开始新周期的统计
+                    c = CycleLog()
+                    c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
+                    c.ostime_start = int(s_r_list[0])  # 格式0是系统时间
+                    c.cycle_num = int(s_r_list[1])     # 格式1是周期号
+                    content_search_state = 2           # 开始周期尾继续搜寻内容
+            elif e_r:
+                e_r_list = list(e_r[0])                # 获取匹配的元组，转为列表
+                # 头部残缺情况，直接生成周期
+                if content_search_state == 0 or content_search_state ==1:
+                    c = CycleLog()
+                    c.file_begin_offset = last_cycle_end_offset  # 获取上次或初始化的周期结束的文件偏移量
+                    c.file_end_offset = cur_line_tail_offset     # 获取尾部文件偏移量
+                    c.ostime_start = 0                           # 格式0是系统时间，0为特殊值，未知
+                    c.cycle_num = int(e_r_list[1])               # 格式1是周期号
+                    c.cycle_property = 3                         # 设置该周期属性，头部缺失
+                    content_search_state = 1                     # 开始下一次周期头搜索工作
+                else:                                            # 搜索周期尾时找到，状态机是2
+                    if int(e_r_list[1]) == c.cycle_num:          # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
+                        c.file_end_offset = cur_line_tail_offset           # 获取周期结束偏移量
+                        ###############
+                        if c.cycle_num == 15012:
+                            f.seek(c.file_begin_offset ,0)
+                            lines = f.read(5790 - c.file_begin_offset)
+                            print(lines)
+                        ##############
+                        c.ostime_end = int(e_r_list[0])          # 找到完整周期
+                        c.cycle_property = 1                     # 完整周期
+                        content_search_state = 1                 # 置状态机为未知，重新搜索
+                        # 添加周期到字典
+                        if self.check_cycle_exist(c, restart_flag):
+                            return restart_idx
+                        else:
+                            self.cycle_dic[c.cycle_num] = c
+                    else:
+                        content_search_state = 0                      # 置状态机为未知，重新搜索
+                # 更新最近一次周期尾的偏移量
+                last_cycle_end_offset = cur_line_tail_offset          # 当前周期偏移，下次首部丢失，获取周期内容用
+            else:
+                # 只有搜索尾部时解析，搜索头部属于周期间不处理
+                if content_search_state == 2:
+                    ret = 1                                       # 有周期!!!
+                    result = self.match_log_packet_contect(c, line, pat_list, pat_extend_list)
+                    if result == 0:                               # 每一行只能有一种结果，当无数据包，才继续
+                        result = self.match_log_basic_content(c, line, pat_list, pat_extend_list)
+                else:
+                    pass                                          # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
+            # 再次读取并更新偏移量
+            # 记录当前行的文件指针偏移量
+            cur_line_head_offset = f.tell()
+            line = f.readline()
+            cur_line_tail_offset = f.tell()
+        return ret
+
+
 
     # <核心函数>
     # 搜索文本划分所有的周期，生成周期字典
@@ -254,7 +336,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         restart_flag = 0
         ret = 0
         # 创建周期号模板
-        patlist = self.create_all_pattern()
+        pat_list = self.create_all_pattern()
         pat_extend_list = self.create_extend_pattern()
         pat_cycle_end = re.compile('---CORE_TARK CY_E (\d+),(\d+).')  # 周期起点匹配，括号匹配取出ostime和周期号，最后可以任意匹配
         pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
@@ -337,9 +419,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
                                 self.cycle_dic[c.cycle_num] = c
             elif content_flag == 1:
                 ret = 1  # 有周期!!!
-                r = self.match_log_packet_contect(c, line, patlist, pat_extend_list)
+                r = self.match_log_packet_contect(c, line, pat_list, pat_extend_list)
                 if r == 0:  # 如果不成功，才继续
-                    r = self.match_log_basic_content(c, line, patlist, pat_extend_list)
+                    r = self.match_log_basic_content(c, line, pat_list, pat_extend_list)
             else:
                 # 属于记录开始和结尾残损周期，不记录丢弃
                 pass
@@ -484,7 +566,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
             elif pat_c45.findall(line):
                 c.cycle_sp_dict[45] = pat_c45.findall(line)[0]
         elif 'MVB[' in line:
-            self.mvb_research(c, line)
+            c.raw_mvb_lines.append(line)
+        elif 'v&p' in line:
+            c.raw_sdu_lines.append(line)
+        elif '[RP' in line:
+            c.raw_rp_lines.append(line)
         elif '[DOOR]' in line or '[MSG]' in line:
             if pat_io_in.findall(line):
                 c.io_in = pat_io_in.findall(line)[0]
@@ -592,15 +678,21 @@ class FileProcess(threading.Thread, QtCore.QObject):
         temp_delta_s = self.s[1:] - self.s[:-1]
         # 进度条
         bar_cnt = int(len(temp_delta_s) / 4)
+        if bar_cnt == 0:
+            self.bar_show_signal.emit(85)  # 文本很短，直接赋值进度条
+            bar_flag = 0
+        else:
+            bar_flag = 1
         # 加速度计算处理
         for idx, item in enumerate(temp_delta_s):
             # 进度条计算
-            cnt = cnt + 1
-            if int(cnt % bar_cnt) == 0:
-                bar = bar + 1
-                self.bar_show_signal.emit(bar)
-            else:
-                pass
+            if bar_flag == 1:
+                cnt = cnt + 1
+                if int(cnt % bar_cnt) == 0:
+                    bar = bar + 1
+                    self.bar_show_signal.emit(bar)
+                else:
+                    pass
             # 主逻辑
             if item == 0:
                 self.a = np.append(self.a, 0)
@@ -619,16 +711,22 @@ class FileProcess(threading.Thread, QtCore.QObject):
         bar = 85
         # 进度条
         bar_cnt = int(len(self.cycle_dic.keys()) / 10)
+        if bar_cnt == 0:
+            self.bar_show_signal.emit(95)  # 文本很短，直接赋值进度条
+            bar_flag = 0
+        else:
+            bar_flag = 1
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
             for ctrl_item in self.cycle_dic.keys():
                 # 进度条计算
-                cnt = cnt + 1
-                if int(cnt % bar_cnt) == 0:
-                    bar = bar + 1
-                    self.bar_show_signal.emit(bar)
-                else:
-                    pass
+                if bar_flag == 1:
+                    cnt = cnt + 1
+                    if int(cnt % bar_cnt) == 0:
+                        bar = bar + 1
+                        self.bar_show_signal.emit(bar)
+                    else:
+                        pass
                 # print('Comput ATP Permit %d len %d' % (ctrl_item,len(self.atp_permit_v)))
                 if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
                     c_num = self.cycle_dic[ctrl_item].cycle_num  # 获取周期号
@@ -753,12 +851,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 ret = 1
         return ret
 
-    # 检查是否该周期已经存在,都有控车，异常，手动分解。
+    # 检查是否该周期已经存在,且有控车，异常，需手动分解。
     # <输出> 0=不存在，1=存在
     def check_cycle_exist(self, c=CycleLog, restart=int):
         ret = 0
         if restart == 1:  # 已经重启过且重启前后都有控车信息
-            if c.cycle_num in self.cycle_dic.keys() and self.cycle_dic[c.cycle_num].control and c.control:
+            if c.cycle_num in self.cycle_dic.keys() and self.cycle_dic[c.cycle_num].control:
                 ret = 1
         return ret
 
@@ -807,111 +905,55 @@ class FileProcess(threading.Thread, QtCore.QObject):
             self.Log(err, __name__, sys._getframe().f_lineno)
         return parse_flag
 
-    # <已废弃>
-    # 处理控车参数用于绘图，生成关键列表
-    # 输入：ATO控车行
-    def keywordprocess(self, line_info):
-        if -1 != line_info.find('@'):
-            index_end = line_info.index('@')
-            index_start = line_info.index('SC{')
-            line_key = line_info[index_start + 3:index_end]  # split good part and sign 'SC{'
+    # 找出当前行所在的周期，针对单次搜索
+    # 输入： 行索引
+    # 返回： 该行所在周期[起始索引，终点索引，周期号]
+    def find_cycle_border(self, index):
+        begin_idx = index
+        end_idx = index
+        cycle_start = -1
+        cycle_end = -2
+        cycle_num = -1
+        # 文件开始位置
+        while begin_idx > 0:
+            if '---CORE_TARK CY_B' in self.lines[begin_idx]:
+                try:
+                    raw_start = self.lines[begin_idx].split(',')  # 分隔系统时间和周期号,如果打印残缺就会合并周期
+                    cycle_start = int(raw_start[1].split('----')[0])
+                    break
+                except Exception as err:
+                    self.Log(err, __name__, sys._getframe().f_lineno)
+            else:
+                begin_idx = begin_idx - 1
+        # 文件结束位置
+        while end_idx < len(self.lines) - 1:
+            if '---CORE_TARK CY_E' in self.lines[end_idx]:  # 分隔周期结束的时间和周期号
+                try:
+                    raw_end = self.lines[end_idx].split(',')
+                    cycle_end = int(raw_end[1].split('---')[0])
+                    break
+                except Exception as err:
+                    self.Log(err, __name__, sys._getframe().f_lineno)
+            else:
+                end_idx = end_idx + 1
+        # 边界是否只包含一个周期
+        if cycle_end != -2 and cycle_start != -1:
+            # 周期号一致
+            if cycle_start == cycle_end:  # 搜索成功周期
+                cycle_num = cycle_start
+            else:
+                if abs(cycle_end - index) < abs(index - cycle_start):  # 更接近end周期号
+                    cycle_num = cycle_end
+                else:
+                    cycle_num = cycle_start
+        elif cycle_end == -2 and cycle_start != -1:  # 记录末尾，搜到头，没有搜索到结尾
+            end_idx = -1
+        elif cycle_end != -2 and cycle_start == -1:  # 记录开始，搜到尾，没有搜到头
+            begin_idx = -1
         else:
-            index_start = line_info.index('SC{')
-            line_key = line_info[index_start + 3:]  # split good part and sign 'SC{'
-        ato_info = re.split(',| ', line_key)  # 防护了异常但没有防护空
-        try:
-            s = int(ato_info[0])
-            v = int(ato_info[1])
-            cmdv = int(ato_info[2])
-            ceilv = int(ato_info[3])
-            level = int(ato_info[4])
-            ramp = int(ato_info[8])
-            statmachine = int(ato_info[17])
-            # 增加位置信息
-            v_target = int(ato_info[10])
-            targetpos = int(ato_info[11])
-            ma = int(ato_info[12])
-            stoppos = int(ato_info[14][:-1])  # 因为打印拆分后多一个 } 符号
-            skip = int(ato_info[20][1:])  # 因为打印前面多一个 p
-            mtask = int(ato_info[21][0])
-            # 停车误差
-            if int(ato_info[16]) != -32768:
-                self.stoperr = int(ato_info[16])
-            else:
-                pass
-            # 添加到队列
-            self.s = np.append(self.s, s)
-            self.v_ato = np.append(self.v_ato, v)
-            self.cmdv = np.append(self.cmdv, cmdv)
-            self.ceilv = np.append(self.ceilv, ceilv)
-            self.level = np.append(self.level, level)
-            self.statmachine = np.append(self.statmachine, statmachine)
-            self.ramp = np.append(self.ramp, ramp)
-            # 运动相对量
-            self.v_target = np.append(self.v_target, v_target)
-            self.targetpos = np.append(self.targetpos, targetpos)
-            self.stoppos = np.append(self.stoppos, stoppos)
-            self.ma = np.append(self.ma, ma)
-            self.skip = np.append(self.skip, skip)
-            self.mtask = np.append(self.mtask, mtask)
-            # 加速度计算处理
-            if (len(self.s) > 1) and (len(self.v_ato) > 1):
-                delta_s = self.s[len(self.s) - 1] - self.s[len(self.s) - 2]
-                # 除零错误
-                if delta_s != 0:
-                    a = (pow(self.v_ato[len(self.v_ato) - 1], 2) - pow(self.v_ato[len(self.v_ato) - 2], 2)) / (
-                                2 * delta_s)
-                    # 有效性判断
-                    if len(self.a) > 3:
-                        if abs(a - self.a[-1]) > 100:  # 加速度突变
-                            self.a = np.append(self.a, (self.a[-1] + self.a[-2]) / 2)
-                        else:
-                            self.a = np.append(self.a, a)
-                    else:
-                        self.a = np.append(self.a, a)
-                else:
-                    self.a = np.append(self.a, 0)
-            else:
-                self.a = np.append(self.a, 0)
-        except Exception as err:
-            print('transfer process error:')
-            self.Log(err, __name__, sys._getframe().f_lineno)
-
-    # <已废弃>
-    # 搜索SC所在行
-    # 输入： 文件路径
-    def read_findkeyword(self, file):
-        log = open(file, 'r', encoding='ansi')  # notepad++默认是ANSI编码
-        self.lines = log.readlines()
-        cnt = 0
-        bar = 0
-        bar_cnt = int(len(self.lines) / 50)
-        self.filename = file.split("/")[-1]
-        # 遍历所有的记录
-        for idx, line in enumerate(self.lines):
-            # 解析记录中每行的内容
-            try:
-                if '@' in line:
-                    if line.index('@') > 140:  # 取出前130个字节的内容,在冗余10个
-                        if 'SC' in line:
-                            self.keywordprocess(line)
-                        else:
-                            pass
-                else:
-                    if 'SC{' in line:
-                        self.keywordprocess(line)
-                    else:
-                        pass
-            except Exception as err:
-                print('read_file error:')
-                self.Log(err, __name__, sys._getframe().f_lineno)
-            # 进度条计算
-            cnt = cnt + 1
-            if int(cnt % bar_cnt) == 0:
-                bar = bar + 1
-                self.bar_show_signal.emit(bar)
-            else:
-                pass
+            begin_idx = -1  # 头尾都找不到，空记录
+            end_idx = -1
+        return begin_idx, end_idx, cycle_num
 
     # 打印函数
     def Log(self, msg=str, fun=str, lino=int):
@@ -920,7 +962,3 @@ class FileProcess(threading.Thread, QtCore.QObject):
                   ', in' + fun)
         else:
             print(msg)
-
-
-def cycle():
-    return None

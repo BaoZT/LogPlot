@@ -6,15 +6,13 @@ import matplotlib
 from PyQt5 import QtCore, QtWidgets
 import FileProcess
 import RealTimeExtension
-
+import numpy as np
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 matplotlib.rcParams['xtick.direction'] = 'in'
 matplotlib.rcParams['ytick.direction'] = 'in'
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
-plt.rcParams['axes.unicode_minus'] = False        # 解决Matplotlib绘图中，负号不正常显示问题
-from pylab import *                             # 解决matplotlib绘图，汉字显示不正常的问题
-mpl.rcParams['font.sans-serif'] = ['SimHei']
+matplotlib.rcParams['axes.unicode_minus'] = False        # 解决Matplotlib绘图中，负号不正常显示问题
+matplotlib.rcParams['font.sans-serif'] = ['SimHei']     # 解决matplotlib绘图，汉字显示不正常的问题
 
 cursor_track_flag = 1   # 1=追踪，0=不追踪
 
@@ -102,7 +100,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     lock_signal = QtCore.pyqtSignal(int)  # 这个参数用于提醒锁定光标
 
     def __init__(self, parent=None, width=20, height=10, dpi=100):
-        self.fig = plt.figure(figsize=(width, height), dpi=100, frameon=False)  # 创建一个Figure，注意：该Figure为
+        self.fig =matplotlib.figure.Figure(figsize=(width, height), dpi=100, frameon=False)  # 创建一个Figure，注意：该Figure为
                                                                                 # matplotlib下的figure，不是matplotlib
                                                                                 # pyplot下面的figure
         self.fig.subplots_adjust(top=0.952, bottom=0.095, left=0.064, right=0.954, hspace=0.17, wspace=0.25)
@@ -182,6 +180,9 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                            linewidth=1)  # 350km/h
         self.axes1.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
                            linewidth=1)  # 80km/h
+        # 该条曲线纯粹是为了首次绘图自动范围包括负数
+        self.axes1.axhline(y=-200, xmin=0, xmax=1, color='darkblue', ls='dashed',linewidth=0)
+
         # 绘制位置速度坐标系
         if cmd == 0:
             self.plot_event_in_cords(cmd)
@@ -204,7 +205,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
             self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
-        # 公共纵坐标部分
+        # 公共纵坐标部分,不变
         #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 10))], minor=False)
         #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 1))], minor=True)
         #self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 10))], fontdict={'fontsize': 10}, minor=False)
@@ -260,29 +261,30 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         data_y = data[1]
         # 调整X轴
         if data_x < x_lim[0]:
-            x_new_lim[0] = x_lim[0] - 4*(x_lim[0] - data_x)   # x轴整体移动
-            x_new_lim[1] = x_lim[1] - 4*(x_lim[0] - data_x)
+            left_offset = (x_lim[0] - data_x) + 0.5*(x_lim[1] - x_lim[0])  # 移到X轴中间
+            x_new_lim[0] = x_lim[0] - left_offset   # x轴整体移动
+            x_new_lim[1] = x_lim[1] - left_offset
             update_flag = 1
         elif data_x > x_lim[1]:
-            x_new_lim[0] = x_lim[0] + 4*(data_x - x_lim[1])  # x轴整体移动
-            x_new_lim[1] = x_lim[1] + 4*(data_x - x_lim[1])
+            right_offset = (data_x - x_lim[1]) + 0.5*(x_lim[1] - x_lim[0])  # 移到X轴中间
+            x_new_lim[0] = x_lim[0] + right_offset  # x轴整体移动
+            x_new_lim[1] = x_lim[1] + right_offset
             update_flag = 1
         else:
             x_new_lim[0] = x_lim[0]
             x_new_lim[1] = x_lim[1]
-        # 调整y轴
+        # 调整y轴,考虑使用习惯采用不同的策略，固定最低显示（为了应答器等），只定量挪动上限，突出水平移动的效果
         if data_y < y_lim[0]:
-            y_new_lim[0] = y_lim[0] - 4*(y_lim[0] - data_y)  # y轴整体移动
-            y_new_lim[1] = y_lim[1] - 4*(y_lim[0] - data_y)
+            y_new_lim[1] = y_lim[1] - ((y_lim[0] - data_y) + 100)  # 固定多偏移100，移到屏幕内
             update_flag = 1
         elif data_y > y_lim[1]:
-            y_new_lim[0] = y_lim[0] + 4*(data_y - y_lim[1])  # y轴整体移动
-            y_new_lim[1] = y_lim[1] + 4*(data_y - y_lim[1])
+            y_new_lim[1] = y_lim[1] + ((data_y - y_lim[1]) + 100)
             update_flag = 1
         else:
-            y_new_lim[0] = y_lim[0]
             y_new_lim[1] = y_lim[1]
-        return x_new_lim, y_new_lim , update_flag
+        y_new_lim[0] = -200
+
+        return x_new_lim, y_new_lim, update_flag
 
     # 事件处理函数，响应FigureCanvas鼠标操作，发射光标追踪操作
     def right_press(self, event):
@@ -508,7 +510,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
 # 实时画板类定义
 class Figure_Canvas_R(FigureCanvas):
     def __init__(self, parent=None, width=20, height=10, dpi=100):
-        self.fig = plt.figure(figsize=(width, height), dpi=100, frameon=False)
+        self.fig = matplotlib.figure.Figure(figsize=(width, height), dpi=100, frameon=False)
         FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
         self.fig.subplots_adjust(top=0.977, bottom=0.055, left=0.052, right=0.95, hspace=0.17, wspace=0.25)
         self.axes1 = self.fig.add_subplot(111)  # 画速度曲线

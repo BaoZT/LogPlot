@@ -851,12 +851,14 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
         pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
         pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
+        tb_stat = ''
+        tb_fbk = ''
         # 读取该周期内容
         try:
             for idx in range(len(self.log.cycle)):
                 ato_ctrl_flag = 0   # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
                 tcms_fbk_flag = 0
-                for line in self.log.cycle_dic[self.log.cycle[idx]].cycle_all_info:
+                for line in self.log.cycle_dic[self.log.cycle[idx]].raw_mvb_lines:
 
                     if pat_ato_ctrl in line:
                         if '@' in line:
