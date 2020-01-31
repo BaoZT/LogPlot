@@ -793,7 +793,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
             self.ctrlAccTable.setItem(idx, 1, i_content_value)
             self.ctrlAccTable.setItem(idx, 2, i_content_unit)
 
-        self.sp.ax.plot(x_list, y_list_sim, color='red')
+        self.sp.ax.plot(x_list, y_list_sim, color='purple')
         self.sp.ax.plot(x_list, y_list, color='deeppink', marker='.', markersize=0.2)
         str_asim = '预估加速度:%.*f cm/s^2\n'%(3,a_sim)
         str_cycle_num = '测量时间:%.*f s\n'%(3,(idx_end-idx_start)/10.0)
@@ -806,7 +806,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
             self.sp.ax.text(0.1, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props)
         else:
-            self.sp.ax.text(0.58, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
+            self.sp.ax.text(0.48, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props)
 
 
@@ -816,7 +816,7 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
     # 初始化，获取加载后的处理信息
     def __init__(self,  parent=None, ob=FileProcess.FileProcess):
         self.log = ob
-        super(Train_Com_MeasureDlg, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.sp = Figure_Canvas(self.widget)         # 这是继承FigureCanvas的子类，使用子窗体widget作为
         self.trainComTable = QtWidgets.QTableWidget()

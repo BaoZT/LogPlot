@@ -32,6 +32,11 @@ pat_tcms_stat = ''
 
 # 周期类定义
 class CycleLog(object):
+    __slots__ = 'cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end', 'break_status', \
+                'gfx_flag', 'control', 'fsm', 'time', 'cycle_num', 'cycle_sp_dict', 'raw_mvb_lines', 'raw_rp_lines', \
+                'raw_sdu_lines', 'cycle_property', 'stoppoint', 'io_in', 'io_out', 'file_begin_offset', \
+                'file_end_offset'
+
     def __init__(self):  # 存储的是读取的内容
         # 周期文本索引号
         self.cycle_start_idx = 0
@@ -39,7 +44,6 @@ class CycleLog(object):
         # 周期系统时间信息
         self.ostime_start = 0
         self.ostime_end = 0
-        self.duringtime = 0
         # 主断及分相说明
         self.break_status = 0
         self.gfx_flag = 0
@@ -53,8 +57,6 @@ class CycleLog(object):
         self.raw_mvb_lines = []
         self.raw_rp_lines = []
         self.raw_sdu_lines = []
-        # 周期属性
-        self.cycle_property = 0  # 1=序列完整，2=序列尾部缺失
         # 停车点
         self.stoppoint = []
         # IO信息
@@ -63,55 +65,61 @@ class CycleLog(object):
         # 当周期所有信息，使用File指针读取减少内存占用
         self.file_begin_offset = 0
         self.file_end_offset = 0
-        self.cycle_all_info = []  # 当周期所有信息，二次处理
+        # 周期属性
+        self.cycle_property = 0  # 1=序列完整，2=序列尾部缺失
+
 
 # 文件处理类定义
 class FileProcess(threading.Thread, QtCore.QObject):
     bar_show_signal = QtCore.pyqtSignal(int)
     end_result_signal = QtCore.pyqtSignal(bool)
+    __slots__ = 'daemon', 'mvbParser', 'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level',\
+                'ceilv', 'atp_permit_v','statmachine', 'v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',\
+                'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic', 'cur_break_status', 'cur_gfx_flag', \
+                'time_use', 'file_lines_count', 'file_path', 'filename'
 
     # constructors
-    def __init__(self, filename):
+    def __init__(self, file_path_in):
         # 线程处理
         super(QtCore.QObject, self).__init__()  ## 必须这样实例化？ 而不是父类？？？统一认识
         threading.Thread.__init__(self)
         self.daemon = True
         self.mvbParser = MVBParse()
         # 序列初始化
-        self.cycle = np.array([])
-        self.s = np.array([])
-        self.v_ato = np.array([])
-        self.a = np.array([])
-        self.cmdv = np.array([])
-        self.level = np.array([])
-        self.real_level = np.array([])
-        self.output_level = np.array([])
-        self.ceilv = np.array([])
-        self.atp_permit_v = np.array([])
-        self.statmachine = np.array([])
-        self.v_target = np.array([])
-        self.targetpos = np.array([])
-        self.stoppos = np.array([])
-        self.ma = np.array([])
-        self.ramp = np.array([])
-        self.adjramp = np.array([])  # 增加等效坡度
-        self.skip = np.array([])
-        self.mtask = np.array([])
-        self.platform = np.array([])
+        self.cycle = np.array([], dtype=np.uint32)
+        self.s = np.array([], dtype=np.uint32)
+        self.v_ato = np.array([], dtype=np.int16)
+        self.a = np.array([], dtype=np.float16)
+        self.cmdv = np.array([], dtype=np.int16)
+        self.level = np.array([], dtype=np.int8)
+        self.real_level = np.array([], dtype=np.int8)
+        self.output_level = np.array([], dtype=np.int8)
+        self.ceilv = np.array([], dtype=np.int16)
+        self.atp_permit_v = np.array([], dtype=np.int16)
+        self.statmachine = np.array([], dtype=np.uint8)
+        self.v_target = np.array([], dtype=np.int16)
+        self.targetpos = np.array([], dtype=np.uint32)
+        self.stoppos = np.array([], dtype=np.uint32)
+        self.ma = np.array([], dtype=np.uint32)
+        self.ramp = np.array([], dtype=np.int8)
+        self.adjramp = np.array([], dtype=np.int8)  # 增加等效坡度
+        self.skip = np.array([], dtype=np.uint8)
+        self.mtask = np.array([], dtype=np.uint8)
+        self.platform = np.array([], dtype=np.uint8)
         self.stoperr = -32768
         self.stop_error = []
-        self.filename = ''
         # 文件读取结果
         self.cycle_dic = {}
         # 主断及分相是保持的变化才变
-        self.break_status = 0
-        self.gfx_flag = 0
+        self.cur_break_status = 0
+        self.cur_gfx_flag = 0
         # 读取耗时
         self.time_use = []
         # 文件总行数
         self.file_lines_count = 0
         # 文件名
-        self.file = filename
+        self.file_path = file_path_in
+        self.filename = file_path_in.split("/")[-1]
 
     def run(self):
         try:
@@ -119,8 +127,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
             islistok = 1
             isok = 2
             start = time.clock()
-            iscycleok = self.readkeyword(self.file)
-            #iscycleok = self.create_cycle_dic()  # 创建了周期字典
+            iscycleok = self.readkeyword(self.file_path)
             print('Create cycle dic!')
             t1 = time.clock() - start
             start = time.clock()  # 更新计时起点
@@ -146,47 +153,47 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
     # 每次读取文件前都重置变量
     def reset_vars(self):
-        self.cycle = np.array([])
-        self.s = np.array([])
-        self.v_ato = np.array([])
-        self.a = np.array([])
-        self.cmdv = np.array([])
-        self.level = np.array([])
-        self.real_level = np.array([])
-        self.output_level = np.array([])
-        self.ceilv = np.array([])
-        self.atp_permit_v = np.array([])
-        self.statmachine = np.array([])
-        self.v_target = np.array([])
-        self.targetpos = np.array([])
-        self.stoppos = np.array([])
-        self.ma = np.array([])
-        self.ramp = np.array([])
-        self.adjramp = np.array([])
-        self.skip = np.array([])
-        self.mtask = np.array([])
-        self.platform = np.array([])
+        self.cycle = np.array([], dtype=np.uint32)
+        self.s = np.array([], dtype=np.uint32)
+        self.v_ato = np.array([], dtype=np.int16)
+        self.a = np.array([], dtype=np.float16)
+        self.cmdv = np.array([], dtype=np.int16)
+        self.level = np.array([], dtype=np.int8)
+        self.real_level = np.array([], dtype=np.int8)
+        self.output_level = np.array([], dtype=np.int8)
+        self.ceilv = np.array([], dtype=np.int16)
+        self.atp_permit_v = np.array([], dtype=np.int16)
+        self.statmachine = np.array([], dtype=np.uint8)
+        self.v_target = np.array([], dtype=np.int16)
+        self.targetpos = np.array([], dtype=np.uint32)
+        self.stoppos = np.array([], dtype=np.uint32)
+        self.ma = np.array([], dtype=np.uint32)
+        self.ramp = np.array([], dtype=np.int8)
+        self.adjramp = np.array([], dtype=np.int8)  # 增加等效坡度
+        self.skip = np.array([], dtype=np.uint8)
+        self.mtask = np.array([], dtype=np.uint8)
+        self.platform = np.array([], dtype=np.uint8)
         self.stoperr = -32768
         self.stop_error = []
         # 文件读取结果
-        self.filename = ''
         self.cycle_dic = {}
         # 主断及分相是保持的变化才变
-        self.break_status = 0
-        self.gfx_flag = 0
+        self.cur_break_status = 0
+        self.cur_gfx_flag = 0
         # 读取耗时
         self.time_use = []
+        # 文件总行数
+        self.file_lines_count = 0
 
     # 输入： 文件路径
-    def readkeyword(self, file):
+    def readkeyword(self, file_path):
         ret = 0            # 函数返回值，切割结果
         self.reset_vars()  # 重置所有变量
-        with open(file, 'r', encoding='utf-8', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
-            #self.lines = log.readlines()
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
             self.file_lines_count = self.bufcount(log)  # 获取文件总行数
             ret = self.create_cycle_dic_dync(log)
-            self.filename = file.split("/")[-1]
         return ret
+
     # 获取文件行数
     @staticmethod
     def bufcount(f):
@@ -200,6 +207,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
         f.seek(0, 0)   # back to head
         return lines
 
+    # <核心函数>
+    # 使用自动迭代获取结果并记录周期偏移字节
     def create_cycle_dic_dync(self, f):
         """
         根据传入的文件句柄，动态解析信息记录周期的地址，用于打印查询
@@ -231,14 +240,17 @@ class FileProcess(threading.Thread, QtCore.QObject):
         else:
             bar_flag = 1
         # 记录当前行的文件指针偏移量
-        cur_line_head_offset = f.tell()
-        line = f.readline()
-        cur_line_tail_offset = f.tell()
+        cur_line_head_offset = 0        # 定义初始文件索引
+        cur_line_tail_offset = 0
         # 当前行号
         index = 0
-        # 当读到数据时
-        while line:
-            index = index + 1                         # 计算当前行号
+        # 使用自动迭代器调用方法
+        for line in f:
+            # 计算行尾字节
+            cur_line_tail_offset = cur_line_tail_offset + len(line.encode('utf-8')) + 1 # 和读取采用的编码一致,
+            # 调试发现，使用计算的字节，对于换行符'\n'每次虽然读取一个字节，但是f.tell(）获取的文件指针却会跳跃一个字节
+            #  目前未知原因，为了适应该情况，每次读取单行计算后，将文件字节偏移量加+1来保持与tell()一致
+            index = index + 1                                     # 计算当前行号，用于重启行号反馈
             # 如果有启机过程立即判断
             if '################' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
                 restart_idx = index
@@ -293,12 +305,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 else:                                            # 搜索周期尾时找到，状态机是2
                     if int(e_r_list[1]) == c.cycle_num:          # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
                         c.file_end_offset = cur_line_tail_offset           # 获取周期结束偏移量
-                        ###############
-                        if c.cycle_num == 15012:
-                            f.seek(c.file_begin_offset ,0)
-                            lines = f.read(5790 - c.file_begin_offset)
-                            print(lines)
-                        ##############
                         c.ostime_end = int(e_r_list[0])          # 找到完整周期
                         c.cycle_property = 1                     # 完整周期
                         content_search_state = 1                 # 置状态机为未知，重新搜索
@@ -320,111 +326,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
                         result = self.match_log_basic_content(c, line, pat_list, pat_extend_list)
                 else:
                     pass                                          # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
-            # 再次读取并更新偏移量
-            # 记录当前行的文件指针偏移量
-            cur_line_head_offset = f.tell()
-            line = f.readline()
-            cur_line_tail_offset = f.tell()
-        return ret
-
-
-
-    # <核心函数>
-    # 搜索文本划分所有的周期，生成周期字典
-    def create_cycle_dic(self):
-        restart_idx = 0
-        restart_flag = 0
-        ret = 0
-        # 创建周期号模板
-        pat_list = self.create_all_pattern()
-        pat_extend_list = self.create_extend_pattern()
-        pat_cycle_end = re.compile('---CORE_TARK CY_E (\d+),(\d+).')  # 周期起点匹配，括号匹配取出ostime和周期号，最后可以任意匹配
-        pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
-        bar_flag = 0
-        content_flag = 0
-        # 计算进度条判断
-        cnt = 0
-        bar = 0
-        bar_cnt = int(len(self.lines) / 70)
-        if bar_cnt == 0:
-            self.bar_show_signal.emit(70)  # 文本很短，直接赋值进度条
-            bar_flag = 0
-        else:
-            bar_flag = 1
-        # 开始遍历
-        length = len(self.lines)
-        for index, line in enumerate(self.lines):
-            # 如果有启机过程立即判断
-            if '#################' in line:  # 非0情况下说明有重新启机，返回行号
-                restart_idx = index
-                restart_flag = 1
-            # 进度条计算
-            if bar_flag == 1:
-                cnt = cnt + 1
-                if int(cnt % bar_cnt) == 0:
-                    bar = bar + 1
-                    self.bar_show_signal.emit(bar)
-                else:
-                    pass
-            # 搜索周期
-            s_r = pat_cycle_start.findall(line)
-            e_r = pat_cycle_end.findall(line)
-            if (s_r != []) or (e_r != []):  # 是周期边界
-                # 找到周期开始
-                if s_r:
-                    s_r_list = list(s_r[0])
-                    # 未搜索到周期终点时找到起点
-                    if content_flag == 1:  # 如果之前已经置1但没有置回，没有找到周期结尾，下周期开始
-                        c.cycle_end_idx = index - 1  # 强制结束上个周期
-                        c.ostime_end = 0  # 0代表未搜索到
-                        c.cycle_all_info = self.lines[c.cycle_start_idx: c.cycle_end_idx]
-                        c.cycle_property = 2  # 未找到终点
-                        # 添加周期到字典
-                        if self.check_cycle_exist(c, restart_flag):
-                            return restart_idx
-                        else:
-                            self.cycle_dic[c.cycle_num] = c
-                        content_flag = 0  # 结束一个周期的统计
-                        # 同时开始新周期的统计
-                        c = CycleLog()
-                        c.cycle_start_idx = index
-                        c.ostime_start = int(s_r_list[0])  # 格式0是系统时间
-                        c.cycle_num = int(s_r_list[1])  # 格式1是周期号
-                        content_flag = 1  # 开始本周期的搜寻内容
-                    else:
-                        # 创建一个周期对象，从记录第一个完整周期开始记录
-                        c = CycleLog()
-                        c.cycle_start_idx = index
-                        c.ostime_start = int(s_r_list[0])  # 格式0是系统时间
-                        c.cycle_num = int(s_r_list[1])  # 格式1是周期号
-                        content_flag = 1  # 开始周期的搜寻内容
-                elif e_r != []:
-                    if content_flag == 0:  # 从来没有起点,丢弃
-                        pass
-                    else:
-                        e_r_list = list(e_r[0])
-                        if int(e_r_list[1]) == c.cycle_num:  # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
-                            c.cycle_end_idx = index
-                            c.ostime_end = int(e_r_list[0])  # 找到完整周期
-                            if index == length - 1:
-                                c.cycle_all_info = self.lines[c.cycle_start_idx:]  # 列表末尾包含当前行
-                            else:
-                                c.cycle_all_info = self.lines[c.cycle_start_idx: c.cycle_end_idx + 1]  # 包含当前行
-                            c.cycle_property = 1  # 完整周期
-                            content_flag = 0  # 不在寻找该周期内容
-                            # 添加周期到字典
-                            if self.check_cycle_exist(c, restart_flag):
-                                return restart_idx
-                            else:
-                                self.cycle_dic[c.cycle_num] = c
-            elif content_flag == 1:
-                ret = 1  # 有周期!!!
-                r = self.match_log_packet_contect(c, line, pat_list, pat_extend_list)
-                if r == 0:  # 如果不成功，才继续
-                    r = self.match_log_basic_content(c, line, pat_list, pat_extend_list)
-            else:
-                # 属于记录开始和结尾残损周期，不记录丢弃
-                pass
+            # 更新下一行读取的记录起点
+            cur_line_head_offset = cur_line_tail_offset
         return ret
 
     # 根据构建模板，对字符串分解后周期基本要素填充
@@ -461,8 +364,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def match_log_packet_contect(self, c=CycleLog, line=str, pat_list=list, pat_extend_list=list):
         ret = 1
         # 先无条件设置状态
-        c.gfx_flag = self.gfx_flag
-        c.break_status = self.break_status
+        c.gfx_flag = self.cur_gfx_flag
+        c.break_status = self.cur_break_status
         # 扩展表达式C2ATO
         pat_c2ato_p1 = pat_extend_list[0]
         # ATP->ATO 数据包
@@ -509,10 +412,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
                         c.cycle_sp_dict[2] = tuple(l[1:])  # 保持与其他格式一致，从SP2后截取
                         if int(c.cycle_sp_dict[2][13]) == 1:  # 去除nid——packet是第13个字节
                             c.gfx_flag = 1
-                            self.gfx_flag = 1
+                            self.cur_gfx_flag = 1
                         else:
                             c.gfx_flag = 0
-                            self.gfx_flag = 0
+                            self.cur_gfx_flag = 0
                 except Exception as err:
                     print('gfx err')
                     self.Log(err, __name__, sys._getframe().f_lineno)
@@ -521,10 +424,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 c.cycle_sp_dict[1001] = pat_c2ato_p1.findall(line)[0]  # C2ATO数据包ID增加1000，用于区分高铁ATO数据包
                 if int(c.cycle_sp_dict[1001][9]) == 1:  # 去除nid——packet是第13个字节
                     c.gfx_flag = 1
-                    self.gfx_flag = 1
+                    self.cur_gfx_flag = 1
                 else:
                     c.gfx_flag = 0
-                    self.gfx_flag = 0
+                    self.cur_gfx_flag = 0
             elif pat_sp5.findall(line):
                 c.cycle_sp_dict[5] = pat_sp5.findall(line)[0]
             elif pat_sp6.findall(line):
@@ -671,8 +574,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def comput_acc(self):
         cnt = 0
         bar = 81
-        temp_delta_v = np.array([])
-        temp_delta_s = np.array([])
+        temp_delta_v = np.array([], np.int16)
+        temp_delta_s = np.array([], np.uint32)
         # 计算分子分母
         temp_delta_v = 0.5 * (self.v_ato[1:] ** 2 - self.v_ato[:-1] ** 2)
         temp_delta_s = self.s[1:] - self.s[:-1]
@@ -832,7 +735,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 self.targetpos = mat[:, 11]
                 self.ma = mat[:, 12]
                 self.stoppos = mat[:, 14]
-                self.platform = mat[:, 17]
+                # self.platform = mat[:, 17]        # 目前使用fsm中的信息，SC中的站台标志先不用，不处理
                 # 停车误差
                 self.stop_error = mat[:, 15]
                 # 通过办客
@@ -895,10 +798,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     c.tcms2ato_stat = self.mvbParser.ato_tcms_parse(1032, tmp)
                     if c.tcms2ato_stat != []:
                         if c.tcms2ato_stat[14] == 'AA':
-                            self.break_status = 0
+                            self.cur_break_status = 0
                             c.break_status = 0  # 闭合
                         elif c.tcms2ato_stat[14] == '00':
-                            self.break_status = 1
+                            self.cur_break_status = 1
                             c.break_status = 1  # 主断路器断开
                     parse_flag = 1
         except Exception as err:

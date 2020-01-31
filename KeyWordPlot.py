@@ -4,15 +4,17 @@
 
 import matplotlib
 from PyQt5 import QtCore, QtWidgets
-import FileProcess
+from FileProcess import FileProcess
 import RealTimeExtension
 import numpy as np
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 matplotlib.rcParams['xtick.direction'] = 'in'
 matplotlib.rcParams['ytick.direction'] = 'in'
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 matplotlib.rcParams['axes.unicode_minus'] = False        # 解决Matplotlib绘图中，负号不正常显示问题
 matplotlib.rcParams['font.sans-serif'] = ['SimHei']     # 解决matplotlib绘图，汉字显示不正常的问题
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 cursor_track_flag = 1   # 1=追踪，0=不追踪
 
@@ -105,7 +107,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                                                                                 # pyplot下面的figure
         self.fig.subplots_adjust(top=0.952, bottom=0.095, left=0.064, right=0.954, hspace=0.17, wspace=0.25)
         self.axes1 = self.fig.add_subplot(111)
-        FigureCanvas.__init__(self,self.fig)    # 初始化父类函数
+        super().__init__(self.fig)    # 初始化父类函数,这是Python3的风格，且super不带参数
         self.setParent(parent)
         self.line_list = {}                     # 键值对存储曲线
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -115,6 +117,9 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         self.event_plot_dic = {}
         self.event_plot_flag = 0                 # 事件绘制标志
         self.event_plot_flag_dic = {}            # 指定绘制
+        # 轨旁信息字典
+        self.wayside_plot_dic = {}
+
 
     # 对于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
@@ -181,14 +186,16 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         self.axes1.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
                            linewidth=1)  # 80km/h
         # 该条曲线纯粹是为了首次绘图自动范围包括负数
-        self.axes1.axhline(y=-200, xmin=0, xmax=1, color='darkblue', ls='dashed',linewidth=0)
+        self.axes1.axhline(y=-500, xmin=0, xmax=1, color='darkblue', ls='dashed', linewidth=0)
 
         # 绘制位置速度坐标系
         if cmd == 0:
+            self.plot_wayside_info_in_cords(ob, cmd)
             self.plot_event_in_cords(cmd)
             # 如果绘图范围是默认值，还没有绘图，是默认路径
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
                 self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])  # 由于绘制直线会从0开始绘制，这里重置范围
+                self.axes1.set_ylim(-500, 10000)
             else:
                 self.axes1.set_xlim(x_lim[0], x_lim[1])
                 self.axes1.set_ylim(y_lim[0], y_lim[1])
@@ -196,16 +203,18 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename+" "+"速度-位置曲线")
         else:
-            self.plot_event_in_cords(cmd)
+            self.plot_wayside_info_in_cords(ob, cmd)
+            self.plot_event_in_cords(cmd)                  # 回去在调试
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
                 self.axes1.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])  # 重置范围
+                self.axes1.set_ylim(-500, 10000)
             else:
                 self.axes1.set_xlim(x_lim[0], x_lim[1])
                 self.axes1.set_ylim(y_lim[0], y_lim[1])
             self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
             self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
-        # 公共纵坐标部分,不变
+        # 公共纵坐标部分,暂时屏蔽
         #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 10))], minor=False)
         #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 1))], minor=True)
         #self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 10))], fontdict={'fontsize': 10}, minor=False)
@@ -214,7 +223,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         self.axes1.legend(loc='upper left')
         if self.ax1_twin.get_lines():
             self.ax1_twin.legend(loc='upper right')
-        self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.049, right=0.969, hspace=0.17, wspace=0.25)
+        self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.040, right=0.969, hspace=0.17, wspace=0.25)
         #self.fig.tight_layout()
 
     # 绘制加速度相关信息
@@ -282,7 +291,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             update_flag = 1
         else:
             y_new_lim[1] = y_lim[1]
-        y_new_lim[0] = -200
+        y_new_lim[0] = -500
 
         return x_new_lim, y_new_lim, update_flag
 
@@ -388,7 +397,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
 
     # 计算并设置事件绘制信息及标志
     def set_event_info_plot(self, event_dic=dict, cycle_dic=dict, pos_list=list, cycle_list=list):
-        '''
+        """
         该函数主要按照事件字典说明，按照传入的周期列表和位置列表
         计算绘制事件需要的绘图列表，即“事件-周期/位置”列表
         由于周期字典是无序字典，所以索引无法用于周期列表，因此只能通过两个循环，
@@ -398,7 +407,19 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         :param pos_list: 位置索引列表，用于生成位置图是需要，借助周期索引来查询
         :param cycle_list: 周期索引列表，是AOM控车下周期索引，用于建立其他信息查询的引用
         :return: None
-        '''
+        """
+        # btm列表
+        temp_pos_list_btm = []
+        temp_cycle_list_btm = []
+        # 无线列表
+        temp_pos_list_wl = []
+        temp_cycle_list_wl = []
+        # jd列表
+        temp_pos_list_jd = []
+        temp_cycle_list_jd = []
+        # 计划
+        temp_pos_list_pl = []
+        temp_cycle_list_pl = []
 
         self.event_plot_flag_dic = event_dic
 
@@ -412,61 +433,35 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         map(int, cycle_list)
         # 当需要事件绘制时，该标志标明有需要绘制，无需一个一个查
         if self.event_plot_flag == 1:
-            # 应答器事件字典
-            if event_dic['BTM'] == 1:
-                temp_pos_list = []
-                temp_cycle_list = []
-                # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_dic.keys()):
+            # 周期字典和周期列表中的周期都是int类型
+            for idx, item_cycle in enumerate(cycle_list):
+                # 应答器事件字典
+                if event_dic['BTM'] == 1:
                     if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        temp_cycle_list.append(item_cycle)      # 直接添加周期号
-                # 位置信息不一定有，在只使用SC打印时
-                for idx, item_cycle in enumerate(cycle_list):
-                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        temp_pos_list.append(pos_list[idx])     # 添加对应位置
-                self.event_plot_dic['BTM'] = (temp_pos_list, temp_cycle_list)    # 字典查询结果是两个列表
-
-            # 无线事件字典
-            if event_dic['WL'] == 1:
-                temp_pos_list = []
-                temp_cycle_list = []
-                # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_dic.keys()):
+                        temp_cycle_list_btm.append(item_cycle)      # 直接添加周期号
+                        temp_pos_list_btm.append(pos_list[idx])     # 添加对应位置
+                # 无线事件字典
+                if event_dic['WL'] == 1:
+                    # 为了简化代码，和流程，不对所有周期检测，只检测AOR和AOM周期，即有SC的
                     if 8 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        temp_cycle_list.append(item_cycle)  # 直接添加周期号
-                for idx, item_cycle in enumerate(cycle_list):
-                    if 8 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        temp_pos_list.append(pos_list[idx])  # 添加对应位置
-                self.event_plot_dic['WL'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
-
-            # JD应答器
-            if event_dic['JD'] == 1:
-                temp_pos_list = []
-                temp_cycle_list = []
-                # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_dic.keys()):
+                        temp_cycle_list_wl.append(item_cycle)  # 直接添加周期号
+                        temp_pos_list_wl.append(pos_list[idx])  # 添加对应位置
+                # JD应答器
+                if event_dic['JD'] == 1:
                     if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
                         if '13' == cycle_dic[item_cycle].cycle_sp_dict[7][3].strip():
-                            temp_cycle_list.append(item_cycle)  # 直接添加周期号
-                for idx, item_cycle in enumerate(cycle_list):
-                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        if '13' == cycle_dic[item_cycle].cycle_sp_dict[7][3].strip():
-                            temp_pos_list.append(pos_list[idx])  # 添加对应位置
-                self.event_plot_dic['JD'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
-
-
-            # 计划
-            if event_dic['PLAN'] == 1:
-                temp_pos_list = []
-                temp_cycle_list = []
-                # 周期字典和周期列表中的周期都是int类型
-                for idx, item_cycle in enumerate(cycle_dic.keys()):
+                            temp_cycle_list_jd.append(item_cycle)  # 直接添加周期号
+                            temp_pos_list_jd.append(pos_list[idx])  # 添加对应位置
+                # 计划
+                if event_dic['PLAN'] == 1:
                     if 41 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        temp_cycle_list.append(item_cycle)  # 直接添加周期号
-                for idx, item_cycle in enumerate(cycle_list):
-                    if 41 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        temp_pos_list.append(pos_list[idx])  # 添加对应位置
-                self.event_plot_dic['PLAN'] = (temp_pos_list, temp_cycle_list)  # 字典查询结果是两个列表
+                        temp_cycle_list_pl.append(item_cycle)  # 直接添加周期号
+                        temp_pos_list_pl.append(pos_list[idx])  # 添加对应位置
+                # 更新所有列表
+                self.event_plot_dic['PLAN'] = (temp_pos_list_pl, temp_cycle_list_pl)  # 字典查询结果是两个列表
+                self.event_plot_dic['JD'] = (temp_pos_list_jd, temp_cycle_list_jd)  # 字典查询结果是两个列表
+                self.event_plot_dic['WL'] = (temp_pos_list_wl, temp_cycle_list_wl)  # 字典查询结果是两个列表
+                self.event_plot_dic['BTM'] = (temp_pos_list_btm, temp_cycle_list_btm)  # 字典查询结果是两个列表
 
     # 绘制事件信息
     def plot_event_in_cords(self, cmd=int):
@@ -474,7 +469,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         if self.event_plot_flag == 1:
             for k in self.event_plot_dic.keys():
                 # 前期数据处理保证只要不为空就有位置和周期数据
-                if self.event_plot_dic[k] != []:
+                if self.event_plot_dic[k]:
                     if k == 'BTM' and self.event_plot_flag_dic['BTM'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
@@ -506,6 +501,80 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                             self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='*', color='Purple')
 
+    # 计算需要绘制标志的地方
+    def set_wayside_info_in_cords(self, cycle_dic=dict, pos_list=list, cycle_list=list):
+        """
+        该函数主要搜索绘制站台和分相区
+        :param cycle_dic: 周期列表，用于查询事件信息对应周期
+        :param pos_list: 位置索引列表，用于生成位置图是需要，借助周期索引来查询
+        :param cycle_list: 周期索引列表，是AOM控车下周期索引，用于建立其他信息查询的引用
+        :return: None
+        """
+        # gfx列表
+        temp_pos_list_gfx = []
+        temp_cycle_list_gfx = []
+        # 站台列表
+        temp_pos_list_stn = []
+        temp_cycle_list_stn = []
+        # 轨道电路列表
+        temp_pos_list_tcr = []
+        temp_cycle_list_tcr = []
+        # 貌似numpy 的array 天然取出时浮点
+        map(int, cycle_list)
+        try:
+        # 周期字典和周期列表中的周期都是int类型
+            for idx, item_cycle in enumerate(cycle_list):
+                # 应答器事件字典
+                if 1 == cycle_dic[item_cycle].gfx_flag:
+                    temp_cycle_list_gfx.append(item_cycle)  # 直接添加周期号
+                    temp_pos_list_gfx.append(pos_list[idx])  # 添加对应位置
+                # 无线事件字典
+                if cycle_dic[item_cycle].fsm:
+                    if '1' == list(cycle_dic[item_cycle].fsm)[-1]:
+                        temp_cycle_list_stn.append(item_cycle)  # 直接添加周期号
+                        temp_pos_list_stn.append(pos_list[idx])  # 添加对应位置
+                # 更新所有列表
+                self.wayside_plot_dic['GFX'] = (temp_pos_list_gfx, temp_cycle_list_gfx)  # 字典查询结果是两个列表
+                self.wayside_plot_dic['STN'] = (temp_pos_list_stn, temp_cycle_list_stn)  # 字典查询结果是两个列表
+        except Exception as err:
+            print(err)
+            print('wayside set err index is %d\n'%idx)
+
+    # 绘制画图轨旁数据内容
+    def plot_wayside_info_in_cords(self, ob=FileProcess, cmd=int):
+        """
+        绘制底部基础数据，初步考虑站台标志，分相的绘制
+        :param ob: 文件读取对象
+        :param cmd: 绘制周期图还是位置图
+        :return:
+        """
+        # cmap = ListedColormap(['w', 'k', 'b'])
+        # norm = BoundaryNorm([0.5, 1], cmap.N)
+        # if cmd == 0:  # 位置速度曲线
+        #     points = np.array([ob.s, ob.platform]).T.reshape(-1, 1, 2)
+        # else:  # 周期速度曲线
+        #     points = np.array([ob.cycle, ob.platform]).T.reshape(-1, 1, 2)
+        #
+        # segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        # lc = LineCollection(segments, cmap=cmap, norm=norm)
+        # lc.set_linewidth(3)
+        # self.fig.gca().add_collection(lc)
+        try:
+            if cmd == 0:
+                self.axes1.scatter(self.wayside_plot_dic['STN'][0], [-350] * len(self.wayside_plot_dic['STN'][0]),
+                                   marker='|', color='k', s=100)
+
+                self.axes1.scatter(self.wayside_plot_dic['GFX'][0], [-200] * len(self.wayside_plot_dic['GFX'][0]),
+                                   marker='>', color='red', s=1)
+            else:
+                self.axes1.scatter(self.wayside_plot_dic['STN'][1], [-350] * len(self.wayside_plot_dic['STN'][1]),
+                                   marker='|', color='k', s=100)
+                self.axes1.scatter(self.wayside_plot_dic['GFX'][1], [-200] * len(self.wayside_plot_dic['GFX'][1]),
+                                   marker='>', color='red', s=1)
+        except Exception as err:
+            print(err)
+            print('cords error !!!!!!!!!')
+
 
 # 实时画板类定义
 class Figure_Canvas_R(FigureCanvas):
@@ -526,7 +595,7 @@ class Figure_Canvas_R(FigureCanvas):
         self.l_atppmtv = []
         self.l_level = []
         self.init_realtime_plot(np.zeros([5, 10000]))
-        self.bt = -100
+        self.bt = -500
         self.top = 10000
 
     # 更新绘制需求

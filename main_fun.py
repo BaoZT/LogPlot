@@ -6,7 +6,7 @@ import os
 import sys
 import threading
 import time
-
+import re
 import numpy as np
 import serial
 import serial.tools.list_ports
@@ -1402,10 +1402,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def log_process(self):
         global cursor_in_flag
         cursor_in_flag = 0
-        isok = 2  # 0=ato控车，1=没有控车,2=没有周期
-        isdone = 0
-        self.actionView.trigger()
-        # 读取文件
+
         # 创建文件读取对象
         self.log = FileProcess.FileProcess(self.file)  # 类的构造函数，函数中给出属性
         # 绑定信号量
@@ -1422,7 +1419,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Log('End log read thread!', __name__, sys._getframe().f_lineno)
         # 处理返回结果
         if self.log.get_time_use():
-            [t1, t2, isok] = self.log.get_time_use()
+            [t1, t2, isok] = self.log.get_time_use()     # 0=ato控车，1=没有控车,2=没有周期
             self.show_message("Info:预处理耗时:" + str(t1) + 's')
             # 记录中模式有AOR或AOS
             if isok == 0:
@@ -1461,10 +1458,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             if is_ato_control == 0:
                 load_flag = 1  # 记录加载且ATO控车
-                self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
-                self.CBvato.setChecked(True)
+                # self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                 self.show_message('界面准备中...')
+                self.clear_axis()
                 self.win_init_log_processed()  # 记录加载成功且有控车时，初始化显示一些内容
+                self.CBvato.setChecked(True)
                 self.Log('Set View mode and choose Vato', __name__, sys._getframe().f_lineno)
             elif is_ato_control == 1:
                 load_flag = 2  # 记录加载但是ATO没有控车
@@ -1495,98 +1493,98 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         bar = 95
         cnt = 0
         bar_cnt = int(len(self.log.cycle_dic.keys()) / 5)  # 从90%开始，界面准备占比10%
-        try:
-            # ATP 右侧标签显示相关
-            self.Log("Begin init log show", __name__, sys._getframe().f_lineno)
-            # 初始化表格
-            self.tableATPBTM.clear()
-            self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值', '公里标'])
-            self.tableATPBTM.setColumnWidth(0, 60)
-            self.tableATPBTM.setColumnWidth(1, 80)
-            self.tableATPBTM.setColumnWidth(2, 70)
-            self.tableATPBTM.setColumnWidth(3, 70)
-            self.tableATPBTM.resizeRowsToContents()
-            self.tableATPBTM.resizeColumnsToContents()
-            self.tableATPBTM.verticalHeader().setVisible(True)
-            self.BTM_cycle = []  # 首先初始化列表
-            # BTM TABLE 计数
-            sp7_table_row_cnt = 1
-            for c in self.log.cycle_dic.keys():
-                if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                    sp7_table_row_cnt = sp7_table_row_cnt + 1
-                    self.BTM_cycle.append(c)
-            self.tableATPBTM.setColumnCount(4)
-            self.tableATPBTM.setRowCount(sp7_table_row_cnt)
-            self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
-            # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
-            for c in self.log.cycle_dic.keys():
-                # 计算进度条
-                cnt = cnt + 1
-                if int(cnt % bar_cnt) == 0:
-                    bar = bar + 1
-                    self.progressBar.setValue(bar)
-                else:
-                    pass
-                if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                    sp5_tpl = self.log.cycle_dic[c].cycle_sp_dict[5]
-                    self.set_atp_info_win(sp5_tpl, 5)
-                    sp5_snipper = 1
-                # 加载应答器信息
-                if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                    c_show_sp7 = self.log.cycle_dic[c]
-                    d_t = c_show_sp7.time.split(" ")[1]  # 取时间
-                    item_dt = QtWidgets.QTableWidgetItem(d_t)
-                    item_balise_bum = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][0])
-                    item_adjpos = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][2] + 'cm')
+        # ATP 右侧标签显示相关
+        self.Log("Begin init log show", __name__, sys._getframe().f_lineno)
+        # 初始化表格
+        self.tableATPBTM.clear()
+        self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值', '公里标'])
+        self.tableATPBTM.setColumnWidth(0, 60)
+        self.tableATPBTM.setColumnWidth(1, 80)
+        self.tableATPBTM.setColumnWidth(2, 70)
+        self.tableATPBTM.setColumnWidth(3, 70)
+        self.tableATPBTM.resizeRowsToContents()
+        self.tableATPBTM.resizeColumnsToContents()
+        self.tableATPBTM.verticalHeader().setVisible(True)
+        self.BTM_cycle = []  # 首先初始化列表
+        # BTM TABLE 计数
+        sp7_table_row_cnt = 1
+        for c in self.log.cycle_dic.keys():
+            if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                sp7_table_row_cnt = sp7_table_row_cnt + 1
+                self.BTM_cycle.append(c)
+        self.tableATPBTM.setColumnCount(4)
+        self.tableATPBTM.setRowCount(sp7_table_row_cnt)
+        self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
+        # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
+        for c in self.log.cycle_dic.keys():
+            # 计算进度条
+            cnt = cnt + 1
+            if int(cnt % bar_cnt) == 0:
+                bar = bar + 1
+                self.progressBar.setValue(bar)
+            else:
+                pass
+            if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                sp5_tpl = self.log.cycle_dic[c].cycle_sp_dict[5]
+                self.set_atp_info_win(sp5_tpl, 5)
+                sp5_snipper = 1
+            # 加载应答器信息
+            if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                c_show_sp7 = self.log.cycle_dic[c]
+                d_t = c_show_sp7.time.split(" ")[1]  # 取时间
+                item_dt = QtWidgets.QTableWidgetItem(d_t)
+                item_balise_bum = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][0])
+                item_adjpos = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][2] + 'cm')
 
-                    item_dt.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-                    item_balise_bum.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-                    item_adjpos.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                item_dt.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                item_balise_bum.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                item_adjpos.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
-                    # 获取公里标
-                    if 2 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                        sp2_tpl = self.log.cycle_dic[c].cycle_sp_dict[2]
-                        if '4294967295' != sp2_tpl[23].strip():
-                            item_milestone = QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000)) + '+' +
-                                                                        str(int(sp2_tpl[23]) % 1000))
-                        else:
-                            item_milestone = QtWidgets.QTableWidgetItem('未知')
-                        # 虽然目前有SP2必有SP7但不能保证，所有还是单独条件
-                        if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
-                            item_milestone.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                        # 所有都居中，但只SP7刷红
-                        item_milestone.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-                        self.tableATPBTM.setItem(sp7_cnt, 3, item_milestone)
-                    # JD正常刷颜色
+                # 获取公里标
+                if 2 in self.log.cycle_dic[c].cycle_sp_dict.keys():
+                    sp2_tpl = self.log.cycle_dic[c].cycle_sp_dict[2]
+                    if '4294967295' != sp2_tpl[23].strip():
+                        item_milestone = QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000)) + '+' +
+                                                                    str(int(sp2_tpl[23]) % 1000))
+                    else:
+                        item_milestone = QtWidgets.QTableWidgetItem('未知')
+                    # 虽然目前有SP2必有SP7但不能保证，所有还是单独条件
                     if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
-                        item_dt.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                        item_balise_bum.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                        item_adjpos.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                        item_milestone.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                    # 所有都居中，但只SP7刷红
+                    item_milestone.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+                    self.tableATPBTM.setItem(sp7_cnt, 3, item_milestone)
+                # JD正常刷颜色
+                if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
+                    item_dt.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                    item_balise_bum.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
+                    item_adjpos.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
 
-                    self.tableATPBTM.setItem(sp7_cnt, 0, item_dt)
-                    self.tableATPBTM.setItem(sp7_cnt, 1, item_balise_bum)
-                    self.tableATPBTM.setItem(sp7_cnt, 2, item_adjpos)
-                    sp7_cnt = sp7_cnt + 1
-            # 显示IO信息
-            self.Log("Begin search IO info", __name__, sys._getframe().f_lineno)
-            self.set_io_page_content()
-            # 文本显示
-            if sp5_snipper == 0:
-                self.show_message("Info: N0 SP5 in log,no train data")
+                self.tableATPBTM.setItem(sp7_cnt, 0, item_dt)
+                self.tableATPBTM.setItem(sp7_cnt, 1, item_balise_bum)
+                self.tableATPBTM.setItem(sp7_cnt, 2, item_adjpos)
+                sp7_cnt = sp7_cnt + 1
+
+        # 显示IO信息
+        self.Log("Begin search IO info", __name__, sys._getframe().f_lineno)
+        self.set_io_page_content()
+        # 文本显示
+        if sp5_snipper == 0:
+            self.show_message("Info: N0 SP5 in log,no train data")
+        try:
             # 事件发生相关
             if load_flag == 1:
+                self.sp.set_wayside_info_in_cords(self.log.cycle_dic, self.log.s, self.log.cycle)
                 if self.actionJD.isChecked():
-                    pass
+                    self.update_event_point()    # 若已经选中直接更新
                 else:
                     self.actionJD.trigger()
                 # 如果没选中 trigger一下
                 if self.actionBTM.isChecked():
-                    pass
+                    self.update_event_point()    # 若已经选中直接更新
                 else:
                     self.actionBTM.trigger()
-                # 更新
-                self.update_event_point()
-
+                self.Log("Comput wayside info and trigger BTM event", __name__, sys._getframe().f_lineno)
             else:
                 pass
         except Exception as err:
@@ -1800,7 +1798,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         Mywindow.is_cursor_created = 0
                         del self.c_vato
                     self.tag_cursor_creat()
-                self.Log("Update Curve recreate curve and tag cursor ", __name__, sys._getframe().f_lineno)
+                    self.Log("Update Curve recreate curve and tag cursor ", __name__, sys._getframe().f_lineno)
                 # 处理ATO速度
                 if self.CBvato.isChecked():
                     self.sp.plotlog_vs(self.log, self.mode, curve_flag)
@@ -1828,10 +1826,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.CBlevel.setChecked(False)
             elif self.CBacc.isChecked() or self.CBramp.isChecked():
                 self.update_down_cure()  # 当没有选择下图时更新上图
-                self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
             else:
                 self.clear_axis()
-                self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
             self.sp.plot_cord1(self.log, curve_flag, x_monitor, y_monitor)
             self.sp.draw()
         else:
@@ -1858,10 +1854,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
                         or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
                     self.update_up_cure()  # 当没有选择下图时更新上图
-                    self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
                 else:
                     self.clear_axis()
-                    self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
                 self.sp.plot_cord2(self.log, curve_flag)  # 绘制坐标系II
                 self.sp.draw()
             else:
@@ -1876,6 +1870,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 记录显示应答器事件
         if self.actionBTM.isChecked():
             event_dict['BTM'] = 1
+            self.Log('BTM choosed ！', __name__, sys._getframe().f_lineno)
         else:
             event_dict['BTM'] = 0
         # 记录显示无线呼叫事件
@@ -1894,7 +1889,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             event_dict['PLAN'] = 0
 
-        # 如果文件加载成功，传递数据字典和选择信息
+        # 如果文件加载成功，传递数据字典和选择信息（必须加载后才能调用）
         if load_flag == 1:
             self.sp.set_event_info_plot(event_dict, self.log.cycle_dic, self.log.s, self.log.cycle)
             self.update_up_cure()
@@ -1940,9 +1935,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
             self.tag_cursor_creat()
         else:
-            # 重置坐标轴范围
-            if load_flag == 1:
-                self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
+            pass
+            # 其他情况目前无需重置坐标系
         self.sp.draw()
         # 更改图标
         if self.mode == 1:  # 标记模式
@@ -2086,7 +2080,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         idx = self.spinBox.value()
         print_flag = 0  # 是否弹窗打印，0=不弹窗，1=弹窗
         c_num = 0
+        line_count = 0
+        pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
         self.cyclewin.textEdit.clear()
+
         if 1 == load_flag or 2 == load_flag:  # 文件已经加载
             # 前提是必须有周期，字典能查到
             if idx in self.log.cycle_dic.keys():
@@ -2094,11 +2091,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 with open(self.file, 'r', encoding='utf-8', errors='ignore') as f:  # notepad++默认是ANSI编码
                     f.seek(self.log.cycle_dic[idx].file_begin_offset, 0)
                     lines = f.readline()   # f.read调用f.readline计算的偏移量，实际多读（每行多一个字节），怀疑为python缺陷
+                    line_count = line_count + 1
                     while lines:
                         if self.log.cycle_dic[idx].file_end_offset == f.tell():   # 模拟readline读取过程，逻辑保持一致
                             break
+                        elif pat_cycle_start.findall(lines.strip().split('\n')[-1]) and line_count > 1:
+                            break                     # 当读出最近一行是否是新的周期，若已经读到另一个周期，防护性退出
                         else:
                             lines = lines + f.readline()
+                            line_count = line_count + 1
                     self.cyclewin.textEdit.setText(lines)
                 # 周期完整性
                 if self.log.cycle_dic[idx].cycle_property == 1:
@@ -3479,6 +3480,18 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             self.lbl_atpdcmd.setText('非过分相')
             self.lbl_atpdcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
+
+        # 根据分相和主断路器设置光标
+        if c.break_status == 1 or c.gfx_flag == 1:
+            self.c_vato.ly.set_color('red')
+            self.c_vato.lx.set_color('red')
+            self.c_vato.lx.set_linewidth(1.6)
+            self.c_vato.ly.set_linewidth(1.6)
+        else:
+            self.c_vato.ly.set_color('k')
+            self.c_vato.lx.set_color('k')
+            self.c_vato.lx.set_linewidth(0.8)
+            self.c_vato.ly.set_linewidth(0.8)
 
     # 导出函数
     def export_ato_ctrl_info(self):
