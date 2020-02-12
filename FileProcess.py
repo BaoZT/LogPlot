@@ -32,12 +32,12 @@ pat_tcms_stat = ''
 
 # 周期类定义
 class CycleLog(object):
-    __slots__ = 'cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end', 'break_status', \
-                'gfx_flag', 'control', 'fsm', 'time', 'cycle_num', 'cycle_sp_dict', 'raw_mvb_lines', 'raw_rp_lines', \
-                'raw_sdu_lines', 'cycle_property', 'stoppoint', 'io_in', 'io_out', 'file_begin_offset', \
-                'file_end_offset'
+    __slots__ = ['cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end', 'break_status', \
+                'gfx_flag', 'control', 'fsm', 'time', 'cycle_num', 'cycle_sp_dict',\
+                'raw_analysis_lines', 'stoppoint', 'io_in', 'io_out', 'file_begin_offset', \
+                'file_end_offset',  'cycle_property']
 
-    def __init__(self):  # 存储的是读取的内容
+    def __init__(self, ):  # 存储的是读取的内容
         # 周期文本索引号
         self.cycle_start_idx = 0
         self.cycle_end_idx = 0
@@ -54,14 +54,12 @@ class CycleLog(object):
         self.cycle_num = 0
         self.cycle_sp_dict = {}  # 数据包存储数据
         # 二次解析原始记录
-        self.raw_mvb_lines = []
-        self.raw_rp_lines = []
-        self.raw_sdu_lines = []
+        self.raw_analysis_lines = []
         # 停车点
-        self.stoppoint = []
+        self.stoppoint = ()
         # IO信息
         self.io_in = ()
-        self.io_out = []
+        self.io_out = ()
         # 当周期所有信息，使用File指针读取减少内存占用
         self.file_begin_offset = 0
         self.file_end_offset = 0
@@ -73,10 +71,10 @@ class CycleLog(object):
 class FileProcess(threading.Thread, QtCore.QObject):
     bar_show_signal = QtCore.pyqtSignal(int)
     end_result_signal = QtCore.pyqtSignal(bool)
-    __slots__ = 'daemon', 'mvbParser', 'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level',\
+    __slots__ = ['daemon', 'mvbParser', 'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level',\
                 'ceilv', 'atp_permit_v','statmachine', 'v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',\
                 'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic', 'cur_break_status', 'cur_gfx_flag', \
-                'time_use', 'file_lines_count', 'file_path', 'filename'
+                'time_use', 'file_lines_count', 'file_path', 'filename']
 
     # constructors
     def __init__(self, file_path_in):
@@ -189,7 +187,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def readkeyword(self, file_path):
         ret = 0            # 函数返回值，切割结果
         self.reset_vars()  # 重置所有变量
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
+        with open(file_path, 'r', encoding='ansi', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
             self.file_lines_count = self.bufcount(log)  # 获取文件总行数
             ret = self.create_cycle_dic_dync(log)
         return ret
@@ -206,6 +204,16 @@ class FileProcess(threading.Thread, QtCore.QObject):
             buf = read_f(buf_size)
         f.seek(0, 0)   # back to head
         return lines
+
+    @staticmethod
+    def dump(obj):
+        """
+        获取obj对象内所有的属性并打印
+        :param obj: 对象
+        :return: None
+        """
+        for attr in dir(obj):
+            print("  obj.%s = %r" % (attr, getattr(obj, attr)))
 
     # <核心函数>
     # 使用自动迭代获取结果并记录周期偏移字节
@@ -247,7 +255,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 使用自动迭代器调用方法
         for line in f:
             # 计算行尾字节
-            cur_line_tail_offset = cur_line_tail_offset + len(line.encode('utf-8')) + 1 # 和读取采用的编码一致,
+            cur_line_tail_offset = cur_line_tail_offset + len(line.encode('ansi')) + 1 # 和读取采用的编码一致,
             # 调试发现，使用计算的字节，对于换行符'\n'每次虽然读取一个字节，但是f.tell(）获取的文件指针却会跳跃一个字节
             #  目前未知原因，为了适应该情况，每次读取单行计算后，将文件字节偏移量加+1来保持与tell()一致
             index = index + 1                                     # 计算当前行号，用于重启行号反馈
@@ -469,11 +477,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
             elif pat_c45.findall(line):
                 c.cycle_sp_dict[45] = pat_c45.findall(line)[0]
         elif 'MVB[' in line:
-            c.raw_mvb_lines.append(line)
+            c.raw_analysis_lines.append(line)
         elif 'v&p' in line:
-            c.raw_sdu_lines.append(line)
+            c.raw_analysis_lines.append(line)
         elif '[RP' in line:
-            c.raw_rp_lines.append(line)
+            c.raw_analysis_lines.append(line)
         elif '[DOOR]' in line or '[MSG]' in line:
             if pat_io_in.findall(line):
                 c.io_in = pat_io_in.findall(line)[0]
@@ -598,18 +606,19 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     pass
             # 主逻辑
             if item == 0:
-                self.a = np.append(self.a, 0)
+                yield 0
             else:
-                self.a = np.append(self.a, temp_delta_v[idx] / item)
+                yield temp_delta_v[idx] / item
         # 由于是差值计算，最后补充一个元素
-        self.a = np.append(self.a, 0)
+        yield 0
 
     # 计算ATP允许速度序列，只能从SP2包中获取
     # <输出> 返回ATP允许处理结果
     def get_atp_permit_v(self):
         c_num = 0
-        temp_p = 1
-        c_num_start = 0
+        first_find_pmv_flag = False
+        last_atp_pmv = 0    # 初始化最近的一次ATP允许速度
+        c_num_end = 0
         cnt = 0
         bar = 85
         # 进度条
@@ -621,54 +630,63 @@ class FileProcess(threading.Thread, QtCore.QObject):
             bar_flag = 1
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
-            for ctrl_item in self.cycle_dic.keys():
-                # 进度条计算
-                if bar_flag == 1:
-                    cnt = cnt + 1
-                    if int(cnt % bar_cnt) == 0:
-                        bar = bar + 1
-                        self.bar_show_signal.emit(bar)
+            try:
+                for ctrl_item in self.cycle_dic.keys():
+                    # 进度条计算
+                    if bar_flag == 1:
+                        cnt = cnt + 1
+                        if int(cnt % bar_cnt) == 0:
+                            bar = bar + 1
+                            self.bar_show_signal.emit(bar)
+                        else:
+                            pass
+                    # ATP允许速度计算
+                    if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
+                        c_num = self.cycle_dic[ctrl_item].cycle_num  # 获取周期号
+                        # 如果有数据包
+                        if 2 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
+                            last_atp_pmv = int(self.cycle_dic[ctrl_item].cycle_sp_dict[2][11])
+                            first_find_pmv_flag = True
+                        elif 1001 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
+                            last_atp_pmv = int(self.cycle_dic[ctrl_item].cycle_sp_dict[1001][7])    # 添加C2ATO
+                            first_find_pmv_flag = True
+                        else:
+                            # 上来就控车时就没有允许速度，首次获取，当周期无SP2
+                            if not first_find_pmv_flag:
+                                # 首先尝试寻找向前取20个周期,且字典存在,检查最远边界
+                                if c_num > 20 and ((c_num - 20) in self.cycle_dic.keys()):
+                                    c_num_end = c_num - 20
+                                    # 遍历周期
+                                    for c in range(c_num, c_num_end, -1):    # 逆序寻找，找最近的
+                                        # 首先检测是否存在该周期，可能出现丢周期的情况，检查每个周期
+                                        if c in self.cycle_dic.keys():
+                                            # 如果有数据包
+                                            if 2 in self.cycle_dic[c].cycle_sp_dict.keys():
+                                                last_atp_pmv = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())  # 非首次投入ATO周期，无SP2包
+                                                first_find_pmv_flag = True
+                                                print('ato cycle no sp2, find before aom!')
+                                                break
+                                            else:
+                                                pass
+                                            if 1001 in self.cycle_dic[c].cycle_sp_dict.keys():
+                                                last_atp_pmv = int(self.cycle_dic[c].cycle_sp_dict[1001][7].strip())  # 非首次投入ATO周期，无SP2包
+                                                first_find_pmv_flag = True
+                                                print('ato cycle no sp2, find before aom!')
+                                                break
+                                            else:
+                                                pass
+                                        else:   # 若某个周期不存在，直接跳过
+                                            pass
+                                else:
+                                    first_find_pmv_flag = True    # 最近的20周期找不到不再寻找，际上是添加0，就是初始值作为允许速度的特殊值
+                            else:
+                                pass     # 本周期没找到，使用最近一次的记过
+                        # 只要有控车就增加一个数值
+                        yield last_atp_pmv
                     else:
                         pass
-                # print('Comput ATP Permit %d len %d' % (ctrl_item,len(self.atp_permit_v)))
-                if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
-                    c_num = self.cycle_dic[ctrl_item].cycle_num  # 获取周期号
-                    # 如果有数据包
-                    if 2 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
-                        temp_p = int(self.cycle_dic[ctrl_item].cycle_sp_dict[2][11])
-                        self.atp_permit_v = np.append(self.atp_permit_v, temp_p)  # 添加
-                    elif 1001 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
-                        temp_p = int(self.cycle_dic[ctrl_item].cycle_sp_dict[1001][7])
-                        self.atp_permit_v = np.append(self.atp_permit_v, temp_p)  # 添加C2ATO
-                    else:
-                        # 首次获取，当周期无SP2
-                        if temp_p == 1:
-                            # 向前取5个周期,且字典存在
-                            if c_num > 5 and ((c_num - 5) in self.cycle_dic.keys()):
-                                c_num_start = c_num - 5
-                                # 遍历周期
-                                for c in range(c_num_start, c_num):
-                                    # 如果有数据包
-                                    if 2 in self.cycle_dic[c].cycle_sp_dict.keys():
-                                        temp_p = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())  # 非首次投入ATO周期，无SP2包
-                                        print('ato cycle no sp2, find before aom!')
-                                        break
-                                    else:
-                                        pass
-                                    if 1001 in self.cycle_dic[c].cycle_sp_dict.keys():
-                                        temp_p = int(self.cycle_dic[c].cycle_sp_dict[1001][7].strip())  # 非首次投入ATO周期，无SP2包
-                                        print('ato cycle no sp2, find before aom!')
-                                        break
-                                    else:
-                                        pass
-                            else:
-                                pass  # 直接添加1
-                            self.atp_permit_v = np.append(self.atp_permit_v, temp_p)  # 添加
-                            temp_p = 0  # 清除作为标志，表明已经非首次
-                        else:
-                            self.atp_permit_v = np.append(self.atp_permit_v, self.atp_permit_v[-1])
-                else:
-                    pass
+            except Exception as err:
+                print(err)
         else:
             print('no ato ctrl,no atp permit v')
         # print('get atp permit v ok %d, %d'%(len(self.v_ato),len(self.atp_permit_v)))
@@ -744,11 +762,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 print('Slip Ctrl Matrix')
                 self.bar_show_signal.emit(81)
                 # 计算加速度
-                self.comput_acc()
+                self.a = np.array(list(self.comput_acc()), dtype=np.float16)
                 print('Comput Train Acc')
                 # 获取ATP允许速度序列
                 print('Comput ATP Permit V')
-                self.get_atp_permit_v()
+                self.atp_permit_v = np.array(list(self.get_atp_permit_v()), dtype=np.int16)
                 ret = 0
             else:
                 ret = 1

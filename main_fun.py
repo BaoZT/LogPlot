@@ -13,14 +13,13 @@ import serial.tools.list_ports
 import xlwt
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
-
 import FileProcess
 import MiniWinCollection
 import RealTimeExtension
 from KeyWordPlot import Figure_Canvas, SnaptoCursor, Figure_Canvas_R
 from LogMainWin import Ui_MainWindow
 from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg, \
-    Cyclewindow, Train_Com_MeasureDlg
+    Cyclewindow, Train_Com_MeasureDlg, C3ATO_Transfer_Dlg
 from ProtocolParse import MVBParse
 from RealTimeExtension import SerialRead, RealPaintWrite
 
@@ -48,7 +47,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pathlist = []
         self.BTM_cycle = []  # 存储含有BTM的周期号，用于操作计数器间接索引
         self.mode = 0  # 默认0是浏览模式，1是标注模式
-        self.ver = '3.0.2'  # 标示软件版本
+        self.ver = '3.1.0'  # 标示软件版本
         self.serdialog = SerialDlg()  # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)  # 操作串口对象
 
@@ -86,6 +85,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.mvbparaer = MVBParserDlg()
         # UTC转换器
         self.utctransfer = UTCTransferDlg()
+        # C3ATO转义工具
+        self.C3ATORecordTransfer =  C3ATO_Transfer_Dlg()
         # 绘图界面设置器
         self.realtime_plot_dlg = RealTimePlotDlg()  # 实时绘图界面设置
         self.realtime_plot_interval = 1  # 默认1s绘图
@@ -113,6 +114,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionTag.triggered.connect(self.mode_change)
         self.actionView.triggered.connect(self.mode_change)
         self.actionVersion.triggered.connect(self.version_msg)
+        self.actionHelp.triggered.connect(self.help_msg)
         self.sp.mpl_connect('button_press_event', self.sp.right_press)
         self.actionPrint.triggered.connect(self.cycle_print)  # 打印周期
         self.actionCS.triggered.connect(self.cmd_change)
@@ -128,6 +130,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_PortLink.clicked.connect(self.btnLinkorBreak)
         self.actionMVBParser.triggered.connect(self.show_mvb_parser)
         self.actionUTC.triggered.connect(self.show_utc_transfer)
+        self.actionC3ATOTrans.triggered.connect(self.C3ATORecordTransfer.show)
         self.action_bubble_dock.triggered.connect(self.set_ctrl_bubble_format)
         self.action_bubble_track.triggered.connect(self.set_ctrl_bubble_format)
         self.action_acc_measure.triggered.connect(self.ctrl_measure)
@@ -210,7 +213,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         global curve_flag
         global load_flag
         if len(self.pathlist) == 0:
-            filepath = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', 'd:/', "txt files(*.txt *.log)")
+            filepath = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', 'c:/', "txt files(*.txt *.log)")
             path = filepath[0]  # 取出文件地址
             if path == '':  # 没有选择文件
                 self.statusbar.showMessage('Choose Nothing ！')
@@ -1370,7 +1373,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeView.setColumnWidth(1, 5)
         self.treeView.setColumnWidth(0, 25)
 
-    # 默认路径的更新，用于打开文件时，总打开最近一次的文件路劲
+    # 默认路径的更新，用于打开文件时，总打开最近一次的文件路径
     def update_path_changed(self, path2):
         ret = True
         if len(self.pathlist) == len(path2):
@@ -1393,16 +1396,27 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                   "版本信息",
                                                   "Software:LogPlot-V" + str(self.ver) + "\n"
-                                                                                         "Author   :Baozhengtang\n"
-                                                                                         "License  :(C) Copyright 2017-2019, Author Limited.\n"
-                                                                                         "Contact :baozhengtang@gmail.com",
+                                                  "Author   :Baozhengtang\n"
+                                                  "License  :(C) Copyright 2017-2020, Author Limited.\n"
+                                                   "Contact :baozhengtang@crscd.com",
+                                                  QtWidgets.QMessageBox.Yes)
+
+    # 事件处理函数，弹窗显示帮助信息
+    def help_msg(self):
+        reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                "帮助信息-2020/02/02",
+                                                "Software:LogPlot-V" + str(self.ver) + " 版本的改进有：\n"
+                                                "1.重构文件读取和处理机制，加载速度大幅提升减少内存占用\n"
+                                                "2.优化了曲线显示和绘图机制，提高绘图响应速度\n"
+                                                "3.显示站台范围和过分相范围，应答器单击显示，双击跳转\n"
+                                                "4.优化了曲线范围计算机制，修复了之前跳转出框的缺陷"
+                                                "5.C3ATO记录板转义功能暂未实现，预留！！！",
                                                   QtWidgets.QMessageBox.Yes)
 
     # 记录文件处理核心函数，生成周期字典和绘图值列表
     def log_process(self):
         global cursor_in_flag
         cursor_in_flag = 0
-
         # 创建文件读取对象
         self.log = FileProcess.FileProcess(self.file)  # 类的构造函数，函数中给出属性
         # 绑定信号量
@@ -1413,6 +1427,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
         self.Log('Begin log read thread!', __name__, sys._getframe().f_lineno)
         self.show_message('文件加载中...')
+        return
 
     # 文件处理线程执行完响应方法
     def log_process_result(self):
@@ -1853,6 +1868,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         self.CBramp.setChecked(False)
                 elif self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
                         or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
+                    # 图形切换时，先重置轴范围再画图
+                    self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
                     self.update_up_cure()  # 当没有选择下图时更新上图
                 else:
                     self.clear_axis()
@@ -1931,7 +1948,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.mode = 0
             if load_flag == 1:
                 self.update_up_cure()
-                # 重置坐标轴范围
+                # 重置坐标轴范围,恢复浏览模式必须重置范围
                 self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
             self.tag_cursor_creat()
         else:
@@ -2088,7 +2105,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 前提是必须有周期，字典能查到
             if idx in self.log.cycle_dic.keys():
                 c_num = self.log.cycle_dic[idx].cycle_num
-                with open(self.file, 'r', encoding='utf-8', errors='ignore') as f:  # notepad++默认是ANSI编码
+                with open(self.file, 'rU', encoding='ansi', errors='ignore') as f:  # notepad++默认是ANSI编码
                     f.seek(self.log.cycle_dic[idx].file_begin_offset, 0)
                     lines = f.readline()   # f.read调用f.readline计算的偏移量，实际多读（每行多一个字节），怀疑为python缺陷
                     line_count = line_count + 1
@@ -2487,7 +2504,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         tcms2ato_stat = []
         # 读取该周期内容
         try:
-            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_mvb_lines:
+            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_analysis_lines:
                 pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
                 pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
                 pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
@@ -2793,7 +2810,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cycle_os_time = self.log.cycle_dic[self.log.cycle[idx]].ostime_start
         # 读取该周期内容
         try:
-            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_rp_lines:
+            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_analysis_lines:
                 # 提高解析效率,当均更新时才发送信号
                 if '[RP' in line:
                     if self.pat_plan[0].findall(line):
@@ -3280,7 +3297,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         p_ato_sdu = self.pat_list[27]
         p_atp_sdu = self.pat_list[28]
 
-        for line in self.log.cycle_dic[self.log.cycle[idx]].raw_sdu_lines:
+        for line in self.log.cycle_dic[self.log.cycle[idx]].raw_analysis_lines:
             if 'v&p' in line:
                 try:
                     # 查找或清空
@@ -3651,6 +3668,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         icon29 = QtGui.QIcon()
         icon29.addPixmap(QtGui.QPixmap(":IconFiles/export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionExport.setIcon(icon29)
+
+        icon30 = QtGui.QIcon()
+        icon30.addPixmap(QtGui.QPixmap(":IconFiles/translator.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionC3ATOTrans.setIcon(icon30)
 
 
 if __name__ == '__main__':

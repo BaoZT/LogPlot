@@ -4164,6 +4164,7 @@ background-color: rgb(170, 170, 255);</string>
     <addaction name="actionUTC"/>
     <addaction name="actionMVBParser"/>
     <addaction name="action_acc_measure"/>
+    <addaction name="actionC3ATOTrans"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -4559,6 +4560,18 @@ background-color: rgb(170, 170, 255);</string>
    </property>
    <property name="toolTip">
     <string>导出ATO控车相关信息</string>
+   </property>
+  </action>
+  <action name="actionC3ATOTrans">
+   <property name="icon">
+    <iconset>
+     <normaloff>IconFiles/translator.png</normaloff>IconFiles/translator.png</iconset>
+   </property>
+   <property name="text">
+    <string>C3ATO记录板转义</string>
+   </property>
+   <property name="toolTip">
+    <string>将C3ATO记录板数据解析并转义为工具可识别的串口记录形式，转义结果自动按照上电分割记录</string>
    </property>
   </action>
  </widget>

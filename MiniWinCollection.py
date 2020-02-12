@@ -24,6 +24,7 @@ import matplotlib
 from CycleInfo import Ui_MainWindow as CycleWin
 from MVBParser import Ui_MainWindow as MVBParserWin
 from Measure import Ui_MainWindow as MeasureWin
+from C3ATORecordTranslator import Ui_Dialog as C3ATOTransferWin
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -31,13 +32,16 @@ from ProtocolParse import MVBParse
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from KeyWordPlot import SnaptoCursor
-import matplotlib.pyplot as plt
+from Transfer2Debug import TransRecord       # 导入转义函数
 import FileProcess
 import serial
 import serial.tools.list_ports
 import time
 import re
+import os
+import shutil
 import numpy as np
+from threading import Thread
 
 pat_ato_ctrl = 0
 pat_ato_stat = 0
@@ -83,14 +87,14 @@ class Cyclewindow(QtWidgets.QMainWindow, CycleWin):
         icon1.addPixmap(QtGui.QPixmap(":IconFiles/save.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionCycleSave.setIcon(icon1)
 
+
 # 串口设置类
 class SerialDlg(QtWidgets.QDialog):
-
-    serUpdateSingal = QtCore.pyqtSignal()           # 串口设置更新信号
+    serUpdateSingal = QtCore.pyqtSignal()  # 串口设置更新信号
 
     def __init__(self, parent=None):
         super(SerialDlg, self).__init__(parent)
-        self.saveName = ''      # 根据设置生成文件名
+        self.saveName = ''  # 根据设置生成文件名
         SerialCOMLabel = QtWidgets.QLabel(u'串口号')
         self.SerialCOMComboBox = QtWidgets.QComboBox()
         self.SerialCOMComboBox.addItems(self.Port_List())
@@ -126,7 +130,7 @@ class SerialDlg(QtWidgets.QDialog):
         self.info = QtWidgets.QLabel('说明:设置ATO记录保存文件名，其中%Y-年，%M-\n月，%D-日，%h-时，%m-分，%s-秒，%N-串口号')
         nameLayout = QtWidgets.QHBoxLayout()
         nameLayout.addWidget(self.filenamelbl)
-        nameLayout.addWidget(self.filenameLine )
+        nameLayout.addWidget(self.filenameLine)
         infoLayout = QtWidgets.QVBoxLayout()
         infoLayout.addLayout(nameLayout)
         infoLayout.addWidget(self.info)
@@ -137,7 +141,6 @@ class SerialDlg(QtWidgets.QDialog):
         buttonLayout = QtWidgets.QHBoxLayout()
         buttonLayout.addWidget(self.OpenButton)
         buttonLayout.addWidget(self.CloseButton)
-
 
         layout = QtWidgets.QGridLayout()
         layout.addWidget(SerialCOMLabel, 0, 0)
@@ -191,7 +194,6 @@ class SerialDlg(QtWidgets.QDialog):
 
 # mvb端口设置类
 class MVBPortDlg(QtWidgets.QDialog):
-
     mvbPortSingal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
@@ -199,7 +201,7 @@ class MVBPortDlg(QtWidgets.QDialog):
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
-        self.saveName = ''      # 根据设置生成文件名
+        self.saveName = ''  # 根据设置生成文件名
         lbl_ato_ctrl = QtWidgets.QLabel(u'ATO控制信息(16进制)')
         lbl_ato_stat = QtWidgets.QLabel(u'ATO状态信息(16进制)')
         lbl_tcms_stat = QtWidgets.QLabel(u'车辆状态信息(16进制)')
@@ -210,7 +212,7 @@ class MVBPortDlg(QtWidgets.QDialog):
 
         layout = QtWidgets.QGridLayout()
         layout.addWidget(lbl_ato_ctrl, 0, 0)
-        layout.addWidget(self.led_ato_ctrl , 0, 1)
+        layout.addWidget(self.led_ato_ctrl, 0, 1)
         layout.addWidget(lbl_ato_stat, 1, 0)
         layout.addWidget(self.led_ato_stat, 1, 1)
         layout.addWidget(lbl_tcms_stat, 2, 0)
@@ -247,21 +249,21 @@ class MVBPortDlg(QtWidgets.QDialog):
 # mvb解析器
 class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
     def __init__(self):
-        super(MVBParserDlg, self).__init__()
+        super().__init__()
         self.setupUi(self)
         logicon = QtGui.QIcon()
-        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/MVBParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'MVB协议解析')
         self.parser = MVBParse()
         self.actionMVBParserAct.triggered.connect(self.ParserMVB)
         # 名字
-        self.ato_ctrl_name = ['帧头','包序号','端口号','ATO心跳','ATO有效','牵引制动状态','牵引控制量','制动控制量','保持制动施加',
-                              '开左/右门','恒速命令','恒速目标速度','ATO启动灯']
-        self.ato_stat_name = ['帧头','包序号','端口号','ATO心跳','ATO故障','公里标','隧道入口距离','隧道长度','ATO速度']
-        self.tcms_stat_name = ['帧头','包序号','端口号','TCMS心跳','门模式','ATO有效命令反馈','牵引制动命令状态字反馈','牵引控制量反馈',
-                               '制动控制量反馈','ATO保持制动施加反馈','开左/右门命令反馈','恒速反馈','车门状态','空转打滑',
-                               '编组信息','车重','动车组允许','主断路器状态','门允许选择','不允许状态字']
+        self.ato_ctrl_name = ['帧头', '包序号', '端口号', 'ATO心跳', 'ATO有效', '牵引制动状态', '牵引控制量', '制动控制量', '保持制动施加',
+                              '开左/右门', '恒速命令', '恒速目标速度', 'ATO启动灯']
+        self.ato_stat_name = ['帧头', '包序号', '端口号', 'ATO心跳', 'ATO故障', '公里标', '隧道入口距离', '隧道长度', 'ATO速度']
+        self.tcms_stat_name = ['帧头', '包序号', '端口号', 'TCMS心跳', '门模式', 'ATO有效命令反馈', '牵引制动命令状态字反馈', '牵引控制量反馈',
+                               '制动控制量反馈', 'ATO保持制动施加反馈', '开左/右门命令反馈', '恒速反馈', '车门状态', '空转打滑',
+                               '编组信息', '车重', '动车组允许', '主断路器状态', '门允许选择', '不允许状态字']
 
     def ParserMVB(self):
         global pat_ato_ctrl
@@ -282,7 +284,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             # 如果有帧头
             if len(tmp_text) > 8:
                 # 小端模式
-                num = int(tmp_text[6:8]+tmp_text[4:6], 16)
+                num = int(tmp_text[6:8] + tmp_text[4:6], 16)
                 if num == pat_ato_stat:
                     form = self.parser.mvb_ato2tcms_status
                     type_name = 'ATO状态信息'
@@ -292,7 +294,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
                     type_name = 'ATO控制信息'
                     field_name = self.ato_ctrl_name
                 elif num == pat_tcms_stat:
-                    form =self.parser.mvb_tcms2ato_status
+                    form = self.parser.mvb_tcms2ato_status
                     type_name = '车辆状态信息'
                     field_name = self.tcms_stat_name
                 else:
@@ -312,11 +314,11 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
                     field_value.remove(field_value[0])
                     field_value.insert(0, tmp_text[0:2])
                     field_value.insert(1, tmp_text[2:4])
-                    field_value.insert(2, tmp_text[6:8]+tmp_text[4:6])
+                    field_value.insert(2, tmp_text[6:8] + tmp_text[4:6])
 
                     field_result = self.result_analysis(field_value, num)
 
-                    self.show_parser_result(type_name, field_name, field_value, field_result )
+                    self.show_parser_result(type_name, field_name, field_value, field_result)
 
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
@@ -338,19 +340,19 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
         elif field_value[0] == '03':
             field_result.append('类型,接收数据')
         else:
-            field_result.append('类型,错误%s'%field_value[0])
+            field_result.append('类型,错误%s' % field_value[0])
 
-        field_result.append(str(int(field_value[1],16)))
-        field_result.append(str(int(field_value[2],16)))
+        field_result.append(str(int(field_value[1], 16)))
+        field_result.append(str(int(field_value[2], 16)))
         # 控制命令
         if num == pat_ato_ctrl:
-            field_result.append(str(int(tmp[0], 16)))     # 控制命令心跳
+            field_result.append(str(int(tmp[0], 16)))  # 控制命令心跳
             if tmp[1] == 'AA':
-                field_result.append('有效')                   # ATO有效
+                field_result.append('有效')  # ATO有效
             elif tmp[1] == '00':
                 field_result.append('无效')
             else:
-                field_result.append('异常值%s'%tmp[1])
+                field_result.append('异常值%s' % tmp[1])
 
             # 牵引制动状态
             if tmp[2] == 'AA':
@@ -362,7 +364,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[2] == '00':
                 field_result.append('无命令')
             else:
-                field_result.append('异常值%s'%tmp[2])
+                field_result.append('异常值%s' % tmp[2])
 
             # 牵引控制量
             field_result.append(str(int(tmp[3], 16)))
@@ -374,59 +376,59 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[5] == '00':
                 field_result.append('无效')
             else:
-                field_result.append('异常值%s'%tmp[5])
+                field_result.append('异常值%s' % tmp[5])
             # 开左门/右门
             if tmp[6][0] == 'C' and tmp[6][1] == 'C':
                 field_result.append('开左/右有效')
-            elif tmp[6][0] == '0'and tmp[6][1] == 'C':
+            elif tmp[6][0] == '0' and tmp[6][1] == 'C':
                 field_result.append('左无动作，右开门')
-            elif tmp[6][0] == 'C'and tmp[6][1] == '0':
+            elif tmp[6][0] == 'C' and tmp[6][1] == '0':
                 field_result.append('右无动作，左开门')
-            elif tmp[6][0] == '0'and tmp[6][1] == '0':
+            elif tmp[6][0] == '0' and tmp[6][1] == '0':
                 field_result.append('左右门无动作')
             else:
-                field_result.append('异常%s'%tmp[6][0])
+                field_result.append('异常%s' % tmp[6][0])
             # 恒速命令
             if tmp[7] == 'AA':
                 field_result.append('启动')
             elif tmp[7] == '00':
                 field_result.append('取消')
             else:
-                field_result.append('异常值%s'%tmp[7])
+                field_result.append('异常值%s' % tmp[7])
             # 恒速目标速度
-            field_result.append(str(int(tmp[8],16)))
+            field_result.append(str(int(tmp[8], 16)))
             # ATO启动灯
             if tmp[9] == 'AA':
                 field_result.append('亮')
             elif tmp[9] == '00':
                 field_result.append('灭')
             else:
-                field_result.append('异常值%s'%tmp[9])
+                field_result.append('异常值%s' % tmp[9])
         # ATO2TCMS 状态信息
         if num == pat_ato_stat:
-            field_result.append(str(int(tmp[0], 16)))        # 状态命令心跳
+            field_result.append(str(int(tmp[0], 16)))  # 状态命令心跳
             if tmp[1] == 'AA':
-                field_result.append('无故障')       # ATO故障
+                field_result.append('无故障')  # ATO故障
             elif tmp[1] == '00':
                 field_result.append('故障')
             else:
-                field_result.append('异常值%s'%tmp[1])      # ATO故障
+                field_result.append('异常值%s' % tmp[1])  # ATO故障
             if tmp[2] == 'FFFFFFFF':
                 field_result.append('无效值')
             else:
-                field_result.append(str(int(tmp[2], 16))+'m')   # 公里标
+                field_result.append(str(int(tmp[2], 16)) + 'm')  # 公里标
             if tmp[3] == 'FFFF':
                 field_result.append('无效值')
             else:
-                field_result.append(str(int(tmp[3], 16))+'m')       # 隧道入口
+                field_result.append(str(int(tmp[3], 16)) + 'm')  # 隧道入口
             if tmp[4] == 'FFFF':
                 field_result.append('无效值')
             else:
-                field_result.append(str(int(tmp[4], 16))+'m')       # 隧道长度
-            field_result.append(str(int(tmp[5], 16)/10)+'km/h')       # ato速度
+                field_result.append(str(int(tmp[4], 16)) + 'm')  # 隧道长度
+            field_result.append(str(int(tmp[5], 16) / 10) + 'km/h')  # ato速度
         # TCMS2ATO 状态信息
         if num == pat_tcms_stat:
-            field_result.append(str(int(tmp[0], 16)))     # TCMS状态命令心跳
+            field_result.append(str(int(tmp[0], 16)))  # TCMS状态命令心跳
             # 门模式
             if tmp[1][0] == 'C':
                 field_result.append('MM有效,AM无效')
@@ -435,14 +437,14 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[1][0] == '0':
                 field_result.append('MM无效,AM无效')
             else:
-                field_result.append('异常值%s'%tmp[1][0])
+                field_result.append('异常值%s' % tmp[1][0])
             # ATO启动灯
             if tmp[1][1] == '3':
-                field_result[len(field_result) - 1] = field_result[len(field_result)-1]+',启动灯有效'
+                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + ',启动灯有效'
             elif tmp[1][1] == '0':
                 field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + ',启动灯无效'
             else:
-                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + '异常值'+tmp[1][1]
+                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + '异常值' + tmp[1][1]
 
             # ATO有效反馈
             if tmp[2] == 'AA':
@@ -450,7 +452,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[2] == '00':
                 field_result.append('无效')
             else:
-                field_result.appendt('异常值%s'%tmp[2])
+                field_result.appendt('异常值%s' % tmp[2])
 
             # 牵引制动反馈
             if tmp[3] == 'AA':
@@ -462,55 +464,55 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[3] == '00':
                 field_result.append('无命令')
             else:
-                field_result.append('异常值%s'%tmp[3])
+                field_result.append('异常值%s' % tmp[3])
 
             # 牵引反馈
-            field_result.append(str(int(tmp[4],16)))
+            field_result.append(str(int(tmp[4], 16)))
             # 制动反馈
-            field_result.append(str(int(tmp[5],16)))
+            field_result.append(str(int(tmp[5], 16)))
             # 保持制动施加
             if tmp[6] == 'AA':
                 field_result.append('有效')
             elif tmp[6] == '00':
                 field_result.append('无效')
             else:
-                field_result.append('异常值%s'%tmp[6])
+                field_result.append('异常值%s' % tmp[6])
             # 左门反馈，右门反馈
-            if tmp[7][0] == 'C'and tmp[7][1] == 'C':
+            if tmp[7][0] == 'C' and tmp[7][1] == 'C':
                 field_result.append('左/右门有效')
-            elif tmp[7][0] == '0'and tmp[7][1] == 'C':
+            elif tmp[7][0] == '0' and tmp[7][1] == 'C':
                 field_result.append('左门无效,右门有效')
             elif tmp[7][0] == 'C' and tmp[7][1] == '0':
                 field_result.append('左门有效,右门无效')
             elif tmp[7][0] == '0' and tmp[7][1] == '0':
                 field_result.append('左/右门无效')
             else:
-                field_result.append('异常值%s'%tmp[7][0])
+                field_result.append('异常值%s' % tmp[7][0])
             # 恒速反馈
             if tmp[8] == 'AA':
                 field_result.append('有效')
             elif tmp[8] == '00':
                 field_result.append('无效')
             else:
-                field_result.append('异常值%s'%tmp[8])
+                field_result.append('异常值%s' % tmp[8])
             # 车门状态
             if tmp[9] == 'AA':
                 field_result.append('关')
             elif tmp[9] == '00':
                 field_result.append('开')
             else:
-                field_result.append('异常值%s'%tmp[9])
+                field_result.append('异常值%s' % tmp[9])
             # 空转打滑
             if tmp[10][0] == 'A' and tmp[10][1] == 'A':
                 field_result.append('空转,打滑')
             elif tmp[10][0] == '0' and tmp[10][1] == 'A':
                 field_result.append('打滑')
-            elif tmp[10][0] == 'A'and tmp[10][1] == '0':
+            elif tmp[10][0] == 'A' and tmp[10][1] == '0':
                 field_result.append('空转')
-            elif tmp[10][0] == '0'and tmp[10][1] == '0':
+            elif tmp[10][0] == '0' and tmp[10][1] == '0':
                 field_result.append('未发生')
             else:
-                field_result.append('异常值%s'%tmp[10][0])
+                field_result.append('异常值%s' % tmp[10][0])
             # 编组信息
             tmp_units = int(tmp[11], 16)
             if tmp_units == 1:
@@ -522,16 +524,16 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp_units == 4:
                 field_result.append('18编组')
             else:
-                field_result.append('异常值%s'%tmp[11])
+                field_result.append('异常值%s' % tmp[11])
             # 车重
-            field_result.append(str(int(tmp[12],16)))
+            field_result.append(str(int(tmp[12], 16)))
             # 动车组允许
             if tmp[13] == 'AA':
                 field_result.append('允许')
             elif tmp[13] == '00':
                 field_result.append('不允许')
             else:
-                field_result.append('异常值%s'%tmp[13])
+                field_result.append('异常值%s' % tmp[13])
 
             # 主断状态
             if tmp[14] == 'AA':
@@ -539,7 +541,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[14] == '00':
                 field_result.append('断开')
             else:
-                field_result.append('异常值%s'%tmp[14])
+                field_result.append('异常值%s' % tmp[14])
             # ATP允许 人工允许
             if tmp[15] == 'C0':
                 field_result.append('atp有效,人工无效')
@@ -548,7 +550,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             elif tmp[15] == '00':
                 field_result.append('atp和人工均无效')
             else:
-                field_result.append('异常值%s'%tmp[15])
+                field_result.append('异常值%s' % tmp[15])
             # 不允许状态字
             str_tcms = ''
             str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
@@ -557,11 +559,11 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
             if tmp[16] == '00':
                 field_result.append('正常')
             else:
-                val_field = int(tmp[16],16)
+                val_field = int(tmp[16], 16)
                 for cnt in range(7, -1, -1):
                     if val_field & (1 << cnt) != 0:
-                        str_tcms = str_tcms+str_raw[cnt]
-                field_result.append('异常原因:%s'%str_tcms)
+                        str_tcms = str_tcms + str_raw[cnt]
+                field_result.append('异常原因:%s' % str_tcms)
 
         return field_result
 
@@ -571,7 +573,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
         root = QtWidgets.QTreeWidgetItem(self.treeWidget)
         root.setText(0, data_type)
         # 开始生成
-        if len(field_name)==len(field_result) and len(field_name)==len(field_value):
+        if len(field_name) == len(field_result) and len(field_name) == len(field_value):
             for idx, item in enumerate(field_name):
                 item_field = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
                 item_field.setText(1, field_name[idx])
@@ -585,7 +587,7 @@ class UTCTransferDlg(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(UTCTransferDlg, self).__init__(parent)
         logicon = QtGui.QIcon()
-        logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/UTCParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
 
         utctime = QtWidgets.QLabel(u'UTC时间值')
@@ -632,8 +634,7 @@ class UTCTransferDlg(QtWidgets.QDialog):
 
 # 实时绘图设置类
 class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
-
-    realtime_plot_set_signal = QtCore.pyqtSignal(int,bool)
+    realtime_plot_set_signal = QtCore.pyqtSignal(int, bool)
 
     def __init__(self, parent=None):
         super(RealTimePlotDlg, self).__init__(parent)
@@ -677,7 +678,7 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
             plot_flag = True
         else:
             plot_flag = False
-        self.realtime_plot_set_signal.emit(self.plot_cycle_time.value(),plot_flag)
+        self.realtime_plot_set_signal.emit(self.plot_cycle_time.value(), plot_flag)
         self.close()
 
 
@@ -685,20 +686,20 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
 class Figure_Canvas(FigureCanvas):
 
     def __init__(self, parent=None):
-        self.fig = plt.figure()
+        self.fig = matplotlib.figure.Figure()
         self.ax = self.fig.add_subplot(111)
-        FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
+        super().__init__(self, self.fig)  # 初始化父类函数
 
 
 # 控车测量设置类
 class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
     # 初始化，获取加载后的处理信息
-    def __init__(self,  parent=None, ob=FileProcess.FileProcess):
+    def __init__(self, parent=None, ob=FileProcess.FileProcess):
         self.log = ob
         super(Ctrl_MeasureDlg, self).__init__(parent)
         self.setupUi(self)
-        self.sp = Figure_Canvas(self.widget)         # 这是继承FigureCanvas的子类，使用子窗体widget作为父
+        self.sp = Figure_Canvas(self.widget)  # 这是继承FigureCanvas的子类，使用子窗体widget作为父
         self.ctrlAccTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         l.addWidget(self.sp)
@@ -717,7 +718,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.ctrlAccTable.setHorizontalHeaderLabels(['控车曲线分类', '估计加速度', '单位'])
 
     # 重置索引从到右，统一鼠标点击顺序
-    def set_segment_idx(self, idx_start=int, idx_end=int,):
+    def set_segment_idx(self, idx_start=int, idx_end=int, ):
         # 根据索引大小关系获取实际序列
         if idx_start <= idx_end:
             pass
@@ -753,16 +754,16 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         s_sim = self.log.s[idx_end] - self.log.s[idx_start]
         v_sim = self.log.v_ato[idx_end] - self.log.v_ato[idx_start]
         # 计算拟合的加速度
-        [a_sim, p_sim] = self.get_estimate_acc(x_list, y_list)   # 一次多项式拟合，相当于线性拟合
+        [a_sim, p_sim] = self.get_estimate_acc(x_list, y_list)  # 一次多项式拟合，相当于线性拟合
 
         return [v_sim, s_sim, a_sim, x_list, y_list, p_sim]
 
     # 获取速度并计算加速度
     def get_estimate_acc(self, x_raw=list, y_raw=list):
-        z = np.polyfit(x_raw, y_raw, 1)   # 一次多项式拟合，相当于线性拟合
+        z = np.polyfit(x_raw, y_raw, 1)  # 一次多项式拟合，相当于线性拟合
         a_sim = z[0] * 10  # 获取估计加速度,由于时间单位是100ms所以乘以10,后者是函数
         p_sim = np.poly1d(z)
-        print(p_sim)        # 打印拟合表达式
+        print(p_sim)  # 打印拟合表达式
         return [a_sim, p_sim]
 
     # 用于绘制估计加速度曲线
@@ -772,7 +773,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         estimate_a_tuple = self.comput_vato_acc_estimate_plot(idx_start, idx_end, cmd)
         v_sim = estimate_a_tuple[0]
         s_sim = estimate_a_tuple[1]
-        a_sim = estimate_a_tuple[2]    # 加速度已经转为cm/s^2
+        a_sim = estimate_a_tuple[2]  # 加速度已经转为cm/s^2
         x_list = estimate_a_tuple[3]
         y_list = estimate_a_tuple[4]
         # 计算估计曲线
@@ -795,14 +796,14 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
         self.sp.ax.plot(x_list, y_list_sim, color='purple')
         self.sp.ax.plot(x_list, y_list, color='deeppink', marker='.', markersize=0.2)
-        str_asim = '预估加速度:%.*f cm/s^2\n'%(3,a_sim)
-        str_cycle_num = '测量时间:%.*f s\n'%(3,(idx_end-idx_start)/10.0)
-        str_s_sim = 'ATO走行距离:%d cm\n'%int(s_sim)
-        str_v_sim = 'ATO速度变化:%d cm/s'%(v_sim)
+        str_asim = '预估加速度:%.*f cm/s^2\n' % (3, a_sim)
+        str_cycle_num = '测量时间:%.*f s\n' % (3, (idx_end - idx_start) / 10.0)
+        str_s_sim = 'ATO走行距离:%d cm\n' % int(s_sim)
+        str_v_sim = 'ATO速度变化:%d cm/s' % (v_sim)
 
         str_show = str_asim + str_cycle_num + str_s_sim + str_v_sim
         props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
-        if a_sim > 0 :
+        if a_sim > 0:
             self.sp.ax.text(0.1, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props)
         else:
@@ -814,16 +815,16 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
     # 初始化，获取加载后的处理信息
-    def __init__(self,  parent=None, ob=FileProcess.FileProcess):
+    def __init__(self, parent=None, ob=FileProcess.FileProcess):
         self.log = ob
         super().__init__(parent)
         self.setupUi(self)
-        self.sp = Figure_Canvas(self.widget)         # 这是继承FigureCanvas的子类，使用子窗体widget作为
+        self.sp = Figure_Canvas(self.widget)  # 这是继承FigureCanvas的子类，使用子窗体widget作为
         self.trainComTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         self.sp.mpl_toolbar = NavigationToolbar(self.sp, self.widget)  # 传入FigureCanvas类或子类实例，和父窗体
 
-        #l.addWidget(self.trainComTable)
+        # l.addWidget(self.trainComTable)
         l.addWidget(self.sp)
         l.addWidget(self.sp.mpl_toolbar)
         self.acc_table_format()
@@ -835,9 +836,8 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         # 初始化内容
         self.ato2tcms_tb_ctrl = []
         self.tcms2ato_tb_fbk = []
-        self.cycle_ord = []     # 为了使得绘图由周期信息，考虑到某个周期可能没有输入只有输出，所以需要人工组合，使得输入保持
+        self.cycle_ord = []  # 为了使得绘图由周期信息，考虑到某个周期可能没有输入只有输出，所以需要人工组合，使得输入保持
         self.mvbdialog = MVBPortDlg()
-
 
     # 设置显示表显示表
     def acc_table_format(self):
@@ -856,7 +856,7 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         # 读取该周期内容
         try:
             for idx in range(len(self.log.cycle)):
-                ato_ctrl_flag = 0   # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
+                ato_ctrl_flag = 0  # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
                 tcms_fbk_flag = 0
                 for line in self.log.cycle_dic[self.log.cycle[idx]].raw_mvb_lines:
 
@@ -920,18 +920,350 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.tb_cursor.reset_cursor_plot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
         self.tb_cursor.move_signal.connect(self.cusor_plot)
-        self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord)-1])  # 默认与不带光标统一的显示范围
+        self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord) - 1])  # 默认与不带光标统一的显示范围
         self.sp.ax.set_ylim(-17000, 17000)
         self.sp.ax.legend(['ATO输出命令', ' 车辆反馈命令'])
-
 
     # 光标跟随
     def cusor_plot(self, idx):
         self.sp.ax.texts.clear()
         str_ato_cycle = '当前周期:%d \n' % (self.cycle_ord[idx])
-        str_ato_ctrl = 'ATO输出指令:%d \n'%(self.ato2tcms_tb_ctrl[idx])
-        str_tcms_fbk = '车辆反馈指令:%d '%(self.tcms2ato_tb_fbk[idx])
+        str_ato_ctrl = 'ATO输出指令:%d \n' % (self.ato2tcms_tb_ctrl[idx])
+        str_tcms_fbk = '车辆反馈指令:%d ' % (self.tcms2ato_tb_fbk[idx])
         str_show = str_ato_cycle + str_ato_ctrl + str_tcms_fbk
         props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
 
-        self.sp.ax.text(0.03, 0.97, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',bbox=props)
+        self.sp.ax.text(0.03, 0.97, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
+                        bbox=props)
+
+
+# C3ATO记录板转义工具类
+class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        # 设置图标和标题
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/translator.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+        self.setWindowTitle(u'C3ATO记录板转义工具')
+        self.barCurC3ATOProcess.setValue(0)
+        self.barAllC3ATOProcess.setValue(0)
+        self.resize(700, 400)
+        # 单文件路径，记录用于下次快速定位
+        self.singleFile = ''
+        self.oldSingleDirPath = ''  # 单文件选择路径
+        self.multiFileList = []
+        self.oldMultiDirPath = ''   # 多文件选择路径
+        self.dirFileList = []
+        self.oldBatchDir = ''       # 批量处理选择路径
+        # 当前执行状态机
+        self.latestChoosedState = 0   # 用于记录最近一次有效的文件选择，0=无效，1=单文件，2=多文件，3=批量文件
+        self.barAllNum = 0.0
+        # 事件绑定
+        self.btnSingleFileTrans.clicked.connect(self.ChooseSingleDlg)
+        self.btnMultiFileTrans.clicked.connect(self.ChooseMultiDlg)
+        self.btnDirFileTrans.clicked.connect(self.ChooseDirDlg)
+        self.btnCancel.clicked.connect(self.close)
+        self.btnOK.clicked.connect(self.BeginTransProcess)
+        # 初始化转义器
+        self.translator = TransRecord()
+        self.translator.FileTransOnePercentSingal.connect(self.ShowFileBarProgress)
+        self.translator.FileTransCompleteSingal.connect(self.ShowAllFileBarProgress)
+        self.translator.FileTransErrSingal.connect(self.textC3ATOProcess.append)
+
+    def BeginTransProcess(self):
+        """
+        点击确认按钮后，执行转义处理
+        :return:
+        """
+        # 重置界面
+        self.RsetDlgPanel()
+        # 处理内容
+        if self.latestChoosedState  == 1:
+            self.SingleFileTrans(self.singleFile)       # 处理单文件路径
+        elif self.latestChoosedState == 2:
+            self.MultiFileTrans(self.multiFileList)     # 处理文件列表
+        elif self.latestChoosedState == 3:
+            self.BatchFileTrans(self.dirFileList)       # 处理文件列表
+        else:
+            self.textC3ATOProcess.append("Info：无有效选择文件！ 不执行")
+
+    def SingleFileTrans(self, filePath=str):
+        """
+        单文件转义处理，负责调用转义函数并触发进度条
+        :param filePath: 待转义文件路径
+        :return:
+        """
+        self.barAllC3ATOProcess.setValue(100)
+        self.textC3ATOProcess.append('Info：' + '文件转义!')
+        trans_file = filePath.replace('.txt', '_trans.txt')  # 计算转换后的文件名称，只有文件发生变化
+        # 对每个转换文件过程创建线程
+        thList = []
+        t = Thread(target=self.translator.TransContent, args=(filePath, trans_file))  # 添加内容
+        t.name = '线程：' + trans_file
+        thList.append(t)
+        # 开启线程
+        threadAct = Thread(target=self.ThreadManage, args=(thList,))  # 添加内容
+        threadAct.start()
+
+    def MultiFileTrans(self, fileList=list):
+        """
+        文件列表转义，负责转义处理和触发进度条
+        :param fileList: 转义的多文件路径列表
+        :return:
+        """
+        self.textC3ATOProcess.append('Info：'+'文件遍历!')
+        self.barAllAdd = C3ATO_Transfer_Dlg.ComputEBarAllAdd(fileList)
+        # 创建线程池
+        thList = []
+        # 对于多文件选择，在当前目录直接完成
+        for recordFile in fileList:
+            # 按照之前创建目录规则，创建新的文件名
+            trans_file = recordFile.replace('.txt', '_trans.txt')   # 计算转换后的文件名称，只有文件发生变化
+            # 对每个转换文件过程创建线程
+            t = Thread(target=self.translator.TransContent, args=(recordFile, trans_file))  # 添加内容
+            t.name = '线程：' + trans_file
+            thList.append(t)
+        # 开启线程
+        threadAct = Thread(target=self.ThreadManage, args=(thList,))  # 添加内容
+        threadAct.start()
+
+    def BatchFileTrans(self, fileList=list):
+        """
+        批量转义列表文件，转义并处理进度条
+        :param fileList: 批量转义的文件列表
+        :return:
+        """
+        try:
+            dstPath = C3ATO_Transfer_Dlg.CheckAndCreateTransDir(self.oldBatchDir)     # 创建镜像的转义文件路径
+        except Exception as err:
+            print(err)
+        self.textC3ATOProcess.append('Info：'+'文件遍历!')
+        self.barAllAdd = C3ATO_Transfer_Dlg.ComputEBarAllAdd(fileList)
+        # 创建线程池
+        thList = []
+        # 对于多文件选择，在当前目录直接完成
+        for recordFile in fileList:
+            # 按照之前创建目录规则，创建新的文件名
+            transFile = recordFile.replace(self.oldBatchDir, dstPath)      # 先替换镜像顶级目录内容
+            dstFile = transFile.replace('.txt', '_trans.txt')              # 计算转换后的文件名称，只有文件发生变化
+            # 对每个转换文件过程创建线程
+            t = Thread(target=self.translator.TransContent, args=(recordFile, dstFile))  # 添加内容
+            t.name = '线程：' + dstFile
+            thList.append(t)
+        # 开启线程
+        threadAct = Thread(target=self.ThreadManage, args=(thList,))  # 添加内容
+        threadAct.start()
+
+    def ShowFileBarProgress(self, num):
+        self.barCurC3ATOProcess.setValue(num)
+
+    def ShowAllFileBarProgress(self):
+        if self.latestChoosedState < 2:
+            self.barAllC3ATOProcess.setValue(100)
+        else:
+            self.barAllNum = self.barAllNum + self.barAllAdd
+            self.barAllC3ATOProcess.setValue(int(self.barAllNum))
+
+    def ThreadManage(self, thList=list):
+        self.textC3ATOProcess.append('Info：'+'开启线程!')
+        # 开启线程
+        for th in thList:
+            msg = 'Info：' + th.name
+            # self.textC3ATOProcess.setHtml("<font color='red' ><red>" + msg + "</font>")
+            self.textC3ATOProcess.append("<font color='red' ><red>" + msg +"</font>")
+            # 创建画笔
+            # cursor = self.textC3ATOProcess.textCursor()
+            # cursor.movePosition(cursor.position() - len(msg), QtGui.QTextCursor.MoveAnchor)
+            # cursor.setPosition(cursor.position() + len(msg) , QtGui.QTextCursor.KeepAnchor)
+            # cursor.select(QtGui.QTextCursor.WordUnderCursor)
+            # # 创建模式
+            # fmt = QtGui.QTextCharFormat()
+            # fmt.setForeground(QtCore.Qt.red)
+            # cursor.mergeCharFormat(fmt)
+            # cursor.clearSelection()
+            # cursor.movePosition(QtGui.QTextCursor.EndOfLine)
+            # 启动线程
+            th.setDaemon(True)
+            th.start()
+            th.join()
+
+
+
+    @staticmethod
+    def ComputEBarAllAdd(fileList=list):
+        """
+        根据选择的文件列表，计算单个文件所占的进度条长度
+        :param fileList: 文件列表
+        :return: 单个文件占计数（小数）
+        """
+        # 计算文件个数
+        allNum = len(fileList)
+        if allNum:
+            return 100/allNum   # 考虑到数量可能比100大或小，这里可能是小数
+        else:
+            return 100
+
+    def ChooseSingleDlg(self):
+        """
+        选择单个文件的方法
+        :return: 单文件路径
+        """
+        self.textC3ATOProcess.clear()
+        temp = '/'
+        # 若之前选择过，列表非空
+        if not self.oldSingleDirPath:
+            filepath = QtWidgets.QFileDialog.getOpenFileName(self, '选择单个文件', 'c:/', "txt files(*.txt *.log)")
+        else:
+            filepath = QtWidgets.QFileDialog.getOpenFileName(self, '选择单个文件', self.oldSingleDirPath,
+                                                             "txt files(*.txt *.log)")
+        # 取出文件地址
+        path = filepath[0]
+        if path == '':  # 没有选择文件
+            self.latestChoosedState = 0
+            self.textC3ATOProcess.append('Info： 没有选择文件！')
+        else:
+            self.latestChoosedState = 1
+            name = path.split("/")[-1]  # 文件名称，预留
+            self.oldSingleDirPath = temp.join(path.split("/")[-1])  # 纪录上一次的文件路径
+            self.singleFile = path
+            self.ledC3ATOPath.setText(path)
+
+    def ChooseMultiDlg(self):
+        """
+        选择多个文件的方法
+        :return: 多个文件的文件列表
+        """
+        self.textC3ATOProcess.clear()
+        temp = '/'
+        # 若之前选择过，列表非空
+        if not self.oldMultiDirPath:
+            filepath = QtWidgets.QFileDialog.getOpenFileNames(self, '选择多个文件', 'c:/', "txt files(*.txt *.log)")
+        else:
+            filepath = QtWidgets.QFileDialog.getOpenFileNames(self, '选择多个文件', self.oldMultiDirPath,
+                                                              "txt files(*.txt *.log)")
+
+        pathList = filepath[0]  # 取出多文件的列表地址
+        if not pathList:  # 没有选择文件
+            self.latestChoosedState = 0
+            self.textC3ATOProcess.append('Info： 没有选择文件！')
+        else:
+            self.latestChoosedState = 2
+            name = pathList[0].split("/")[-1]  # 取文件列表中第一个文件的地址作为下次读取地址
+            self.oldMultiDirPath = temp.join(pathList[0].split("/")[:-1])  # 取第一个文件所在目录作为下次选择结果
+            self.multiFileList = pathList
+            self.ledC3ATOPath.setText(self.oldMultiDirPath)
+            for f in self.multiFileList:
+                self.textC3ATOProcess.append(f)  # 显示路径
+            self.textC3ATOProcess.append('Info： 共选择（*.txt）文件 %d 个！' % len(self.multiFileList))
+
+    def ChooseDirDlg(self):
+        """
+        选择目录的对话框，向下搜索获取所有文件
+        :return: 多个文件的文件列表
+        """
+        self.textC3ATOProcess.clear()
+        temp = '/'
+        # 若之前选择过，列表非空
+        if not self.oldBatchDir:
+            path = QtWidgets.QFileDialog.getExistingDirectory(self, '选择文件目录', 'c:/')
+        else:
+            path = QtWidgets.QFileDialog.getExistingDirectory(self, '选择文件目录', self.oldBatchDir)
+        # 更新记录路径
+        self.oldBatchDir = path
+        if not path:  # 没有选择文件路径
+            self.latestChoosedState = 0
+            self.textC3ATOProcess.append('Info： 没有选择文件！')
+        else:
+            self.latestChoosedState = 3
+            # 更新前初始化，文件列表
+            self.dirFileList = []
+            self.GetFileList(self.dirFileList, path, '.txt')
+            for f in self.dirFileList:
+                self.textC3ATOProcess.append(f)  # 显示路径
+            self.textC3ATOProcess.append('Info： 共选择（*.txt）文件 %d 个！' % (len(self.dirFileList)))
+
+    def RsetDlgPanel(self):
+        """
+        当数据加载完成后，重置界面
+        :return:
+        """
+        self.barCurC3ATOProcess.setValue(0)
+        self.barAllC3ATOProcess.setValue(0)
+        self.textC3ATOProcess.clear()
+
+    @staticmethod
+    def GetFileList(fileList, rootPath, fileType=None):
+        """
+        根据输入的根路径，向下递归搜索文件名
+        :param fileList: 输出的文件列表
+        :param rootPath: 输入的查询父目录
+        :param fileType: 查询文件的后缀名
+        :return:
+        """
+        files = os.listdir(rootPath)
+        for fileName in files:
+            fullPath = os.path.join(rootPath, fileName)
+            if os.path.isdir(fullPath):
+                C3ATO_Transfer_Dlg.GetFileList(fileList, fullPath, fileType)
+            else:
+                if fileType:  # 如果指定文件后缀
+                    if fileType == fullPath[-len(fileType):]:  # 检查后缀名
+                        fileList.append(fullPath)
+                    else:
+                        pass
+                        # print(fullPath)
+                else:
+                    # 如果不指定则添加所有
+                    fileList.append(fullPath)
+                    print(fullPath)
+        return fileList
+
+    @staticmethod
+    def CheckAndCreateTransDir(basePath=str):
+        """
+        根据传入路径创建对应的转义路径，根目录用_Trans后缀识别，所有子目录一致
+        :param basePath: 基础目录
+        :return: 创建的转义目录
+        """
+        # 定位上一级路径
+        supPath = '/'.join(basePath.split("/")[:-1])
+        mateDirs = os.listdir(supPath)    # 获取同一级目录
+        curDirName = basePath.split("/")[-1]
+        dstPath = '/'.join([supPath, basePath.split("/")[-1] + '_Trans'])  # 仅针对路径最后值调整，防止整体替换出现的错误
+        # 当已经存在转义路径时直接退出
+        if curDirName + '_Trans' in mateDirs:
+            pass
+        else:
+            if os.path.isdir(basePath):
+                try:
+                    # 创建镜像的转义路径
+                    C3ATO_Transfer_Dlg.CopyFileDir(basePath, dstPath)
+                except Exception as err:
+                    print(err)
+        return dstPath
+
+    @staticmethod
+    def CopyFileDir(src_path=str, dst_path=str, include_file=bool):
+        """
+        将指定的路径子目录复制到指定路径下（指定是否包含文件）
+        :param src_path: 被复制源路径
+        :param dst_path: 复制到目的路径
+        :param include_file: 是否复制文件
+        :return: 无
+        """
+        # 检查是否要拷贝
+        shutil.copytree(src_path, dst_path, symlinks=False, ignore=None, copy_function=C3ATO_Transfer_Dlg.CopyFunc,
+                        ignore_dangling_symlinks=True)
+
+    @staticmethod
+    def CopyFunc(src, dst, *, follow_symlinks=True):
+        # 重写copy函数，用于拷贝目录或拷贝文件
+        # 可以参考copy2和copy函数，复制所有文件和状态
+        # 如果输入路径是目录，首先创建目标目录
+        if os.path.isdir(src):
+            dst_path = os.path.join(dst, os.path.basename(dst))  # 定义目的基础目录
+            # 这里不复制文件和状态
+            # 所以只复制了文件路径
+        return dst

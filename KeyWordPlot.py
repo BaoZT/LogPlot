@@ -3,6 +3,7 @@
 # encoding: utf-8
 
 import matplotlib
+import matplotlib.figure as matfig
 from PyQt5 import QtCore, QtWidgets
 from FileProcess import FileProcess
 import RealTimeExtension
@@ -102,7 +103,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     lock_signal = QtCore.pyqtSignal(int)  # 这个参数用于提醒锁定光标
 
     def __init__(self, parent=None, width=20, height=10, dpi=100):
-        self.fig =matplotlib.figure.Figure(figsize=(width, height), dpi=100, frameon=False)  # 创建一个Figure，注意：该Figure为
+        self.fig = matfig.Figure(figsize=(width, height), dpi=100, frameon=False)  # 创建一个Figure，注意：该Figure为
                                                                                 # matplotlib下的figure，不是matplotlib
                                                                                 # pyplot下面的figure
         self.fig.subplots_adjust(top=0.952, bottom=0.095, left=0.064, right=0.954, hspace=0.17, wspace=0.25)
@@ -180,7 +181,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     def plot_cord1(self, ob=FileProcess, cmd=int, x_lim=tuple, y_lim=tuple):
         # paint the speed ruler
         self.axes1.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
-                           linewidth=1)  # 45km/h                           #  0 being the far left of the plot,
+                           label = '45km/h,80km/h,350km/h', linewidth=1)  # 45km/h   #  0 being the far left of the plot,
         self.axes1.axhline(y=9722, xmin=0, xmax=1, color='darkblue', ls='dashed',    # 1 the far right of the plot
                            linewidth=1)  # 350km/h
         self.axes1.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
@@ -199,6 +200,10 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             else:
                 self.axes1.set_xlim(x_lim[0], x_lim[1])
                 self.axes1.set_ylim(y_lim[0], y_lim[1])
+                if self.axes1.get_lines():
+                    self.axes1.legend(loc='upper left')
+                if self.ax1_twin.get_lines():
+                    self.ax1_twin.legend(loc='upper right')
             self.axes1.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
             self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename+" "+"速度-位置曲线")
@@ -211,6 +216,10 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             else:
                 self.axes1.set_xlim(x_lim[0], x_lim[1])
                 self.axes1.set_ylim(y_lim[0], y_lim[1])
+                if self.axes1.get_lines():
+                    self.axes1.legend(loc='upper left')
+                if self.ax1_twin.get_lines():
+                    self.ax1_twin.legend(loc='upper right')
             self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
             self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
@@ -220,9 +229,6 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         #self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 10))], fontdict={'fontsize': 10}, minor=False)
         # self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 1))], fontdict={'fontsize': 8}, minor=True)
         #self.axes1.set_ylim(-200, ob.atp_permit_v.max() + 200)
-        self.axes1.legend(loc='upper left')
-        if self.ax1_twin.get_lines():
-            self.ax1_twin.legend(loc='upper right')
         self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.040, right=0.969, hspace=0.17, wspace=0.25)
         #self.fig.tight_layout()
 
@@ -473,33 +479,33 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                     if k == 'BTM' and self.event_plot_flag_dic['BTM'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
-                                               marker='^', color='gold')
+                                               marker='^',label='应答器', color='gold')
                         else:
                             self.axes1.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][1]),
-                                               marker='^', color='gold')
+                                               marker='^', label='应答器', color='gold')
 
                     if k == 'JD' and self.event_plot_flag_dic['JD'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
-                                               marker='^', linewidth=3, color='Blue')
+                                               marker='^', label='精定应答器', linewidth=3, color='Blue')
                         else:
                             self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
-                                               marker='^',linewidth=3, color='Blue')
+                                               marker='^', label='精定应答器', linewidth=3, color='Blue')
 
                     if k == 'WL' and self.event_plot_flag_dic['WL'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
-                                               marker='D', color='Peru')
+                                               marker='D', label='无线呼叫命令', color='Peru')
                         else:
                             self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
-                                               marker='D', color='Peru')
+                                               marker='D', label='无线呼叫命令',  color='Peru')
                     if k == 'PLAN' and self.event_plot_flag_dic['PLAN'] == 1:
                         if cmd == 0:
                             self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
-                                               marker='*', color='Purple')
+                                               marker='*',label='运行计划数据',  color='Purple')
                         else:
                             self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
-                                               marker='*', color='Purple')
+                                               marker='*',label='运行计划数据', color='Purple')
 
     # 计算需要绘制标志的地方
     def set_wayside_info_in_cords(self, cycle_dic=dict, pos_list=list, cycle_list=list):
@@ -562,15 +568,15 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         try:
             if cmd == 0:
                 self.axes1.scatter(self.wayside_plot_dic['STN'][0], [-350] * len(self.wayside_plot_dic['STN'][0]),
-                                   marker='|', color='k', s=100)
+                                   marker='|', label='车站范围' ,color='k', s=100)
 
                 self.axes1.scatter(self.wayside_plot_dic['GFX'][0], [-200] * len(self.wayside_plot_dic['GFX'][0]),
-                                   marker='>', color='red', s=1)
+                                   marker='>', label='分相区范围',color='red', s=1)
             else:
                 self.axes1.scatter(self.wayside_plot_dic['STN'][1], [-350] * len(self.wayside_plot_dic['STN'][1]),
-                                   marker='|', color='k', s=100)
+                                   marker='|', label='车站范围', color='k', s=100)
                 self.axes1.scatter(self.wayside_plot_dic['GFX'][1], [-200] * len(self.wayside_plot_dic['GFX'][1]),
-                                   marker='>', color='red', s=1)
+                                   marker='>',label='分相区范围', color='red', s=1)
         except Exception as err:
             print(err)
             print('cords error !!!!!!!!!')

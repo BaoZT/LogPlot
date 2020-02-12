@@ -2068,6 +2068,11 @@ class Ui_MainWindow(object):
         icon29.addPixmap(QtGui.QPixmap("IconFiles/export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionExport.setIcon(icon29)
         self.actionExport.setObjectName("actionExport")
+        self.actionC3ATOTrans = QtWidgets.QAction(MainWindow)
+        icon30 = QtGui.QIcon()
+        icon30.addPixmap(QtGui.QPixmap("IconFiles/translator.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionC3ATOTrans.setIcon(icon30)
+        self.actionC3ATOTrans.setObjectName("actionC3ATOTrans")
         self.menu_2.addAction(self.actionoffline)
         self.menu_2.addAction(self.actionRealtime)
         self.menu_7.addAction(self.actionReset)
@@ -2101,6 +2106,7 @@ class Ui_MainWindow(object):
         self.menu_8.addAction(self.actionUTC)
         self.menu_8.addAction(self.actionMVBParser)
         self.menu_8.addAction(self.action_acc_measure)
+        self.menu_8.addAction(self.actionC3ATOTrans)
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menu_2.menuAction())
         self.menubar.addAction(self.menu_5.menuAction())
@@ -2483,5 +2489,7 @@ class Ui_MainWindow(object):
         self.action_acc_measure.setToolTip(_translate("MainWindow", "加速度测量器用于计量"))
         self.actionExport.setText(_translate("MainWindow", "导出数据"))
         self.actionExport.setToolTip(_translate("MainWindow", "导出ATO控车相关信息"))
+        self.actionC3ATOTrans.setText(_translate("MainWindow", "C3ATO记录板转义"))
+        self.actionC3ATOTrans.setToolTip(_translate("MainWindow", "将C3ATO记录板数据解析并转义为工具可识别的串口记录形式，转义结果自动按照上电分割记录"))
 
 import IconFiles_rc
