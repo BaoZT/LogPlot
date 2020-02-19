@@ -6,7 +6,7 @@
 
 @author:  Baozhengtang
 
-@license: (C) Copyright 2017-2018, Author Limited.
+@license: (C) Copyright 2017-2020, Author Limited.
 
 @contact: baozhengtang@gmail.com
 
@@ -688,7 +688,7 @@ class Figure_Canvas(FigureCanvas):
     def __init__(self, parent=None):
         self.fig = matplotlib.figure.Figure()
         self.ax = self.fig.add_subplot(111)
-        super().__init__(self, self.fig)  # 初始化父类函数
+        super().__init__(self.fig)  # 初始化父类函数
 
 
 # 控车测量设置类
@@ -697,9 +697,9 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
     # 初始化，获取加载后的处理信息
     def __init__(self, parent=None, ob=FileProcess.FileProcess):
         self.log = ob
-        super(Ctrl_MeasureDlg, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
-        self.sp = Figure_Canvas(self.widget)  # 这是继承FigureCanvas的子类，使用子窗体widget作为父
+        self.sp = Figure_Canvas()  # 这是继承FigureCanvas的子类，使用子窗体widget作为父
         self.ctrlAccTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         l.addWidget(self.sp)
@@ -859,7 +859,6 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
                 ato_ctrl_flag = 0  # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
                 tcms_fbk_flag = 0
                 for line in self.log.cycle_dic[self.log.cycle[idx]].raw_mvb_lines:
-
                     if pat_ato_ctrl in line:
                         if '@' in line:
                             pass
@@ -870,7 +869,6 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
                             t_cmd = tmp[1] + tmp[2]
                             b_cmd = tmp[3] + tmp[4]
                             ato_ctrl_flag = 1
-
                     elif pat_tcms_stat in line:
                         if '@' in line:
                             pass
@@ -881,7 +879,6 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
                             t_fbk = tmp[1] + tmp[2]
                             b_fbk = tmp[3] + tmp[4]
                             tcms_fbk_flag = 1
-
                 if ato_ctrl_flag and tcms_fbk_flag:
                     if tb_stat == 'AA':
                         self.ato2tcms_tb_ctrl.append(int(t_cmd, 16))
@@ -905,7 +902,6 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
                     # 获取周期信息
                     self.cycle_ord.append(self.log.cycle[idx])
-
         except Exception as err:
             print(err)
 
@@ -970,17 +966,15 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         self.translator = TransRecord()
         self.translator.FileTransOnePercentSingal.connect(self.ShowFileBarProgress)
         self.translator.FileTransCompleteSingal.connect(self.ShowAllFileBarProgress)
-        self.translator.FileTransErrSingal.connect(self.textC3ATOProcess.append)
+        self.translator.FileTransErrSingal.connect(self.ShowErrInTextEdit)
 
     def BeginTransProcess(self):
         """
         点击确认按钮后，执行转义处理
         :return:
         """
-        # 重置界面
-        self.RsetDlgPanel()
         # 处理内容
-        if self.latestChoosedState  == 1:
+        if self.latestChoosedState == 1:
             self.SingleFileTrans(self.singleFile)       # 处理单文件路径
         elif self.latestChoosedState == 2:
             self.MultiFileTrans(self.multiFileList)     # 处理文件列表
@@ -1050,7 +1044,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
             dstFile = transFile.replace('.txt', '_trans.txt')              # 计算转换后的文件名称，只有文件发生变化
             # 对每个转换文件过程创建线程
             t = Thread(target=self.translator.TransContent, args=(recordFile, dstFile))  # 添加内容
-            t.name = '线程：' + dstFile
+            t.name = '线程' + dstFile
             thList.append(t)
         # 开启线程
         threadAct = Thread(target=self.ThreadManage, args=(thList,))  # 添加内容
@@ -1066,30 +1060,20 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
             self.barAllNum = self.barAllNum + self.barAllAdd
             self.barAllC3ATOProcess.setValue(int(self.barAllNum))
 
+    def ShowErrInTextEdit(self, err=str):
+        err = "<font face='宋体' size='3' color='#4D4DFF'>" + err + "</font>"
+        self.textC3ATOProcess.append(err)
+
     def ThreadManage(self, thList=list):
         self.textC3ATOProcess.append('Info：'+'开启线程!')
         # 开启线程
         for th in thList:
             msg = 'Info：' + th.name
-            # self.textC3ATOProcess.setHtml("<font color='red' ><red>" + msg + "</font>")
-            self.textC3ATOProcess.append("<font color='red' ><red>" + msg +"</font>")
-            # 创建画笔
-            # cursor = self.textC3ATOProcess.textCursor()
-            # cursor.movePosition(cursor.position() - len(msg), QtGui.QTextCursor.MoveAnchor)
-            # cursor.setPosition(cursor.position() + len(msg) , QtGui.QTextCursor.KeepAnchor)
-            # cursor.select(QtGui.QTextCursor.WordUnderCursor)
-            # # 创建模式
-            # fmt = QtGui.QTextCharFormat()
-            # fmt.setForeground(QtCore.Qt.red)
-            # cursor.mergeCharFormat(fmt)
-            # cursor.clearSelection()
-            # cursor.movePosition(QtGui.QTextCursor.EndOfLine)
+            self.textC3ATOProcess.append("<font face='宋体' size='3' color='red'>" + "<b>" + msg + "</b> "+"</font>")
             # 启动线程
             th.setDaemon(True)
             th.start()
             th.join()
-
-
 
     @staticmethod
     def ComputEBarAllAdd(fileList=list):
@@ -1110,7 +1094,8 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         选择单个文件的方法
         :return: 单文件路径
         """
-        self.textC3ATOProcess.clear()
+        # 重置界面
+        self.RsetDlgPanel()
         temp = '/'
         # 若之前选择过，列表非空
         if not self.oldSingleDirPath:
@@ -1135,7 +1120,8 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         选择多个文件的方法
         :return: 多个文件的文件列表
         """
-        self.textC3ATOProcess.clear()
+        # 重置界面
+        self.RsetDlgPanel()
         temp = '/'
         # 若之前选择过，列表非空
         if not self.oldMultiDirPath:
@@ -1156,14 +1142,15 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
             self.ledC3ATOPath.setText(self.oldMultiDirPath)
             for f in self.multiFileList:
                 self.textC3ATOProcess.append(f)  # 显示路径
-            self.textC3ATOProcess.append('Info： 共选择（*.txt）文件 %d 个！' % len(self.multiFileList))
+            self.textC3ATOProcess.append('Info：共选择（*.txt）文件 %d 个！' % len(self.multiFileList))
 
     def ChooseDirDlg(self):
         """
         选择目录的对话框，向下搜索获取所有文件
         :return: 多个文件的文件列表
         """
-        self.textC3ATOProcess.clear()
+        # 重置界面
+        self.RsetDlgPanel()
         temp = '/'
         # 若之前选择过，列表非空
         if not self.oldBatchDir:
@@ -1182,7 +1169,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
             self.GetFileList(self.dirFileList, path, '.txt')
             for f in self.dirFileList:
                 self.textC3ATOProcess.append(f)  # 显示路径
-            self.textC3ATOProcess.append('Info： 共选择（*.txt）文件 %d 个！' % (len(self.dirFileList)))
+            self.textC3ATOProcess.append('Info：共选择（*.txt）文件 %d 个！' % (len(self.dirFileList)))
 
     def RsetDlgPanel(self):
         """

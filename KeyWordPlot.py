@@ -387,8 +387,8 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         x_delta = abs(cord_lim_x[1] - cord_lim_x[0])/60
         y_delta = abs(cord_lim_y[1] - cord_lim_y[0])/48
 
-        bubble_x = bubble_x + x_delta  # 右移动
-        bubble_y = bubble_y - y_delta  # 下移动
+        bubble_x = bubble_x + x_delta  # 固定的右移动
+        bubble_y = bubble_y - y_delta  # 固定的下移动
 
         # 文本悬浮窗绘制位置类型，参考主框架定义 1=跟随模式，0=停靠右上角
         props = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
@@ -396,7 +396,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         if 1 == text_pos_type:
             self.axes1.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props)
         elif 0 == text_pos_type:
-            self.axes1.text(0.78, 0.93, str_show, transform=self.axes1.transAxes, fontsize=10, verticalalignment='top',
+            self.axes1.text(0.78, 0.95, str_show, transform=self.axes1.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props)
         else:
             pass
@@ -571,12 +571,12 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                                    marker='|', label='车站范围' ,color='k', s=100)
 
                 self.axes1.scatter(self.wayside_plot_dic['GFX'][0], [-200] * len(self.wayside_plot_dic['GFX'][0]),
-                                   marker='>', label='分相区范围',color='red', s=1)
+                                   marker='|', label='分相区范围',color='red', s=50)
             else:
                 self.axes1.scatter(self.wayside_plot_dic['STN'][1], [-350] * len(self.wayside_plot_dic['STN'][1]),
                                    marker='|', label='车站范围', color='k', s=100)
                 self.axes1.scatter(self.wayside_plot_dic['GFX'][1], [-200] * len(self.wayside_plot_dic['GFX'][1]),
-                                   marker='>',label='分相区范围', color='red', s=1)
+                                   marker='|',label='分相区范围', color='red', s=50)
         except Exception as err:
             print(err)
             print('cords error !!!!!!!!!')
