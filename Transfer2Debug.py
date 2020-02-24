@@ -1,4 +1,4 @@
-from CommonParse import BytesStream
+from ProtocolParser.CommonParse import BytesStream
 import threading
 import time
 from PyQt5 import QtCore

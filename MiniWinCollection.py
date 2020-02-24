@@ -858,7 +858,7 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
             for idx in range(len(self.log.cycle)):
                 ato_ctrl_flag = 0  # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
                 tcms_fbk_flag = 0
-                for line in self.log.cycle_dic[self.log.cycle[idx]].raw_mvb_lines:
+                for line in self.log.cycle_dic[self.log.cycle[idx]].raw_analysis_lines:
                     if pat_ato_ctrl in line:
                         if '@' in line:
                             pass
