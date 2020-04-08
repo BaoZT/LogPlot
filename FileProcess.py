@@ -23,7 +23,7 @@ import numpy as np
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
 
-from ProtocolParse import MVBParse
+from TCMSParse import MVBParse
 
 pat_ato_ctrl = ''
 pat_ato_stat = ''

@@ -8,7 +8,7 @@ import numpy as np
 from PyQt5 import QtCore
 
 from FileProcess import FileProcess
-from ProtocolParse import MVBParse
+from TCMSParse import MVBParse
 
 exit_flag = 0
 queueLock = threading.Lock()

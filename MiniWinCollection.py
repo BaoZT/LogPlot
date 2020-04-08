@@ -22,13 +22,13 @@
 import matplotlib
 
 from CycleInfo import Ui_MainWindow as CycleWin
-from MVBParser import Ui_MainWindow as MVBParserWin
-from Measure import Ui_MainWindow as MeasureWin
+from MVBParserWin import Ui_MainWindow as MVBParserWin
+from MeasureWin import Ui_MainWindow as MeasureWin
 from C3ATORecordTranslator import Ui_Dialog as C3ATOTransferWin
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from ProtocolParse import MVBParse
+from TCMSParse import MVBParse
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from KeyWordPlot import SnaptoCursor
@@ -919,6 +919,8 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord) - 1])  # 默认与不带光标统一的显示范围
         self.sp.ax.set_ylim(-17000, 17000)
         self.sp.ax.legend(['ATO输出命令', ' 车辆反馈命令'])
+        self.sp.ax.legend(loc='upper right')
+        self.sp.ax.grid(which='both')
 
     # 光标跟随
     def cusor_plot(self, idx):

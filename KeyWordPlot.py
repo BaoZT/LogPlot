@@ -380,6 +380,10 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                    + str_ramp + str_adj_ramp \
                    + str_delta_v
 
+        str_spd_sig = ob.cycle_dic[ob.cycle[pos_idx]].time+'\n'\
+                      + '列车速度：%dcm/s'%ob.v_ato[pos_idx]+'\n'\
+                      + '列车时速：%.2fkm/h'%((ob.v_ato[pos_idx]*9)/250)
+
         # 获取当前坐标轴范围，用以计算文本框的偏移比例
         cord_lim_x = self.axes1.get_xlim()
         cord_lim_y = self.axes1.get_ylim()
@@ -387,17 +391,25 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         x_delta = abs(cord_lim_x[1] - cord_lim_x[0])/60
         y_delta = abs(cord_lim_y[1] - cord_lim_y[0])/48
 
+        #设置气泡显示，右下角
         bubble_x = bubble_x + x_delta  # 固定的右移动
-        bubble_y = bubble_y - y_delta  # 固定的下移动
+        bubble_y = bubble_y + 6*y_delta  # 固定的上移动
+        #右上角设置速度时间tag
+        sig_x = bubble_x + x_delta  # 固定的右移动
+        sig_y = bubble_y + y_delta  # 固定的下移动
 
         # 文本悬浮窗绘制位置类型，参考主框架定义 1=跟随模式，0=停靠右上角
-        props = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
+        props_bubble = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
+        props_sig = dict(facecolor=paint_color, edgecolor='none', alpha=0.05)
+
+        # 设置显示速度信息
+        self.axes1.text(sig_x, sig_y, str_spd_sig, fontsize=12, verticalalignment='top', bbox=props_sig)
 
         if 1 == text_pos_type:
-            self.axes1.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props)
+            self.axes1.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
         elif 0 == text_pos_type:
             self.axes1.text(0.78, 0.95, str_show, transform=self.axes1.transAxes, fontsize=10, verticalalignment='top',
-                            bbox=props)
+                            bbox=props_bubble)
         else:
             pass
 

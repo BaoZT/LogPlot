@@ -20,7 +20,7 @@ from KeyWordPlot import Figure_Canvas, SnaptoCursor, Figure_Canvas_R
 from LogMainWin import Ui_MainWindow
 from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg, \
     Cyclewindow, Train_Com_MeasureDlg, C3ATO_Transfer_Dlg
-from ProtocolParse import MVBParse
+from TCMSParse import MVBParse
 from RealTimeExtension import SerialRead, RealPaintWrite
 
 # 全局静态变量

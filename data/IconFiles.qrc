@@ -1,0 +1,37 @@
+<!DOCTYPE RCC><RCC version="1.0">
+ <qresource prefix="/IconFiles">
+    <file alias="tag.png">./IconFiles/tag.png</file>
+    <file alias="view.png">./IconFiles/view.png</file>
+    <file alias="back.png">./IconFiles/back.png</file>
+    <file alias="close.png">./IconFiles/close.png</file>
+     <file alias="config.png">./IconFiles/config.png</file>
+    <file alias="edit.png">./IconFiles/edit.png</file>
+     <file alias="file.png">./IconFiles/file.png</file>
+    <file alias="forward.png">./IconFiles/forward.png</file>
+     <file alias="help.png">./IconFiles/help.png</file>
+    <file alias="pan.png">./IconFiles/pan.png</file>
+     <file alias="quit.png">./IconFiles/quit.png</file>
+    <file alias="reset.png">./IconFiles/reset.png</file>
+     <file alias="save.png">./IconFiles/save.png</file>
+    <file alias="version.png">./IconFiles/version.png</file>
+     <file alias="zoom.png">./IconFiles/zoom.png</file>
+     <file alias="home.png">./IconFiles/home.png</file>
+     <file alias="BZT.ico">./IconFiles/BZT.ico</file>
+     <file alias="copy.png">./IconFiles/copy.png</file>
+     <file alias="print.png">./IconFiles/print.png</file>
+     <file alias="cyclecurve.png">./IconFiles/cyclecurve.png</file>
+     <file alias="vscurve.png">./IconFiles/vscurve.png</file>
+     <file alias="serset.png">./IconFiles/serset.png</file>
+     <file alias="offline.png">./IconFiles/offline.png</file>
+     <file alias="realtime.png">./IconFiles/realtime.png</file>
+     <file alias="MVBParser.png">./IconFiles/MVBParser.png</file>
+     <file alias="UTCParser.png">./IconFiles/UTCParser.png</file>
+     <file alias="dock.png">./IconFiles/dock.png</file>
+     <file alias="track.png">./IconFiles/track.png</file>
+     <file alias="realtimeset.png">./IconFiles/realtimeset.png</file>
+     <file alias="port.png">./IconFiles/port.png</file>
+     <file alias="acc.png">./IconFiles/acc.png</file>
+     <file alias="export.png">./IconFiles/export.png</file>
+     <file alias="translator.png">./IconFiles/translator.png</file>
+  </qresource>
+</RCC>
