@@ -678,7 +678,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # 恒速目标速度
                 self.led_ctrl_aimspeed.setText(str(int(ato2tcms_ctrl[8], 16)))
                 # ATO启动灯
-                if ato2tcms_ctrl[9] == 'AA':
+                if ato2tcms_ctrl[9].upper() == 'AA':
                     self.led_ctrl_starlamp.setText('亮')
                 elif ato2tcms_ctrl[9] == '00':
                     self.led_ctrl_starlamp.setText('灭')
@@ -976,7 +976,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 门状态
             if temp[10] == '55':
                 self.lbl_doorstatus.setText('门开')
-            elif temp[10] == 'AA':
+            elif temp[10].upper() == 'AA':
                 self.lbl_doorstatus.setText('门关')
 
             # 低频
@@ -989,10 +989,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             elif temp[11] == '10':
                 self.lbl_freq.setText('HB码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(163, 22, 43);")
-            elif temp[11] == '2A':
+            elif temp[11].upper() == '2A':
                 self.lbl_freq.setText('L4码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '2B':
+            elif temp[11].upper() == '2B':
                 self.lbl_freq.setText('L5码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
             elif temp[11] == '25':
@@ -1341,9 +1341,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if load_flag == 1:
             self.train_com_delay = Train_Com_MeasureDlg(None, self.log)
             self.Log('Plot statistics info!', __name__, sys._getframe().f_lineno)
-
-            self.train_com_delay.measure_plot()
-            self.train_com_delay.show()
+            try:
+                self.train_com_delay.measure_plot()
+                self.train_com_delay.show()
+            except Exception as err:
+                self.Log(err, __name__, sys._getframe().f_lineno)
 
     # 更新离线绘图事件标示
     def set_log_event(self):
@@ -3440,6 +3442,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if temp[11] == '0':
                 self.lbl_freq.setText('H码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(255, 0, 0);")
+            elif temp[11] == '1':
+                self.lbl_freq.setText('B码')
+                self.lbl_freq.setStyleSheet("background-color: rgb(161, 161, 161);")
             elif temp[11] == '2':
                 self.lbl_freq.setText('HU码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(255, 215, 15);")
@@ -3479,11 +3484,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             elif temp[11] == '29':
                 self.lbl_freq.setText('L3码')
                 self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            # 站台
-            if temp[13] == '1':
-                self.lbl_stn.setText('站内')
-            else:
-                self.lbl_stn.setText('站外')
+            # 站台标志由于FSM中记录后会经过处理，采用SC才是本周期控车使用的
+            if self.log.cycle_dic[self.log.cycle[idx]].control:  # 按周期索引取控制信息，妨不连续
+                stn_flag = list(self.log.cycle_dic[self.log.cycle[idx]].control)[17]
+                if stn_flag == '1':
+                    self.lbl_stn.setText('站内')
+                else:
+                    self.lbl_stn.setText('站外')
         # 主断和分相
         if c.break_status == 1:
             self.lbl_dcmd.setText('主断断开')

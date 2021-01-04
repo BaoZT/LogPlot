@@ -176,6 +176,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.ax1_twin.plot(ob.s, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
         else:
             self.ax1_twin.plot(ob.cycle, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
+            self.ax1_twin.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
 
     # 绘制速度坐标轴相关信息
     def plot_cord1(self, ob=FileProcess, cmd=int, x_lim=tuple, y_lim=tuple):
@@ -546,9 +547,9 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 if 1 == cycle_dic[item_cycle].gfx_flag:
                     temp_cycle_list_gfx.append(item_cycle)  # 直接添加周期号
                     temp_pos_list_gfx.append(pos_list[idx])  # 添加对应位置
-                # 无线事件字典
-                if cycle_dic[item_cycle].fsm:
-                    if '1' == list(cycle_dic[item_cycle].fsm)[-1]:
+                # 改用控车使用的
+                if cycle_dic[item_cycle].control:
+                    if '1' == list(cycle_dic[item_cycle].control)[17]:
                         temp_cycle_list_stn.append(item_cycle)  # 直接添加周期号
                         temp_pos_list_stn.append(pos_list[idx])  # 添加对应位置
                 # 更新所有列表
@@ -566,17 +567,6 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         :param cmd: 绘制周期图还是位置图
         :return:
         """
-        # cmap = ListedColormap(['w', 'k', 'b'])
-        # norm = BoundaryNorm([0.5, 1], cmap.N)
-        # if cmd == 0:  # 位置速度曲线
-        #     points = np.array([ob.s, ob.platform]).T.reshape(-1, 1, 2)
-        # else:  # 周期速度曲线
-        #     points = np.array([ob.cycle, ob.platform]).T.reshape(-1, 1, 2)
-        #
-        # segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        # lc = LineCollection(segments, cmap=cmap, norm=norm)
-        # lc.set_linewidth(3)
-        # self.fig.gca().add_collection(lc)
         try:
             if cmd == 0:
                 self.axes1.scatter(self.wayside_plot_dic['STN'][0], [-350] * len(self.wayside_plot_dic['STN'][0]),
@@ -591,7 +581,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                                    marker='|',label='分相区范围', color='red', s=50)
         except Exception as err:
             print(err)
-            print('cords error !!!!!!!!!')
+            print('plot_wayside_info_in_cords error !')
 
 
 # 实时画板类定义

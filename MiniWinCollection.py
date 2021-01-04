@@ -908,27 +908,27 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
     # 用于绘制估计加速度曲线
     def measure_plot(self):
         self.comput_all_ctrl_info()
-        self.sp.ax.plot(self.cycle_ord, self.ato2tcms_tb_ctrl, color='blue', marker='.', markersize=0.5)
-        self.sp.ax.plot(self.cycle_ord, self.tcms2ato_tb_fbk, color='red', marker='.', markersize=0.5)
+        self.sp.ax.plot(self.cycle_ord, self.ato2tcms_tb_ctrl,label='ATO输出MVB命令', color='blue', marker='.', markersize=0.5)
+        self.sp.ax.plot(self.cycle_ord, self.tcms2ato_tb_fbk, label='TCMS反馈MVB命令',color='green', marker='.', markersize=0.5)
         self.ax1 = self.sp.ax.twinx()
-        self.ax1.plot(self.log.cycle, self.log.v_ato, color='pink', marker='.', markersize=0.5)
+        self.ax1.plot(self.log.cycle, self.log.v_ato, color='red', marker='.', markersize=0.5)
         self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.cycle_ord, self.ato2tcms_tb_ctrl)  # 初始化一个光标
         self.tb_cursor.reset_cursor_plot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
         self.tb_cursor.move_signal.connect(self.cusor_plot)
         self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord) - 1])  # 默认与不带光标统一的显示范围
         self.sp.ax.set_ylim(-17000, 17000)
-        self.sp.ax.legend(['ATO输出命令', ' 车辆反馈命令'])
         self.sp.ax.legend(loc='upper right')
-        self.sp.ax.grid(which='both')
+        self.sp.ax.grid(which='both',linestyle='-')
 
     # 光标跟随
     def cusor_plot(self, idx):
         self.sp.ax.texts.clear()
-        str_ato_cycle = '当前周期:%d \n' % (self.cycle_ord[idx])
-        str_ato_ctrl = 'ATO输出指令:%d \n' % (self.ato2tcms_tb_ctrl[idx])
-        str_tcms_fbk = '车辆反馈指令:%d ' % (self.tcms2ato_tb_fbk[idx])
-        str_show = str_ato_cycle + str_ato_ctrl + str_tcms_fbk
+        str_ato_cycle = '当前系统周期:%d \n' % (self.cycle_ord[idx])
+        str_ato_v = '当前系统速度:%dcm/s\n' % (self.log.v_ato[idx])
+        str_ato_ctrl = 'ATO输出牵引制动值:%d \n' % (self.ato2tcms_tb_ctrl[idx])
+        str_tcms_fbk = '车辆反馈牵引制动值:%d ' % (self.tcms2ato_tb_fbk[idx])
+        str_show = str_ato_cycle + str_ato_v +  str_ato_ctrl + str_tcms_fbk
         props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
 
         self.sp.ax.text(0.03, 0.97, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',

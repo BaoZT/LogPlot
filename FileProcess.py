@@ -189,7 +189,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.reset_vars()  # 重置所有变量
         with open(file_path, 'r', encoding='ansi', errors='ignore') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
             self.file_lines_count = self.bufcount(log)  # 获取文件总行数
-            ret = self.create_cycle_dic_dync(log)
+            print("Read line num %d"%self.file_lines_count)
+            try:
+                ret = self.create_cycle_dic_dync(log)
+            except Exception as err:
+                print(err)
         return ret
 
     # 获取文件行数
@@ -753,7 +757,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 self.targetpos = mat[:, 11]
                 self.ma = mat[:, 12]
                 self.stoppos = mat[:, 14]
-                # self.platform = mat[:, 17]        # 目前使用fsm中的信息，SC中的站台标志先不用，不处理
+                self.platform = mat[:, 17]        # 目前使用fsm中的信息，SC中的站台标志先不用，不处理
                 # 停车误差
                 self.stop_error = mat[:, 15]
                 # 通过办客
