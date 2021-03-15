@@ -18,8 +18,8 @@ import MiniWinCollection
 import RealTimeExtension
 from KeyWordPlot import Figure_Canvas, SnaptoCursor, Figure_Canvas_R
 from LogMainWin import Ui_MainWindow
-from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, Ctrl_MeasureDlg, \
-    Cyclewindow, Train_Com_MeasureDlg, C3ATO_Transfer_Dlg
+from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, CtrlMeasureDlg, \
+    Cyclewindow, TrainComMeasureDlg, C3ATOTransferDlg
 from TCMSParse import MVBParse
 from RealTimeExtension import SerialRead, RealPaintWrite
 
@@ -86,7 +86,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # UTC转换器
         self.utctransfer = UTCTransferDlg()
         # C3ATO转义工具
-        self.C3ATORecordTransfer =  C3ATO_Transfer_Dlg()
+        self.C3ATORecordTransfer = C3ATOTransferDlg()
         # 绘图界面设置器
         self.realtime_plot_dlg = RealTimePlotDlg()  # 实时绘图界面设置
         self.realtime_plot_interval = 1  # 默认1s绘图
@@ -706,7 +706,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(ato2tcms_stat)
         # TCMS2ATO 状态信息
         try:
-            if tcms2ato_stat != []:
+            if tcms2ato_stat:
                 self.led_tcms_hrt.setText(str(int(tcms2ato_stat[0], 16)))  # TCMS状态命令心跳
                 # 门模式
                 if tcms2ato_stat[1][0] == 'C':
@@ -1339,7 +1339,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def show_statistics_mvb_delay(self):
         global load_flag
         if load_flag == 1:
-            self.train_com_delay = Train_Com_MeasureDlg(None, self.log)
+            self.train_com_delay = TrainComMeasureDlg(None, self.log)
             self.Log('Plot statistics info!', __name__, sys._getframe().f_lineno)
             try:
                 self.train_com_delay.measure_plot()
@@ -1741,7 +1741,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 周期速度曲线
             if curve_flag == 1:
                 self.indx_measure_end = min(np.searchsorted(self.log.cycle, [x])[0], len(self.log.cycle) - 1)
-            self.measure = Ctrl_MeasureDlg(None, self.log)
+            self.measure = CtrlMeasureDlg(None, self.log)
             self.measure.measure_plot(self.indx_measure_start, self.indx_measure_end, curve_flag)
             self.measure.show()
 
@@ -2100,7 +2100,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         print_flag = 0  # 是否弹窗打印，0=不弹窗，1=弹窗
         c_num = 0
         line_count = 0
-        pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
+        pat_cycle_start = re.compile(r'---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
         self.cyclewin.textEdit.clear()
 
         if 1 == load_flag or 2 == load_flag:  # 文件已经加载
@@ -2289,7 +2289,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeWidget.setHeaderLabels(['协议数据包', '字段', '取值'])
         self.treeWidget.setColumnWidth(0, 100)
         self.treeWidget.setColumnWidth(1, 125)
-        # self.treeWidget.setHeaderLabels(['Procotol', 'Field', 'Value', 'Unit']) # 内容解析未来添加
 
     # 事件处理函数，设置树形结构和内容
     def set_tree_content(self, idx):

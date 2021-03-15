@@ -611,22 +611,22 @@ class UTCTransferDlg(QtWidgets.QDialog):
         mainlayout.addLayout(layout)
         mainlayout.addLayout(buttonLayout)
 
-        self.OpenButton.clicked.connect(self.PushBtnUTC)
+        self.OpenButton.clicked.connect(self.push_btn_utc)
 
         self.setLayout(mainlayout)
         self.setWindowTitle(u'UTC时间转换器')
 
-    def PushBtnUTC(self):
+    def push_btn_utc(self):
         tmp = self.utc.text()
         try:
-            self.local.setText(self.TransferUTC(tmp))
+            self.local.setText(self.transfer_utc(tmp))
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                       "错误",
                                                       "注意：UTC时间有误，请修改",
                                                       QtWidgets.QMessageBox.Yes)
 
-    def TransferUTC(self, t=str):
+    def transfer_utc(self, t=str):
         ltime = time.localtime(int(t))
         timeStr = time.strftime("%Y-%m-%d %H:%M:%S", ltime)
         return timeStr
@@ -663,7 +663,7 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
         mainlayout.addLayout(layout)
         mainlayout.addLayout(buttonLayout)
 
-        self.OpenButton.clicked.connect(self.PlotSet)
+        self.OpenButton.clicked.connect(self.plot_set)
 
         self.plot_cycle_time.setValue(1)
         self.plot_flag.setChecked(True)
@@ -672,7 +672,7 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
         self.setLayout(mainlayout)
         self.setWindowTitle(u'实时绘图设置')
 
-    def PlotSet(self):
+    def plot_set(self):
         plot_flag = False
         if self.plot_flag.isChecked():
             plot_flag = True
@@ -692,7 +692,7 @@ class Figure_Canvas(FigureCanvas):
 
 
 # 控车测量设置类
-class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
+class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
     # 初始化，获取加载后的处理信息
     def __init__(self, parent=None, ob=FileProcess.FileProcess):
@@ -718,7 +718,8 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.ctrlAccTable.setHorizontalHeaderLabels(['控车曲线分类', '估计加速度', '单位'])
 
     # 重置索引从到右，统一鼠标点击顺序
-    def set_segment_idx(self, idx_start=int, idx_end=int, ):
+    @staticmethod
+    def set_segment_idx(idx_start=int, idx_end=int, ):
         # 根据索引大小关系获取实际序列
         if idx_start <= idx_end:
             pass
@@ -727,7 +728,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         return idx_start, idx_end
 
     # 计算所有加速度 可以输入原始索引，兼容已经转换
-    def comput_all_acc_extimate(self, idx_start=int, idx_end=int):
+    def compute_all_acc_estimate(self, idx_start=int, idx_end=int):
         [idx_start, idx_end] = self.set_segment_idx(idx_start, idx_end)
 
         x_list = self.log.cycle[idx_start:idx_end]
@@ -744,7 +745,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         return [atppmtv_acc_est, atpcmdv_acc_est, atocmdv_acc_est, vato_acc_est]
 
     # 获取速度并计算加速度,用于绘图
-    def comput_vato_acc_estimate_plot(self, idx_start=int, idx_end=int, cmd=int):
+    def compute_vato_acc_estimate_plot(self, idx_start=int, idx_end=int, cmd=int):
 
         [idx_start, idx_end] = self.set_segment_idx(idx_start, idx_end)
         # 获取段
@@ -759,7 +760,8 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         return [v_sim, s_sim, a_sim, x_list, y_list, p_sim]
 
     # 获取速度并计算加速度
-    def get_estimate_acc(self, x_raw=list, y_raw=list):
+    @staticmethod
+    def get_estimate_acc(x_raw=list, y_raw=list):
         z = np.polyfit(x_raw, y_raw, 1)  # 一次多项式拟合，相当于线性拟合
         a_sim = z[0] * 10  # 获取估计加速度,由于时间单位是100ms所以乘以10,后者是函数
         p_sim = np.poly1d(z)
@@ -770,7 +772,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
     def measure_plot(self, idx_start=int, idx_end=int, cmd=int):
         estimate_a_tuple = 0
 
-        estimate_a_tuple = self.comput_vato_acc_estimate_plot(idx_start, idx_end, cmd)
+        estimate_a_tuple = self.compute_vato_acc_estimate_plot(idx_start, idx_end, cmd)
         v_sim = estimate_a_tuple[0]
         s_sim = estimate_a_tuple[1]
         a_sim = estimate_a_tuple[2]  # 加速度已经转为cm/s^2
@@ -779,7 +781,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         # 计算估计曲线
         y_list_sim = estimate_a_tuple[5](x_list)
         # 计算表格
-        acc_all = self.comput_all_acc_extimate(idx_start, idx_end)
+        acc_all = self.compute_all_acc_estimate(idx_start, idx_end)
 
         item_name = ['ATP允许速度', 'ATP命令速度', 'ATO命令速度', '实际速度']
         item_unit = ['cm/s^2', 'cm/s^2', 'cm/s^2', 'cm/s^2']
@@ -788,7 +790,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
             i_content_name.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
             i_content_unit = QtWidgets.QTableWidgetItem(item_unit[idx])
             i_content_unit.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            i_content_value = QtWidgets.QTableWidgetItem(str(acc_all[idx][0]))
+            i_content_value = QtWidgets.QTableWidgetItem(str("%.3f" % (acc_all[idx][0])))
             i_content_value.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
             self.ctrlAccTable.setItem(idx, 0, i_content_name)
             self.ctrlAccTable.setItem(idx, 1, i_content_value)
@@ -796,7 +798,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
         self.sp.ax.plot(x_list, y_list_sim, color='purple')
         self.sp.ax.plot(x_list, y_list, color='deeppink', marker='.', markersize=0.2)
-        str_asim = '预估加速度:%.*f cm/s^2\n' % (3, a_sim)
+        str_asim = '线性拟合加速度:%.*f cm/s^2\n' % (3, a_sim)
         str_cycle_num = '测量时间:%.*f s\n' % (3, (idx_end - idx_start) / 10.0)
         str_s_sim = 'ATO走行距离:%d cm\n' % int(s_sim)
         str_v_sim = 'ATO速度变化:%d cm/s' % (v_sim)
@@ -812,8 +814,7 @@ class Ctrl_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
 
 # 控车网络时延显示类
-class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
-
+class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
     # 初始化，获取加载后的处理信息
     def __init__(self, parent=None, ob=FileProcess.FileProcess):
         self.log = ob
@@ -915,14 +916,14 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.cycle_ord, self.ato2tcms_tb_ctrl)  # 初始化一个光标
         self.tb_cursor.reset_cursor_plot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
-        self.tb_cursor.move_signal.connect(self.cusor_plot)
+        self.tb_cursor.move_signal.connect(self.cursor_plot)
         self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord) - 1])  # 默认与不带光标统一的显示范围
         self.sp.ax.set_ylim(-17000, 17000)
         self.sp.ax.legend(loc='upper right')
         self.sp.ax.grid(which='both',linestyle='-')
 
     # 光标跟随
-    def cusor_plot(self, idx):
+    def cursor_plot(self, idx):
         self.sp.ax.texts.clear()
         str_ato_cycle = '当前系统周期:%d \n' % (self.cycle_ord[idx])
         str_ato_v = '当前系统速度:%dcm/s\n' % (self.log.v_ato[idx])
@@ -936,7 +937,7 @@ class Train_Com_MeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
 
 # C3ATO记录板转义工具类
-class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
+class C3ATOTransferDlg(QtWidgets.QDialog, C3ATOTransferWin):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -955,8 +956,9 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         self.oldMultiDirPath = ''   # 多文件选择路径
         self.dirFileList = []
         self.oldBatchDir = ''       # 批量处理选择路径
+        self.barAllAdd = 100
         # 当前执行状态机
-        self.latestChoosedState = 0   # 用于记录最近一次有效的文件选择，0=无效，1=单文件，2=多文件，3=批量文件
+        self.latestChooseState = 0   # 用于记录最近一次有效的文件选择，0=无效，1=单文件，2=多文件，3=批量文件
         self.barAllNum = 0.0
         # 事件绑定
         self.btnSingleFileTrans.clicked.connect(self.ChooseSingleDlg)
@@ -976,11 +978,11 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return:
         """
         # 处理内容
-        if self.latestChoosedState == 1:
+        if self.latestChooseState == 1:
             self.SingleFileTrans(self.singleFile)       # 处理单文件路径
-        elif self.latestChoosedState == 2:
+        elif self.latestChooseState == 2:
             self.MultiFileTrans(self.multiFileList)     # 处理文件列表
-        elif self.latestChoosedState == 3:
+        elif self.latestChooseState == 3:
             self.BatchFileTrans(self.dirFileList)       # 处理文件列表
         else:
             self.textC3ATOProcess.append("Info：无有效选择文件！ 不执行")
@@ -1010,7 +1012,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return:
         """
         self.textC3ATOProcess.append('Info：'+'文件遍历!')
-        self.barAllAdd = C3ATO_Transfer_Dlg.ComputEBarAllAdd(fileList)
+        self.barAllAdd = C3ATOTransferDlg.ComputeEBarAllAdd(fileList)
         # 创建线程池
         thList = []
         # 对于多文件选择，在当前目录直接完成
@@ -1032,11 +1034,11 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return:
         """
         try:
-            dstPath = C3ATO_Transfer_Dlg.CheckAndCreateTransDir(self.oldBatchDir)     # 创建镜像的转义文件路径
+            dstPath = C3ATOTransferDlg.CheckAndCreateTransDir(self.oldBatchDir)     # 创建镜像的转义文件路径
         except Exception as err:
             print(err)
         self.textC3ATOProcess.append('Info：'+'文件遍历!')
-        self.barAllAdd = C3ATO_Transfer_Dlg.ComputEBarAllAdd(fileList)
+        self.barAllAdd = C3ATOTransferDlg.ComputeEBarAllAdd(fileList)
         # 创建线程池
         thList = []
         # 对于多文件选择，在当前目录直接完成
@@ -1056,7 +1058,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         self.barCurC3ATOProcess.setValue(num)
 
     def ShowAllFileBarProgress(self):
-        if self.latestChoosedState < 2:
+        if self.latestChooseState < 2:
             self.barAllC3ATOProcess.setValue(100)
         else:
             self.barAllNum = self.barAllNum + self.barAllAdd
@@ -1078,7 +1080,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
             th.join()
 
     @staticmethod
-    def ComputEBarAllAdd(fileList=list):
+    def ComputeEBarAllAdd(fileList=list):
         """
         根据选择的文件列表，计算单个文件所占的进度条长度
         :param fileList: 文件列表
@@ -1108,10 +1110,10 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         # 取出文件地址
         path = filepath[0]
         if path == '':  # 没有选择文件
-            self.latestChoosedState = 0
+            self.latestChooseState = 0
             self.textC3ATOProcess.append('Info： 没有选择文件！')
         else:
-            self.latestChoosedState = 1
+            self.latestChooseState = 1
             name = path.split("/")[-1]  # 文件名称，预留
             self.oldSingleDirPath = temp.join(path.split("/")[-1])  # 纪录上一次的文件路径
             self.singleFile = path
@@ -1134,10 +1136,10 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
 
         pathList = filepath[0]  # 取出多文件的列表地址
         if not pathList:  # 没有选择文件
-            self.latestChoosedState = 0
+            self.latestChooseState = 0
             self.textC3ATOProcess.append('Info： 没有选择文件！')
         else:
-            self.latestChoosedState = 2
+            self.latestChooseState = 2
             name = pathList[0].split("/")[-1]  # 取文件列表中第一个文件的地址作为下次读取地址
             self.oldMultiDirPath = temp.join(pathList[0].split("/")[:-1])  # 取第一个文件所在目录作为下次选择结果
             self.multiFileList = pathList
@@ -1162,10 +1164,10 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         # 更新记录路径
         self.oldBatchDir = path
         if not path:  # 没有选择文件路径
-            self.latestChoosedState = 0
+            self.latestChooseState = 0
             self.textC3ATOProcess.append('Info： 没有选择文件！')
         else:
-            self.latestChoosedState = 3
+            self.latestChooseState = 3
             # 更新前初始化，文件列表
             self.dirFileList = []
             self.GetFileList(self.dirFileList, path, '.txt')
@@ -1195,7 +1197,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         for fileName in files:
             fullPath = os.path.join(rootPath, fileName)
             if os.path.isdir(fullPath):
-                C3ATO_Transfer_Dlg.GetFileList(fileList, fullPath, fileType)
+                C3ATOTransferDlg.GetFileList(fileList, fullPath, fileType)
             else:
                 if fileType:  # 如果指定文件后缀
                     if fileType == fullPath[-len(fileType):]:  # 检查后缀名
@@ -1228,7 +1230,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
             if os.path.isdir(basePath):
                 try:
                     # 创建镜像的转义路径
-                    C3ATO_Transfer_Dlg.CopyFileDir(basePath, dstPath)
+                    C3ATOTransferDlg.CopyFileDir(basePath, dstPath)
                 except Exception as err:
                     print(err)
         return dstPath
@@ -1243,7 +1245,7 @@ class C3ATO_Transfer_Dlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return: 无
         """
         # 检查是否要拷贝
-        shutil.copytree(src_path, dst_path, symlinks=False, ignore=None, copy_function=C3ATO_Transfer_Dlg.CopyFunc,
+        shutil.copytree(src_path, dst_path, symlinks=False, ignore=None, copy_function=C3ATOTransferDlg.CopyFunc,
                         ignore_dangling_symlinks=True)
 
     @staticmethod

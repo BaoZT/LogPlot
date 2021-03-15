@@ -8,6 +8,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -18,8 +19,8 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.widget = QtWidgets.QWidget(self.centralwidget)
         self.widget.setStyleSheet("background-color: rgb(218, 255, 175);\n"
-"background-color: rgb(231, 255, 255);\n"
-"background-color: rgb(252, 255, 235);")
+                                  "background-color: rgb(231, 255, 255);\n"
+                                  "background-color: rgb(252, 255, 235);")
         self.widget.setObjectName("widget")
         self.horizontalLayout.addWidget(self.widget)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -37,4 +38,3 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-

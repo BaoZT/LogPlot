@@ -1875,7 +1875,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.addWidget(self.splitter_3)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1533, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1533, 23))
         self.menubar.setObjectName("menubar")
         self.menu_2 = QtWidgets.QMenu(self.menubar)
         self.menu_2.setObjectName("menu_2")
