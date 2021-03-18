@@ -1099,7 +1099,7 @@ class C3ATOTransferDlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return: 单文件路径
         """
         # 重置界面
-        self.RsetDlgPanel()
+        self.ResetDlgPanel()
         temp = '/'
         # 若之前选择过，列表非空
         if not self.oldSingleDirPath:
@@ -1125,7 +1125,7 @@ class C3ATOTransferDlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return: 多个文件的文件列表
         """
         # 重置界面
-        self.RsetDlgPanel()
+        self.ResetDlgPanel()
         temp = '/'
         # 若之前选择过，列表非空
         if not self.oldMultiDirPath:
@@ -1154,7 +1154,7 @@ class C3ATOTransferDlg(QtWidgets.QDialog, C3ATOTransferWin):
         :return: 多个文件的文件列表
         """
         # 重置界面
-        self.RsetDlgPanel()
+        self.ResetDlgPanel()
         temp = '/'
         # 若之前选择过，列表非空
         if not self.oldBatchDir:
@@ -1175,7 +1175,7 @@ class C3ATOTransferDlg(QtWidgets.QDialog, C3ATOTransferWin):
                 self.textC3ATOProcess.append(f)  # 显示路径
             self.textC3ATOProcess.append('Info：共选择（*.txt）文件 %d 个！' % (len(self.dirFileList)))
 
-    def RsetDlgPanel(self):
+    def ResetDlgPanel(self):
         """
         当数据加载完成后，重置界面
         :return:

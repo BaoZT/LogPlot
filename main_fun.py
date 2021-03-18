@@ -2145,13 +2145,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def set_table_format(self):
         item_name = ['ATO当前速度', 'ATO命令速度', 'ATP命令速度', 'ATP允许速度', '估计级位', '输出级位', '控车状态机',  # 0~5
                      '当前位置', '目标速度', '目标位置', 'MA终点', 'ATO停车点', '停车误差',  # 6~11
-                     '精确停车点', '参考停车点', 'MA停车点',  # 12~14
-                     '通过信息', '办客信息']
+                     '精确停车点', '参考停车点', 'MA停车点']
         item_unit = ['cm/s', 'cm/s', 'cm/s', 'cm/s', '-', '-', '-',
                      'cm', 'cm/s', 'cm', 'cm', 'cm', 'cm', 'cm', 'cm',
-                     'cm', '-', '-']
+                     'cm']
         # table name
-        self.tableWidget.setRowCount(18)
+        self.tableWidget.setRowCount(16)
         self.tableWidget.setColumnCount(3)
         self.tableWidget.setHorizontalHeaderLabels(['ATO控制信息', '控车数据', '单位'])
         self.tableWidget.resizeRowsToContents()
@@ -2171,19 +2170,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def set_tableall_content(self, indx):
         item_value = []
         stop_list = list(self.log.cycle_dic[self.log.cycle[indx]].stoppoint)
-        # 获取和计算
-        if 1 == int(self.log.skip[indx]):
-            str_skip = '通过'
-        elif 2 == int(self.log.skip[indx]):
-            str_skip = '到发'
-        else:
-            str_skip = '未知'
-        if 1 == int(self.log.mtask[indx]):
-            str_task = '办客'
-        elif 2 == int(self.log.mtask[indx]):
-            str_task = '不办客'
-        else:
-            str_task = '未知'
         # 装填
         item_value.append(str(int(self.log.v_ato[indx])))  # 使用int的原因是只有整数精度，不多显示
         item_value.append(str(int(self.log.cmdv[indx])))
@@ -2198,7 +2184,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         item_value.append(str(int(self.log.ma[indx])))
         item_value.append(str(int(self.log.stoppos[indx])))
         item_value.append(str(int(self.log.stop_error[indx])))
-        if stop_list != []:
+        if stop_list:
             item_value.append(str(int(stop_list[0])))
             item_value.append(str(int(stop_list[1])))
             item_value.append(str(int(stop_list[2])))
@@ -2206,8 +2192,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item_value.append('无')
             item_value.append('无')
             item_value.append('无')
-        item_value.append(str_skip)
-        item_value.append(str_task)
         for idx3, value in enumerate(item_value):
             i_content = QtWidgets.QTableWidgetItem(value)
             i_content.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
@@ -2218,19 +2202,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def set_table_content(self, indx):
         item_value = []
         stop_list = list(self.log.cycle_dic[self.log.cycle[indx]].stoppoint)
-        # 获取和计算
-        if 1 == int(self.log.skip[indx]):
-            str_skip = '通过'
-        elif 2 == int(self.log.skip[indx]):
-            str_skip = '到发'
-        else:
-            str_skip = '未知'
-        if 1 == int(self.log.mtask[indx]):
-            str_task = '办客'
-        elif 2 == int(self.log.mtask[indx]):
-            str_task = '不办客'
-        else:
-            str_task = '未知'
         # 装填
         item_value.append(str(int(self.log.v_ato[indx])))  # 使用int的原因是只有整数精度，不多显示
         item_value.append(str(int(self.log.cmdv[indx])))
@@ -2245,7 +2216,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         item_value.append(str(int(self.log.ma[indx])))
         item_value.append(str(int(self.log.stoppos[indx])))
         item_value.append(str(int(self.log.stop_error[indx])))
-        if stop_list != []:
+        if stop_list:
             item_value.append(str(int(stop_list[0])))
             item_value.append(str(int(stop_list[1])))
             item_value.append(str(int(stop_list[2])))
@@ -2253,8 +2224,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item_value.append('无')
             item_value.append('无')
             item_value.append('无')
-        item_value.append(str_skip)
-        item_value.append(str_task)
         for idx3, value in enumerate(item_value):
             i_content = QtWidgets.QTableWidgetItem(value)
             i_content.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
@@ -2501,7 +2470,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 事件处理函数，设置车辆接口MVB信息
     def set_train_page_content(self, idx):
         ato2tcms_ctrl = []
-        ato2tcms_stat = []
+        ato2tcms_state = []
         tcms2ato_stat = []
         # 读取该周期内容
         try:
@@ -2527,8 +2496,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     else:
                         real_idx = line.find('MVB[')
                         tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                        ato2tcms_stat = self.mvbParserPage.ato_tcms_parse(1041, tmp)
-                        if ato2tcms_stat != []:
+                        ato2tcms_state = self.mvbParserPage.ato_tcms_parse(1041, tmp)
+                        if ato2tcms_state != []:
                             parse_flag = 1
                 elif pat_tcms_stat in line:
                     if '@' in line:
@@ -2611,21 +2580,21 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(ato2tcms_ctrl)
         # ATO2TCMS 状态信息
         try:
-            if ato2tcms_stat != []:
-                self.led_stat_hrt_2.setText(str(int(ato2tcms_stat[0], 16)))  # 状态命令心跳
-                if ato2tcms_stat[1] == 'AA':
+            if ato2tcms_state:
+                self.led_stat_hrt_2.setText(str(int(ato2tcms_state[0], 16)))  # 状态命令心跳
+                if ato2tcms_state[1] == 'AA':
                     self.led_stat_error_2.setText('无故障')  # ATO故障
-                elif ato2tcms_stat[1] == '00':
+                elif ato2tcms_state[1] == '00':
                     self.led_stat_error_2.setText('故障')
                 else:
-                    self.led_stat_error_2.setText('异常值%s' % ato2tcms_stat[1])  # ATO故障
-                self.led_stat_stonemile_2.setText(str(int(ato2tcms_stat[2], 16)))  # 公里标
-                self.led_stat_tunnelin_2.setText(str(int(ato2tcms_stat[3], 16)))  # 隧道入口
-                self.led_stat_tunnellen_2.setText(str(int(ato2tcms_stat[4], 16)))  # 隧道长度
-                self.led_stat_atospeed_2.setText(str(int(ato2tcms_stat[5], 16)))  # ato速度
+                    self.led_stat_error_2.setText('异常值%s' % ato2tcms_state[1])  # ATO故障
+                self.led_stat_stonemile_2.setText(str(int(ato2tcms_state[2], 16)))  # 公里标
+                self.led_stat_tunnelin_2.setText(str(int(ato2tcms_state[3], 16)))  # 隧道入口
+                self.led_stat_tunnellen_2.setText(str(int(ato2tcms_state[4], 16)))  # 隧道长度
+                self.led_stat_atospeed_2.setText(str(int(ato2tcms_state[5], 16)))  # ato速度
         except Exception as err:
             self.Log(err, __name__, sys._getframe().f_lineno)
-            print(ato2tcms_stat)
+            print(ato2tcms_state)
         # TCMS2ATO 状态信息
         try:
             if tcms2ato_stat != []:
@@ -2823,7 +2792,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         update_flag = 1
 
                     elif self.pat_plan[2].findall(line):
-                        temp_transfer_list = self.comput_plan_content(self.pat_plan[2].findall(line)[0])
+                        temp_transfer_list = self.compute_plan_content(self.pat_plan[2].findall(line)[0])
                         rp2_list.append(tuple(temp_transfer_list))
 
                     elif self.pat_plan[3].findall(line):
@@ -2884,7 +2853,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif rp2[1] == '0':
                     self.lbl_plan_final_2.setText('非终到站')
             # 有计划，准备表格显示内容
-            if rp2_list != []:
+            if rp2_list:
                 for item in rp2_list:
                     # 去除打印中计划更新时间信息，无用
                     rp2_temp_list.append(item[0:1] + item[2:])
@@ -2938,7 +2907,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(ret_plan)
 
     # 解析转化计划,参考实时解析实现
-    def comput_plan_content(self, t=tuple):
+    @staticmethod
+    def compute_plan_content(t=tuple):
         # 替换其中的UTC时间
         temp_transfer_list = [''] * len(t)
         for idx, item in enumerate(t):
@@ -3542,7 +3512,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.statusbar.showMessage(filepath[0] + "导出失败！")
 
     # 打印函数
-    def Log(self, msg=str, fun=str, lino=int):
+    @staticmethod
+    def Log(msg=str, fun=str, lino=int):
         if str == type(msg):
             print(msg + ',File:"' + __file__ + '",Line' + str(lino) +
                   ', in' + fun)
