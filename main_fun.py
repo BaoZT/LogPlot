@@ -865,7 +865,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(tcms2ato_stat)
 
     # 右侧边栏显示
-    def realtime_table_show(self, cycle_num=str, cycle_time=str, sc_ctrl=list, stoppoint=list, gfx_flag=int):
+    def realtime_table_show(self, cycle_num=str, cycle_time=str, sc_ctrl="list", stoppoint="list", gfx_flag=int):
         item_value = []
         if sc_ctrl:
             if 1 == int(sc_ctrl[20]):
@@ -920,7 +920,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lbl_atpdcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
 
     # 更新FSM信息相关
-    def realtime_fsm_show(self, fsm_list=list):
+    def realtime_fsm_show(self, fsm_list="list"):
         temp = fsm_list[:]
         # 如果解析出来
         if temp != []:
@@ -1077,7 +1077,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tableWidgetPlan.resizeColumnToContents(i)
 
     # 显示BTM表格
-    def realtime_btm_show(self, ret_btm=tuple):
+    def realtime_btm_show(self, ret_btm="tuple"):
         time = ret_btm[0]
         sp7_show = ret_btm[1]
         mile_stone = ret_btm[2]
@@ -1121,7 +1121,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tableATPBTM.setItem(row_btm_idx, 2, item_adjpos)
 
     # 显示IO表格
-    def realtime_io_show(self, ret_io=tuple):
+    def realtime_io_show(self, ret_io="tuple"):
         if ret_io:
             cycle_num = ret_io[0]
             time = ret_io[1]
@@ -1160,7 +1160,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.tb_ato_OUT.setItem(row_in_idx, m, self.real_io_out_list[row_in_idx][m])
 
     # 显示测速测距
-    def realtime_sdu_show(self, ret_sdu=tuple):
+    def realtime_sdu_show(self, ret_sdu="tuple"):
         if ret_sdu:
             ato_sdu = ret_sdu[0]
             atp_sdu = ret_sdu[1]
@@ -1210,7 +1210,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sdu_info_s[1] = atp_s
 
     # 显示计划信息
-    def realtime_plan_show(self, ret_plan=tuple):
+    def realtime_plan_show(self, ret_plan="tuple"):
         rp1 = ret_plan[0]
         rp2 = ret_plan[1][0]
         rp2_list = ret_plan[1][1]
@@ -1412,7 +1412,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                                 "2.优化了曲线显示和绘图机制，提高绘图响应速度\n"
                                                 "3.显示站台范围和过分相范围，应答器单击显示，双击跳转\n"
                                                 "4.优化了曲线范围计算机制，修复了之前跳转出框的缺陷"
-                                                "5.C3ATO记录板转义功能暂未实现，预留！！！",
+                                                "5.C3ATO记录板转义功能已实现，支撑单文件、多文件及路径翻译",
                                                   QtWidgets.QMessageBox.Yes)
 
     # 记录文件处理核心函数，生成周期字典和绘图值列表
@@ -2908,7 +2908,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 解析转化计划,参考实时解析实现
     @staticmethod
-    def compute_plan_content(t=tuple):
+    def compute_plan_content(t="tuple"):
         # 替换其中的UTC时间
         temp_transfer_list = [''] * len(t)
         for idx, item in enumerate(t):
@@ -2956,7 +2956,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.set_atp_info_win(sp131_tpl, 131)
 
     # 设置数据包显示到界面
-    def set_atp_info_win(self, sp_tpl=tuple, clsify=int):
+    def set_atp_info_win(self, sp_tpl="tuple", clsify=int):
         # SP2包内容
         if clsify == 2:
             if sp_tpl != ():
@@ -3526,129 +3526,37 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 使用该函数重复设置来用资源文件内容替代原来自图片的图标，实现pyinstaller的打包图标
     # 图标更新时需要-修改qrc，且修改该函数才能使生成exe与QtDesigner调试一致
     def icon_from_file(self):
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":IconFiles/file.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.fileOpen.setIcon(icon)
-
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":IconFiles/close.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.fileClose.setIcon(icon1)
-
-        icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(":IconFiles/save.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.fileSave.setIcon(icon2)
-
-        icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(":IconFiles/quit.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.Exit.setIcon(icon3)
-
-        icon4 = QtGui.QIcon()
-        icon4.addPixmap(QtGui.QPixmap(":IconFiles/version.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionVersion.setIcon(icon4)
-
-        icon5 = QtGui.QIcon()
-        icon5.addPixmap(QtGui.QPixmap(":IconFiles/help.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionHelp.setIcon(icon5)
-
-        icon6 = QtGui.QIcon()
-        icon6.addPixmap(QtGui.QPixmap(":IconFiles/tag.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionTag.setIcon(icon6)
-
-        icon7 = QtGui.QIcon()
-        icon7.addPixmap(QtGui.QPixmap(":IconFiles/view.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionView.setIcon(icon7)
-
-        icon8 = QtGui.QIcon()
-        icon8.addPixmap(QtGui.QPixmap(":IconFiles/pan.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionPan.setIcon(icon8)
-
-        icon9 = QtGui.QIcon()
-        icon9.addPixmap(QtGui.QPixmap(":IconFiles/zoom.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionZoom.setIcon(icon9)
-
-        icon10 = QtGui.QIcon()
-        icon10.addPixmap(QtGui.QPixmap(":IconFiles/config.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionConfig.setIcon(icon10)
-
-        icon11 = QtGui.QIcon()
-        icon11.addPixmap(QtGui.QPixmap(":IconFiles/forward.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionFwd.setIcon(icon11)
-
-        icon12 = QtGui.QIcon()
-        icon12.addPixmap(QtGui.QPixmap(":IconFiles/back.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionBck.setIcon(icon12)
-
-        icon13 = QtGui.QIcon()
-        icon13.addPixmap(QtGui.QPixmap(":IconFiles/edit.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionEdit.setIcon(icon13)
-
-        icon14 = QtGui.QIcon()
-        icon14.addPixmap(QtGui.QPixmap(":IconFiles/reset.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionReset.setIcon(icon14)
-
-        icon15 = QtGui.QIcon()
-        icon15.addPixmap(QtGui.QPixmap(":IconFiles/home.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionHome.setIcon(icon15)
-
-        icon16 = QtGui.QIcon()
-        icon16.addPixmap(QtGui.QPixmap(":IconFiles/print.png"), QtGui.QIcon.Normal, QtGui.QIcon.On)
-        self.actionPrint.setIcon(icon16)
-
-        icon17 = QtGui.QIcon()
-        icon17.addPixmap(QtGui.QPixmap(":IconFiles/vscurve.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionVS.setIcon(icon17)
-
-        icon18 = QtGui.QIcon()
-        icon18.addPixmap(QtGui.QPixmap(":IconFiles/cyclecurve.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionCS.setIcon(icon18)
-
-        icon19 = QtGui.QIcon()
-        icon19.addPixmap(QtGui.QPixmap(":IconFiles/serset.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionSerSet.setIcon(icon19)
-
-        icon20 = QtGui.QIcon()
-        icon20.addPixmap(QtGui.QPixmap(":IconFiles/offline.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionoffline.setIcon(icon20)
-
-        icon21 = QtGui.QIcon()
-        icon21.addPixmap(QtGui.QPixmap(":IconFiles/realtime.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionRealtime.setIcon(icon21)
-
-        icon22 = QtGui.QIcon()
-        icon22.addPixmap(QtGui.QPixmap(":IconFiles/port.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionMVB.setIcon(icon22)
-
-        icon23 = QtGui.QIcon()
-        icon23.addPixmap(QtGui.QPixmap(":IconFiles/UTCParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionUTC.setIcon(icon23)
-
-        icon24 = QtGui.QIcon()
-        icon24.addPixmap(QtGui.QPixmap(":IconFiles/MVBParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionMVBParser.setIcon(icon24)
-
-        icon25 = QtGui.QIcon()
-        icon25.addPixmap(QtGui.QPixmap(":IconFiles/realtimeset.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionRealTimePlot.setIcon(icon25)
-
-        icon26 = QtGui.QIcon()
-        icon26.addPixmap(QtGui.QPixmap(":IconFiles/track.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.action_bubble_track.setIcon(icon26)
-
-        icon27 = QtGui.QIcon()
-        icon27.addPixmap(QtGui.QPixmap(":IconFiles/dock.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.action_bubble_dock.setIcon(icon27)
-
-        icon28 = QtGui.QIcon()
-        icon28.addPixmap(QtGui.QPixmap(":IconFiles/acc.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.action_acc_measure.setIcon(icon28)
-
-        icon29 = QtGui.QIcon()
-        icon29.addPixmap(QtGui.QPixmap(":IconFiles/export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionExport.setIcon(icon29)
-
-        icon30 = QtGui.QIcon()
-        icon30.addPixmap(QtGui.QPixmap(":IconFiles/translator.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionC3ATOTrans.setIcon(icon30)
+        self.fileOpen.setIcon(QtGui.QIcon(":IconFiles/file.png"))
+        self.fileClose.setIcon(QtGui.QIcon(":IconFiles/close.png"))
+        self.fileSave.setIcon(QtGui.QIcon(":IconFiles/save.png"))
+        self.Exit.setIcon(QtGui.QIcon(":IconFiles/quit.png"))
+        self.actionVersion.setIcon(QtGui.QIcon(":IconFiles/version.png"))
+        self.actionHelp.setIcon(QtGui.QIcon(":IconFiles/help.png"))
+        self.actionTag.setIcon(QtGui.QIcon(":IconFiles/tag.png"))
+        self.actionView.setIcon(QtGui.QIcon(":IconFiles/view.png"))
+        self.actionPan.setIcon(QtGui.QIcon(":IconFiles/pan.png"))
+        self.actionZoom.setIcon(QtGui.QIcon(":IconFiles/zoom.png"))
+        self.actionConfig.setIcon(QtGui.QIcon(":IconFiles/config.png"))
+        self.actionFwd.setIcon(QtGui.QIcon(":IconFiles/forward.png"))
+        self.actionBck.setIcon(QtGui.QIcon(":IconFiles/back.png"))
+        self.actionEdit.setIcon(QtGui.QIcon(":IconFiles/edit.png"))
+        self.actionReset.setIcon(QtGui.QIcon(":IconFiles/reset.png"))
+        self.actionHome.setIcon(QtGui.QIcon(":IconFiles/home.png"))
+        self.actionPrint.setIcon(QtGui.QIcon(":IconFiles/print.png"))
+        self.actionVS.setIcon(QtGui.QIcon(":IconFiles/vscurve.png"))
+        self.actionCS.setIcon(QtGui.QIcon(":IconFiles/cyclecurve.png"))
+        self.actionSerSet.setIcon(QtGui.QIcon(":IconFiles/serset.png"))
+        self.actionoffline.setIcon(QtGui.QIcon(":IconFiles/offline.png"))
+        self.actionRealtime.setIcon(QtGui.QIcon(":IconFiles/realtime.png"))
+        self.actionMVB.setIcon(QtGui.QIcon(":IconFiles/port.png"))
+        self.actionUTC.setIcon(QtGui.QIcon(":IconFiles/UTCParser.png"))
+        self.actionMVBParser.setIcon(QtGui.QIcon(":IconFiles/MVBParser.png"))
+        self.actionRealTimePlot.setIcon(QtGui.QIcon(":IconFiles/realtimeset.png"))
+        self.action_bubble_track.setIcon(QtGui.QIcon(":IconFiles/track.png"))
+        self.action_bubble_dock.setIcon(QtGui.QIcon(":IconFiles/dock.png"))
+        self.action_acc_measure.setIcon(QtGui.QIcon(":IconFiles/acc.png"))
+        self.actionExport.setIcon(QtGui.QIcon(":IconFiles/export.png"))
+        self.actionC3ATOTrans.setIcon(QtGui.QIcon(":IconFiles/translator.png"))
 
 
 if __name__ == '__main__':
