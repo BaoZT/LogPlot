@@ -14,6 +14,7 @@
 - reset_vars(self): 重置所有列表
 
 """
+from itertools import cycle
 import re
 import sys
 import threading
@@ -22,19 +23,16 @@ import time
 import numpy as np
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
-
-from TCMSParse import MVBParse
-
-pat_ato_ctrl = ''
-pat_ato_stat = ''
-pat_tcms_stat = ''
+from ConfigInfo import ConfigFile
+from MsgParse import Atp2atoParse, Atp2atoProto
+from TcmsParse import MVBParse 
 
 
 # 周期类定义
 class CycleLog(object):
-    __slots__ = ['cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end', 'break_status', \
-                'gfx_flag', 'control', 'fsm', 'time', 'cycle_num', 'cycle_sp_dict',\
-                'raw_analysis_lines', 'stoppoint', 'io_in', 'io_out', 'file_begin_offset', \
+    __slots__ = ['cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end', 'break_status', 
+                'gfx_flag', 'control', 'fsm', 'time', 'cycle_num', 'cycle_sp_dict',"msg_atp2ato",
+                'raw_analysis_lines', 'stoppoint', 'io_in', 'io_out', 'file_begin_offset', 
                 'file_end_offset',  'cycle_property']
 
     def __init__(self, ):  # 存储的是读取的内容
@@ -53,6 +51,7 @@ class CycleLog(object):
         self.time = ''
         self.cycle_num = 0
         self.cycle_sp_dict = {}  # 数据包存储数据
+        self.msg_atp2ato = Atp2atoProto()
         # 二次解析原始记录
         self.raw_analysis_lines = []
         # 停车点
@@ -71,7 +70,7 @@ class CycleLog(object):
 class FileProcess(threading.Thread, QtCore.QObject):
     bar_show_signal = QtCore.pyqtSignal(int)
     end_result_signal = QtCore.pyqtSignal(bool)
-    __slots__ = ['daemon', 'mvbParser', 'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level',\
+    __slots__ = ['daemon','atp2atoParser', 'mvbParser', 'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level',\
                 'ceilv', 'atp_permit_v','statmachine', 'v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',\
                 'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic', 'cur_break_status', 'cur_gfx_flag', \
                 'time_use', 'file_lines_count', 'file_path', 'filename']
@@ -83,6 +82,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
         threading.Thread.__init__(self)
         self.daemon = True
         self.mvbParser = MVBParse()
+        self.atp2atoParser = Atp2atoParse()
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
         # 序列初始化
         self.cycle = np.array([], dtype=np.uint32)
         self.s = np.array([], dtype=np.uint32)
@@ -172,14 +174,14 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.mtask = np.array([], dtype=np.uint8)
         self.platform = np.array([], dtype=np.uint8)
         self.stoperr = -32768
-        self.stop_error = []
+        self.stop_error = list()
         # 文件读取结果
-        self.cycle_dic = {}
+        self.cycle_dic = dict()
         # 主断及分相是保持的变化才变
         self.cur_break_status = 0
         self.cur_gfx_flag = 0
         # 读取耗时
-        self.time_use = []
+        self.time_use = list()
         # 文件总行数
         self.file_lines_count = 0
 
@@ -192,7 +194,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
             print("Read line num %d"%self.file_lines_count)
             try:
                 ret = self.create_cycle_dic_dync(log)
-            except Exception as err:
+            except IndexError as err:
                 print(err)
         return ret
 
@@ -224,7 +226,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def create_cycle_dic_dync(self, f):
         """
         根据传入的文件句柄，动态解析信息记录周期的地址，用于打印查询
-        注意：1. 函数能够检查获取完整的周期
+        注意:1. 函数能够检查获取完整的周期
              2. 函数能够检测并获取 头部缺失尾部存在 的残存单个周期, 按照尾标记周期
              3. 函数能够检测并获取 尾部缺失头部存在 的残存单个周期， 按照头部标记周期
              4. 对于连续连续出现的尾部缺失和头部缺失，导致周期合并的情况，逻辑上无法判断，全部丢弃
@@ -238,8 +240,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 创建周期号模板
         pat_list = self.create_all_pattern()
         pat_extend_list = self.create_extend_pattern()
-        pat_cycle_end = re.compile('---CORE_TARK CY_E (\d+),(\d+).')  # 周期起点匹配，括号匹配取出ostime和周期号，最后可以任意匹配
-        pat_cycle_start = re.compile('---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
         # 设置每次读取行数
         last_cycle_end_offset = f.tell()                # 初始化最近一次周期结束的指针偏移量
         # 计算进度条判断
@@ -276,8 +276,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 else:
                     pass
             # 搜索周期
-            s_r = pat_cycle_start.findall(line)
-            e_r = pat_cycle_end.findall(line)
+            s_r = self.cfg.reg_config.pat_cycle_start.findall(line)
+            e_r = self.cfg.reg_config.pat_cycle_end.findall(line)
             # 检查是否周期头
             if s_r:
                 s_r_list = list(s_r[0])                # 获取匹配的元组，转为列表
@@ -338,6 +338,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                         result = self.match_log_basic_content(c, line, pat_list, pat_extend_list)
                 else:
                     pass                                          # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
+
             # 更新下一行读取的记录起点
             cur_line_head_offset = cur_line_tail_offset
         return ret
@@ -347,7 +348,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
     # <输出> ret  解析1=成功，0=失败
-    def match_log_basic_content(self, c=CycleLog, line=str, pat_list=list, pat_extend_list=list):
+    def match_log_basic_content(self, c=CycleLog, line=str, pat_list="list", pat_extend_list="list"):
         # 北京时间
         ret = 1
         pat_time = pat_list[0]
@@ -373,7 +374,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
     # <输出> ret  解析1=成功，0=失败
-    def match_log_packet_contect(self, c=CycleLog, line=str, pat_list=list, pat_extend_list=list):
+    def match_log_packet_contect(self, c=CycleLog, line=str, pat_list="list", pat_extend_list="list"):
         ret = 1
         # 先无条件设置状态
         c.gfx_flag = self.cur_gfx_flag
@@ -406,31 +407,18 @@ class FileProcess(threading.Thread, QtCore.QObject):
         pat_c44 = pat_list[22]
         pat_c45 = pat_list[23]
         pat_c46 = pat_list[24]
-        # io info
-        pat_io_in = pat_list[25]
-        pat_io_out = pat_list[26]
 
         # 数据包识别,提高效率
         if '[P->O]' in line:
-            # ATP->ATO数据包匹配过程
-            if pat_sp0.findall(line):
-                c.cycle_sp_dict[0] = pat_sp0.findall(line)[0]
-            elif pat_sp1.findall(line):
-                c.cycle_sp_dict[1] = pat_sp1.findall(line)[0]
-            elif pat_sp2.findall(line):
-                try:
-                    l = re.split(',', line)
-                    if len(tuple(l[1:])) == 26:  # 出去nid_packet一共是26个数字
-                        c.cycle_sp_dict[2] = tuple(l[1:])  # 保持与其他格式一致，从SP2后截取
-                        if int(c.cycle_sp_dict[2][13]) == 1:  # 去除nid——packet是第13个字节
-                            c.gfx_flag = 1
-                            self.cur_gfx_flag = 1
-                        else:
-                            c.gfx_flag = 0
-                            self.cur_gfx_flag = 0
-                except Exception as err:
-                    print('gfx err')
-                    self.Log(err, __name__, sys._getframe().f_lineno)
+            if self.cfg.reg_config.pat_p2o.findall(line):
+                msg_line = self.cfg.reg_config.pat_p2o.findall(line)[0]
+                c.msg_atp2ato = self.atp2atoParser.msgParse(msg_line)
+                if c.msg_atp2ato.sp2_obj.m_ms_cmd == 1:
+                    c.gfx_flag = 1
+                    self.cur_gfx_flag = 1
+                else:
+                    c.gfx_flag = 0
+                    self.cur_gfx_flag = 0
             # 兼容C2ATO内容
             elif pat_c2ato_p1.findall(line):
                 c.cycle_sp_dict[1001] = pat_c2ato_p1.findall(line)[0]  # C2ATO数据包ID增加1000，用于区分高铁ATO数据包
@@ -440,46 +428,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 else:
                     c.gfx_flag = 0
                     self.cur_gfx_flag = 0
-            elif pat_sp5.findall(line):
-                c.cycle_sp_dict[5] = pat_sp5.findall(line)[0]
-            elif pat_sp6.findall(line):
-                c.cycle_sp_dict[6] = pat_sp6.findall(line)[0]
-            elif pat_sp7.findall(line):
-                c.cycle_sp_dict[7] = pat_sp7.findall(line)[0]
-            elif pat_sp8.findall(line):
-                c.cycle_sp_dict[8] = pat_sp8.findall(line)[0]
-            elif pat_sp9.findall(line):
-                c.cycle_sp_dict[9] = pat_sp9.findall(line)[0]
-        # ATO-ATP/TSRS数据包匹配过程
-        elif '[O->P]SP' in line:
-            if pat_sp130.findall(line):
-                c.cycle_sp_dict[130] = pat_sp130.findall(line)[0]
-            elif pat_sp131.findall(line):
-                c.cycle_sp_dict[131] = pat_sp131.findall(line)[0]
-            elif pat_sp132.findall(line):
-                c.cycle_sp_dict[132] = pat_sp132.findall(line)[0]
-            elif pat_sp134.findall(line):
-                c.cycle_sp_dict[134] = pat_sp134.findall(line)[0]
-        elif '[T->A]C' in line or '[T->A]P' in line:
-            if pat_c42.findall(line):
-                c.cycle_sp_dict[42] = pat_c42.findall(line)[0]
-            elif pat_c44.findall(line):
-                c.cycle_sp_dict[44] = pat_c44.findall(line)[0]
-            elif pat_p27.findall(line):
-                c.cycle_sp_dict[27] = pat_p27.findall(line)[0]
-            elif pat_p21.findall(line):
-                c.cycle_sp_dict[21] = pat_p21.findall(line)[0]
-            elif pat_c2.findall(line):
-                c.cycle_sp_dict[202] = pat_c2.findall(line)[0]  # 重名包加200区分
-            elif pat_c41.findall(line):
-                c.cycle_sp_dict[41] = pat_c41.findall(line)[0]
-        elif '[A->T]C' in line:
-            if pat_c43.findall(line):
-                c.cycle_sp_dict[43] = pat_c43.findall(line)[0]
-            elif pat_c46.findall(line):
-                c.cycle_sp_dict[46] = pat_c46.findall(line)[0]
-            elif pat_c45.findall(line):
-                c.cycle_sp_dict[45] = pat_c45.findall(line)[0]
         elif 'MVB[' in line:
             c.raw_analysis_lines.append(line)
         elif 'v&p' in line:
@@ -487,10 +435,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
         elif '[RP' in line:
             c.raw_analysis_lines.append(line)
         elif '[DOOR]' in line or '[MSG]' in line:
-            if pat_io_in.findall(line):
-                c.io_in = pat_io_in.findall(line)[0]
-            elif pat_io_out.findall(line):
-                c.io_out = pat_io_out.findall(line)[0]
+            if self.cfg.reg_config.pat_io_in.findall(line):
+                c.io_in =  self.cfg.reg_config.pat_io_in.findall(line)[0]
+            elif self.cfg.reg_config.pat_io_out.findall(line):
+                c.io_out =  self.cfg.reg_config.pat_io_out.findall(line)[0]
+            else:
+                pass
         else:
             ret = 0
         return ret
@@ -642,21 +592,20 @@ class FileProcess(threading.Thread, QtCore.QObject):
                         if int(cnt % bar_cnt) == 0:
                             bar = bar + 1
                             self.bar_show_signal.emit(bar)
-                        else:
+                        else: 
                             pass
                     # ATP允许速度计算
                     if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
                         c_num = self.cycle_dic[ctrl_item].cycle_num  # 获取周期号
                         # 如果有数据包
-                        if 2 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
-                            last_atp_pmv = int(self.cycle_dic[ctrl_item].cycle_sp_dict[2][11])
-                            first_find_pmv_flag = True
+                        if self.cycle_dicp[c].msg_atp2ato.sp2.updateflag:
+                            last_atp_pmv =self.cycle_dicp[c].msg_atp2ato.sp2.v_permitted
                         elif 1001 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
-                            last_atp_pmv = int(self.cycle_dic[ctrl_item].cycle_sp_dict[1001][7])    # 添加C2ATO
-                            first_find_pmv_flag = True
+                            last_atp_pmv = int(self.cycle_dic[ctrl_item].cycle_sp_dict[1001][7])    
+                            first_find_pmv_flag = True # 添加C2ATO特殊处理
                         else:
                             # 上来就控车时就没有允许速度，首次获取，当周期无SP2
-                            if not first_find_pmv_flag:
+                            if not self.cycle_dicp[c].msg_atp2ato.sp2.updateflag or first_find_pmv_flag:
                                 # 首先尝试寻找向前取20个周期,且字典存在,检查最远边界
                                 if c_num > 20 and ((c_num - 20) in self.cycle_dic.keys()):
                                     c_num_end = c_num - 20
@@ -664,18 +613,17 @@ class FileProcess(threading.Thread, QtCore.QObject):
                                     for c in range(c_num, c_num_end, -1):    # 逆序寻找，找最近的
                                         # 首先检测是否存在该周期，可能出现丢周期的情况，检查每个周期
                                         if c in self.cycle_dic.keys():
-                                            # 如果有数据包
-                                            if 2 in self.cycle_dic[c].cycle_sp_dict.keys():
-                                                last_atp_pmv = int(self.cycle_dic[c].cycle_sp_dict[2][11].strip())  # 非首次投入ATO周期，无SP2包
-                                                first_find_pmv_flag = True
+                                            # 如果有SP2数据
+                                            if self.cycle_dicp[c].msg_atp2ato.sp2.updateflag:
+                                                last_atp_pmv = self.cycle_dicp[c].msg_atp2ato.sp2.v_permitted  # 非首次投入ATO周期，无SP2包
                                                 print('ato cycle no sp2, find before aom!')
                                                 break
                                             else:
                                                 pass
                                             if 1001 in self.cycle_dic[c].cycle_sp_dict.keys():
                                                 last_atp_pmv = int(self.cycle_dic[c].cycle_sp_dict[1001][7].strip())  # 非首次投入ATO周期，无SP2包
-                                                first_find_pmv_flag = True
                                                 print('ato cycle no sp2, find before aom!')
+                                                first_find_pmv_flag = True
                                                 break
                                             else:
                                                 pass
@@ -693,7 +641,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 print(err)
         else:
             print('no ato ctrl,no atp permit v')
-        # print('get atp permit v ok %d, %d'%(len(self.v_ato),len(self.atp_permit_v)))
 
     # <核心函数>
     # 建立ATO控制信息和周期的关系字典
@@ -787,49 +734,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
     # 解析MVB数据
     # 返回解析结果 0=无，1=更新
-    def mvb_research(self, c=CycleLog, line=str):
-        global pat_ato_ctrl
-        global pat_ato_stat
-        global pat_tcms_stat
-        real_idx = 0  # 对于记录打印到同一行的情况，首先要获取实际索引
-        tmp = ''
-        parse_flag = 0
-        try:
-            if pat_ato_ctrl in line:
-                if '@' in line:
-                    pass
-                else:
-                    real_idx = line.find('MVB[')
-                    tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                    c.ato2tcms_ctrl = self.mvbParser.ato_tcms_parse(1025, tmp)  # 这里仅仅适配解析模块，端口号抽象
-                    parse_flag = 1
-            elif pat_ato_stat in line:
-                if '@' in line:
-                    pass
-                else:
-                    real_idx = line.find('MVB[')
-                    tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                    c.ato2tcms_stat = self.mvbParser.ato_tcms_parse(1041, tmp)
-                    parse_flag = 1
-            elif pat_tcms_stat in line:
-                if '@' in line:
-                    pass
-                else:
-                    real_idx = line.find('MVB[')
-                    tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                    c.tcms2ato_stat = self.mvbParser.ato_tcms_parse(1032, tmp)
-                    if c.tcms2ato_stat != []:
-                        if c.tcms2ato_stat[14] == 'AA':
-                            self.cur_break_status = 0
-                            c.break_status = 0  # 闭合
-                        elif c.tcms2ato_stat[14] == '00':
-                            self.cur_break_status = 1
-                            c.break_status = 1  # 主断路器断开
-                    parse_flag = 1
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-        return parse_flag
-
+   
     # 找出当前行所在的周期，针对单次搜索
     # 输入： 行索引
     # 返回： 该行所在周期[起始索引，终点索引，周期号]

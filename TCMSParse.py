@@ -1,111 +1,334 @@
 #!/usr/bin/env python
-
 # encoding: utf-8
-
 '''
-
 @author:  Baozhengtang
-
 @license: (C) Copyright 2017-2018, Author Limited.
-
 @contact: baozhengtang@gmail.com
-
 @software: LogPlot
-
 @file: TCMSParse.py
-
 @time: 2018/4/20 14:56
-
-@desc: 本文件用于增加提供记录中相关的协议解析功能，包括
-       但不限于MVB，ATP-ATO，ATO-TSRS功能
+@desc: 本文件用于MVB解析功能
 '''
 
-import sys
+from PyQt5 import  QtWidgets,QtGui
+from ConfigInfo import ConfigFile
+from ProtocolParser.CommonParse import BytesStream
+from MsgParse import ProtoField
 
+b_endian = 0x4321
+l_endian = 0x1234
+
+MVBFieldDic = {
+    'frame_header_recv':ProtoField("帧头",0,b_endian,8,None,{3:"接收数据帧"}),
+    'frame_header_send':ProtoField("帧头",0,b_endian,8,None,{1:"发送数据帧"}),
+    'frame_seq':ProtoField("包序号",0,b_endian,8,None,None),
+    'frame_port':ProtoField("MVB端口号",0,l_endian,16,None,None),
+    'ato_heartbeat':ProtoField("ATO心跳",0,b_endian,8,None,None),
+    # ATO 控制
+    'ato_valid':ProtoField("ATO有效",0,b_endian,8,None,{0xAA:"ATO有效",0x00:"ATO无效"}),
+    'track_brake_cmd':ProtoField("牵引/制动命令状态标志",0,b_endian,8,None,{0xAA:"牵引",0x55:"制动",0xA5:"惰行",0x00:"无命令"}),
+    'track_value':ProtoField("牵引控制量",0,b_endian,16,None,None),
+    'brake_value':ProtoField("制动控制量",0,b_endian,16,None,None),
+    'keep_brake_on':ProtoField("保持制动施加命令",0,b_endian,8,None,{0xAA:"施加有效,",0x00:"施加无效"}),
+    'open_left_door':ProtoField("开左门命令",0,b_endian,2,None,{3:"有效命令",0:"无动作"}),
+    'open_right_door':ProtoField("开右门命令",0,b_endian,2,None,{3:"有效命令",0:"无动作"}),
+    'const_speed_cmd':ProtoField("恒速命令(预留)",0,b_endian,8,None,{0xAA:"启动恒速",0x00:"取消恒速"}),
+    'const_speed_value':ProtoField("恒速目标速度(预留)",0,b_endian,16,"km/h",{0xFFFF:"按当前速度执行恒速",0:"取消恒速时"}),
+    'ato_start_light':ProtoField("ATO启动灯",0,b_endian,8,None,{0xAA:"亮",0x00:"灭"}),
+    # ATO状态
+    'ato_error':ProtoField("ATO故障信息",0,b_endian,8,None,{0xAA:"无故障",0x00:"故障"}),
+    'killometer_marker':ProtoField("公里标",0,b_endian,32,"m",None),
+    'tunnel_entrance':ProtoField("隧道入口",0,b_endian,16,"m",None),
+    'tunnel_length':ProtoField("隧道长度",0,b_endian,16,"m",None),
+    'ato_speed':ProtoField("ATO速度",0,b_endian,16,"0.1km/h",None),
+    # TCMS状态
+    'tcms_heartbeat':ProtoField("TCMS心跳",0,b_endian,8,None,None),
+    'door_mode_mo_mc':ProtoField("MO/MC",0,b_endian,2,None,{3:"有效",0:"无效"}),
+    'door_mode_ao_mc':ProtoField("AO/MC",0,b_endian,2,None,{3:"有效",0:"无效"}),
+    'ato_start_btn_valid':ProtoField("ATO启动按钮有效信号",0,b_endian,2,None,{3:"按钮有效",0:"按钮无效"}),
+    'ato_valid_feedback':ProtoField("ATO有效命令反馈",0,b_endian,8,None,{0xAA:"ATO有效",0x00:"ATO无效"}),
+    'track_brack_cmd_feedback':ProtoField("牵引/制动命令状态标志反馈",0,b_endian,8,None,{0xAA:"牵引",0x55:"制动",0xA5:"惰行",0x00:"无命令"}),
+    'track_value_feedback':ProtoField("牵引控制量反馈",0,b_endian,16,None,None),
+    'brake_value_feedback':ProtoField("制动控制量反馈",0,b_endian,16,None,None),
+    'ato_keep_brake_on_feedback':ProtoField("ATO保持制动施加命令反馈",0,b_endian,8,None,{0xAA:"保持制动施加有效命令",0x00:"保持制动施加无效"}),
+    'open_left_door_feedback':ProtoField("开左门命令反馈",0,b_endian,2,None,{3:"有效命令",0:"无动作"}),
+    'open_right_door_feedback':ProtoField("开右门命令反馈",0,b_endian,2,None,{3:"有效命令",0:"无动作"}),
+    'constant_state_feedback':ProtoField("恒速反馈(预留)",0,b_endian,8,None,{0xAA:"处于恒速状态",0x00:"退出恒速状态"}),
+    'door_state':ProtoField("车门状态",0,b_endian,8,None,{0xAA:"所有车门关闭且锁闭",0x00:"车门未关闭或未锁闭"}),
+    'spin_state':ProtoField("空转",0,b_endian,4,None,{10:"发生",0:"未发生"}),
+    'slip_state':ProtoField("打滑",0,b_endian,4,None,{10:"发生",0:"不发生"}),
+    'train_unit':ProtoField("编组信息",0,b_endian,8,None,{1:"8编组",2:"8编组重连",3:"16编组",4:"17编组"}),
+    'train_weight':ProtoField("车重",0,b_endian,16,"0.1t",None),
+    'train_permit_ato':ProtoField("动车组允许ATO控车信号",0,b_endian,8,None,{0xAA:"允许",0x00:"不允许"}),
+    'main_circuit_breaker':ProtoField("主断路器状态",0,b_endian,8,None,{0xAA:"有效",0x00:"无效"}),
+    'atp_door_permit':ProtoField("ATP开门允许",0,b_endian,2,None,{3:"有效",0:"无效"}),
+    'man_door_permit':ProtoField("人工开门允许",0,b_endian,2,None,{3:"有效",0:"无效"}),
+    'no_permit_ato_state':ProtoField("不允许ATO控车信号状态字",0,b_endian,8,None,None)
+}
+
+
+
+class DisplayMVBField(object):
+    @staticmethod
+    def disTcmsNoPmState(value=int):
+        str_tcms = ''
+        str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
+                    '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
+                    'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
+        if 0 == value:
+            return ('正常')
+        else:
+            for cnt in range(7, -1, -1):
+                if value & (1 << cnt) != 0:
+                    str_tcms = str_tcms + str_raw[cnt]
+            return ('异常原因:%s' % str_tcms)
+
+    @staticmethod
+    def disNameOfLineEdit(keyName=str, value=int, led=QtWidgets.QLineEdit):
+        if keyName in MVBFieldDic.keys():
+            # 如果有字段定义
+            if MVBFieldDic[keyName].meaning:
+                # 检查是否有含义
+                if value in MVBFieldDic[keyName].meaning.keys():
+                    led.setText(MVBFieldDic[keyName].meaning[value])
+                else:
+                    led.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    led.setText('异常值%s' % value)
+            else:
+                # 针对组合含义特殊解析
+                if keyName == "no_permit_ato_state":
+                    led.setText(DisplayMVBField.disTcmsNoPmState(value))
+                else:
+                    # 直接处理显示
+                    led.setText(str(value))
+        else:
+            print("[ERR]:disNameOfLineEdit error key name!")
+    
+    @staticmethod # 解析工具的 名称、数值、解释 3列显示
+    def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem):
+        for keyName in obj.__slots__:
+            twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
+            value = obj.__getattribute__(keyName)
+            root.setExpanded(True)
+            if keyName in MVBFieldDic.keys():
+                twi.setText(1,MVBFieldDic[keyName].name)
+                twi.setText(2,"0x"+("%02x"%value).upper())
+                # 如果有字段定义
+                if MVBFieldDic[keyName].meaning:
+                    # 检查是否有含义
+                    if value in MVBFieldDic[keyName].meaning.keys():
+                        twi.setText(3,MVBFieldDic[keyName].meaning[value])
+                    else:
+                        brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
+                        twi.setBackground(1, brush)
+                        twi.setBackground(2, brush)
+                        twi.setBackground(3, brush)
+                        twi.setText(3,'异常值%s' % value)
+                else:
+                    # 针对组合含义特殊解析
+                    if keyName == "no_permit_ato_state":
+                        twi.setText(3,DisplayMVBField.disTcmsNoPmState(value))
+                    else:
+                        # 直接处理显示
+                        twi.setText(3,str(value))
+            else:
+                print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
+
+
+class Ato2TcmsCtrl(object):
+    __slots__ = ["frame_header_send","frame_seq","frame_port","ato_heartbeat","ato_valid",
+    "track_brake_cmd","track_value","brake_value","keep_brake_on","open_left_door",
+    "open_right_door","const_speed_cmd","const_speed_value","ato_start_light","updateflag"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        # 定义ATO2TCMS控制字段
+        self.frame_header_send = 0
+        self.frame_seq    = 0
+        self.frame_port   = 0
+        self.ato_heartbeat = 0
+        self.ato_valid = 0
+        self.track_brake_cmd = 0
+        self.track_value = 0
+        self.brake_value = 0
+        self.keep_brake_on = 0
+        self.open_left_door = 0
+        self.open_right_door = 0
+        self.const_speed_cmd = 0
+        self.const_speed_value = 0
+        self.ato_start_light = 0
+
+class Ato2TcmsState(object):
+    __slots__ = ["frame_header_send","frame_seq","frame_port","ato_heartbeat","ato_error",
+    "killometer_marker","tunnel_entrance","tunnel_length","ato_speed","updateflag"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        # 定义ATO2TCMS状态字段
+        self.frame_header_send = 0
+        self.frame_seq    = 0
+        self.frame_port   = 0
+        self.ato_heartbeat = 0
+        self.ato_error = 0
+        self.killometer_marker = 0
+        self.tunnel_entrance = 0xFFFF
+        self.tunnel_length = 0xFFFF
+        self.ato_speed = 0
+
+class Tcms2AtoState(object):
+    __slots__ = ["frame_header_recv","frame_seq","frame_port","tcms_heartbeat","door_mode_mo_mc",
+    "door_mode_ao_mc","ato_start_btn_valid","ato_valid_feedback","track_brack_cmd_feedback",
+    "track_value_feedback","brake_value_feedback","ato_keep_brake_on_feedback","open_left_door_feedback",
+    "open_right_door_feedback","constant_state_feedback","door_state","spin_state","slip_state","train_unit",
+    "train_weight","train_permit_ato","main_circuit_breaker","atp_door_permit","man_door_permit",
+    "no_permit_ato_state","updateflag"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        # 定义ATO2TCMS状态字段
+        self.frame_header_recv = 0
+        self.frame_seq    = 0
+        self.frame_port   = 0
+        self.tcms_heartbeat = 0
+        self.door_mode_mo_mc = 0
+        self.door_mode_ao_mc = 0
+        self.ato_start_btn_valid = 0
+        self.ato_valid_feedback = 0
+        self.track_brack_cmd_feedback = 0
+        self.track_value_feedback = 0
+        self.brake_value_feedback = 0
+        self.ato_keep_brake_on_feedback = 0
+        self.open_left_door_feedback = 0
+        self.open_right_door_feedback = 0
+        self.constant_state_feedback = 0
+        self.door_state = 0
+        self.spin_state = 0
+        self.slip_state = 0
+        self.train_unit = 0
+        self.train_weight = 0
+        self.train_permit_ato = 0
+        self.main_circuit_breaker = 0
+        self.atp_door_permit = 0
+        self.man_door_permit = 0
+        self.no_permit_ato_state = 0
 
 class MVBParse(object):
 
     def __init__(self):
-        # mvb格式解析表
-        self.mvb_tcms2ato_status = [4, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1]
-        self.mvb_ato2tcms_ctrl = [4, 1, 1, 1, 2, 2, 1, 1, 1, 2, 1]
-        self.mvb_ato2tcms_status = [4, 1, 1, 4, 2, 2, 2]
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
+        self.ato2tcms_ctrl_obj = Ato2TcmsCtrl()
+        self.ato2tcms_state_obj = Ato2TcmsState()
+        self.tcms2ato_state_obj = Tcms2AtoState()
 
-    @staticmethod
-    def raw_str_preprocess(identifier=str, stream=str, form=list):
-        """
-        :param stream: 字节流的字符串，字节之间可以有空格
-        :param form: 字节宽度列表，指示字节流中的切割格式
-        :return: 解析结果的列表（第一个元素是数据头）
-        """
-        err_flag = 0
-        tmp = 0
-        result = []
-        stream_list = []
-        content_str_list = []
-        adder = 0
-        # 开始计算
-        stream = stream.strip()  # 去掉两侧的空格
-        stream_list = stream.split(identifier)  # 分隔字节流
-        stream = ''.join(stream_list)  # 生成连续的字节流，一个占位是4位
-        # 根据格式列表切片按字节8位
-        if (len(stream) / 2) >= sum(form):
-            for item in form:
-                content_str_list.append(stream[adder:adder + 2 * item])
-                adder += 2 * item
-                try:
-                    tmp = int(stream[adder:adder + 2 * item], 16)
-                except Exception as err:
-                    err_flag = 1
-                    print(err)
-                    print('lineno:' + sys._getframe().f_lineno)
+    '''
+    @breif 从周期检查中获取的原始line进行解析获取解析结构结构体
+    @mvb_line 原始的line也即只要"MVB["就进行尝试
+    '''
+    def parseProtocol(self, mvb_line=str):
+        port = 0
+        # 去除回车
+        mvb_line = mvb_line.strip()
+        # 获取数据头
+        if ']' in mvb_line:
+            real_idx = mvb_line.find(']:')
+            mvb_line = mvb_line[real_idx + 2:]  # 周期解析时已经检查了MVB[,所以这里针对结尾
+        # 抽取十六进制字符串
+        mvb_line = ''.join(mvb_line.strip().split(' '))
+        # 获取MVB端口,至少16字节数据
+        if len(mvb_line)/2 > 16:
+            try:
+                port = int(mvb_line[6:8] + mvb_line[4:6], 16)
+                mvbData = BytesStream(mvb_line)
+                # 查询端口解析
+                if port == self.cfg.mvb_config.ato2tcms_ctrl_port:
+                    self.parseAto2TcmsCtrl(mvbData,self.ato2tcms_ctrl_obj)
+                elif port == self.cfg.mvb_config.ato2tcms_state_port:
+                    self.parseAto2TcmsState(mvbData,self.ato2tcms_state_obj)
+                elif port == self.cfg.mvb_config.tcms2ato_state_port:
+                    self.parseTcms2AtoState(mvbData, self.tcms2ato_state_obj)
+                else:
+                    print("[MVB]err mvb line"+mvb_line)
+            except Exception as err:
+                print(err) # 当数据错误时忽略本条文本
+                print("[MVB]err mvb parse"+mvb_line)
         else:
-            content_str_list = []
-        # 如果有错误重置
-        if err_flag == 1:
-            content_str_list = []
-        # result = list(map(int, content_str_list, [16]*len(content_str_list)))
-        return content_str_list
+            pass
 
-    def ato_tcms_parse(self, port=int, stream=str):
-        """
-        :param port: ATO和TCMS通信端口1025和1041
-        :param stream: 原始字节流
-        :return: 解析结果的列表
-        """
-        ret = 0
-        ret_result = []
-        # 这里按照仅配置数据长度的解析表，加上数据头4个字节（len+8）
-        if port == 1025:
-            if len(stream) >= 34:
-                try:
-                    ret_result = self.raw_str_preprocess(' ', stream, self.mvb_ato2tcms_ctrl)[1:]
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                print('1025 mvb stream error! len=%d' % len(stream))
-                print(stream)
-        elif port == 1041:
-            if len(stream) >= 30:
-                try:
-                    ret_result = self.raw_str_preprocess(' ', stream, self.mvb_ato2tcms_status)[1:]
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                print('1041 mvb stream error! len=%d' % len(stream))
-                print(stream)
-        elif port == 1032:
-            if len(stream) >= 48:
-                try:
-                    ret_result = self.raw_str_preprocess(' ', stream, self.mvb_tcms2ato_status)[1:]
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                print('1032 mvb stream error! len=%d' % len(stream))
-                print(stream)
-        else:
-            ret = -1
-        return ret_result
+        return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
+
+    def parseAto2TcmsCtrl(self,item=BytesStream,obj=Ato2TcmsCtrl):
+        obj.updateflag = False
+        obj.frame_header_send= item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.frame_seq        = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        # 端口小端
+        lsb = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        hsb = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.frame_port       = (hsb<<8)+lsb
+        obj.ato_heartbeat    = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.ato_valid        = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.track_brake_cmd  = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.track_value      = item.fast_get_segment_by_index(item.curBitsIndex,16) 
+        obj.brake_value      = item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.keep_brake_on    = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.open_left_door   = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.open_right_door  = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.const_speed_cmd  = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.const_speed_value= item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.ato_start_light  = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.updateflag = True
+    
+    def parseAto2TcmsState(self,item=BytesStream,obj=Ato2TcmsState):
+        obj.updateflag = False
+        obj.frame_header_send= item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.frame_seq        = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        # 端口小端
+        lsb = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        hsb = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.frame_port       = (hsb<<8)+lsb
+        obj.ato_heartbeat    = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.ato_error        = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.killometer_marker= item.fast_get_segment_by_index(item.curBitsIndex,32)
+        obj.tunnel_entrance  = item.fast_get_segment_by_index(item.curBitsIndex,16) 
+        obj.tunnel_length    = item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.ato_speed        = item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.updateflag = True
+
+    def parseTcms2AtoState(self,item=BytesStream,obj=Tcms2AtoState):
+        obj.updateflag = False
+        obj.frame_header_recv     = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.frame_seq        = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        # 端口小端
+        lsb = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        hsb = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.frame_port       = (hsb<<8)+lsb
+        obj.tcms_heartbeat   = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.door_mode_mo_mc = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        obj.door_mode_ao_mc = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.ato_start_btn_valid = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        obj.ato_valid_feedback = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.track_brack_cmd_feedback = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.track_value_feedback = item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.brake_value_feedback = item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.ato_keep_brake_on_feedback = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.open_left_door_feedback = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.open_right_door_feedback = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.constant_state_feedback = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.door_state = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.spin_state = item.fast_get_segment_by_index(item.curBitsIndex,4)
+        obj.slip_state = item.fast_get_segment_by_index(item.curBitsIndex,4)
+        obj.train_unit = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.train_weight = item.fast_get_segment_by_index(item.curBitsIndex,16)
+        obj.main_circuit_breaker = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.train_permit_ato = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+        obj.atp_door_permit = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        obj.man_door_permit = item.fast_get_segment_by_index(item.curBitsIndex,2)
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.no_permit_ato_state = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.updateflag = True
 
     @staticmethod
     def Log(msg=str, fun=str, lino=int):

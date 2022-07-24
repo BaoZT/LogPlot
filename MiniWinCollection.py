@@ -1,34 +1,25 @@
 #!/usr/bin/env python
-
 # encoding: utf-8
 
 '''
-
 @author:  Baozhengtang
-
 @license: (C) Copyright 2017-2020, Author Limited.
-
 @contact: baozhengtang@gmail.com
-
 @software: LogPlot
-
 @file: MiniWinCollection.py
-
 @time: 2018/6/3 9:45
-
 @desc: 主要用于聚集主窗口中弹出的临时小窗口，包括工具和设置
-
 '''
 import matplotlib
 
 from CycleInfo import Ui_MainWindow as CycleWin
-from MVBParserWin import Ui_MainWindow as MVBParserWin
+from MvbParserWin import Ui_MainWindow as MVBParserWin
 from MeasureWin import Ui_MainWindow as MeasureWin
-from C3ATORecordTranslator import Ui_Dialog as C3ATOTransferWin
+from C3atoRecordTranslator import Ui_Dialog as C3ATOTransferWin
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from TCMSParse import MVBParse
+from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState, DisplayMVBField
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from KeyWordPlot import SnaptoCursor
@@ -42,10 +33,7 @@ import os
 import shutil
 import numpy as np
 from threading import Thread
-
-pat_ato_ctrl = 0
-pat_ato_stat = 0
-pat_tcms_stat = 0
+from ConfigInfo import ConfigFile
 
 
 # 周期界面类
@@ -205,10 +193,12 @@ class MVBPortDlg(QtWidgets.QDialog):
         lbl_ato_ctrl = QtWidgets.QLabel(u'ATO控制信息(16进制)')
         lbl_ato_stat = QtWidgets.QLabel(u'ATO状态信息(16进制)')
         lbl_tcms_stat = QtWidgets.QLabel(u'车辆状态信息(16进制)')
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
 
-        self.led_ato_ctrl = QtWidgets.QLineEdit('D10')
-        self.led_ato_stat = QtWidgets.QLineEdit('D11')
-        self.led_tcms_stat = QtWidgets.QLineEdit('D12')
+        self.led_ato_ctrl = QtWidgets.QLineEdit(hex(self.cfg.mvb_config.ato2tcms_ctrl_port)[2:])
+        self.led_ato_stat = QtWidgets.QLineEdit(hex(self.cfg.mvb_config.ato2tcms_state_port)[2:])
+        self.led_tcms_stat = QtWidgets.QLineEdit(hex(self.cfg.mvb_config.tcms2ato_state_port)[2:])
 
         layout = QtWidgets.QGridLayout()
         layout.addWidget(lbl_ato_ctrl, 0, 0)
@@ -241,7 +231,11 @@ class MVBPortDlg(QtWidgets.QDialog):
 
     # 打开mvb串口
     def OpenMVB(self):
-        # 组合文件名
+        # 获取配置情况重新写入 
+        self.cfg.mvb_config.ato2tcms_ctrl_port = int(self.led_ato_ctrl.text(), 16)
+        self.cfg.mvb_config.ato2tcms_state_port =  int(self.led_ato_stat.text(), 16)
+        self.cfg.mvb_config.tcms2ato_state_port =  int(self.led_tcms_stat.text(), 16)
+        self.cfg.writeConfigFile()
         self.mvbPortSingal.emit()
         self.close()
 
@@ -257,330 +251,34 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
         self.setWindowTitle(u'MVB协议解析')
         self.parser = MVBParse()
         self.actionMVBParserAct.triggered.connect(self.ParserMVB)
-        # 名字
-        self.ato_ctrl_name = ['帧头', '包序号', '端口号', 'ATO心跳', 'ATO有效', '牵引制动状态', '牵引控制量', '制动控制量', '保持制动施加',
-                              '开左/右门', '恒速命令', '恒速目标速度', 'ATO启动灯']
-        self.ato_stat_name = ['帧头', '包序号', '端口号', 'ATO心跳', 'ATO故障', '公里标', '隧道入口距离', '隧道长度', 'ATO速度']
-        self.tcms_stat_name = ['帧头', '包序号', '端口号', 'TCMS心跳', '门模式', 'ATO有效命令反馈', '牵引制动命令状态字反馈', '牵引控制量反馈',
-                               '制动控制量反馈', 'ATO保持制动施加反馈', '开左/右门命令反馈', '恒速反馈', '车门状态', '空转打滑',
-                               '编组信息', '车重', '动车组允许', '主断路器状态', '门允许选择', '不允许状态字']
-
+        self.a2tCtrl = Ato2TcmsCtrl()
+        self.a2tStat = Ato2TcmsState()
+        self.t2aStat = Tcms2AtoState()
+       
     def ParserMVB(self):
-        global pat_ato_ctrl
-        global pat_ato_stat
-        global pat_tcms_stat
-        err_flag = 0
-        field_value = []
-        field_name = []
-        field_result = []
-        adder = 0
-        num = 0
-        type_name = ''
-        tmp = self.textEdit.toPlainText()
+        inputLine = self.textEdit.toPlainText()
         try:
-            tmp_text = re.sub('\s+', '', tmp)
-            for item in tmp_text:
-                v = int(item, 16)
-            # 如果有帧头
-            if len(tmp_text) > 8:
-                # 小端模式
-                num = int(tmp_text[6:8] + tmp_text[4:6], 16)
-                if num == pat_ato_stat:
-                    form = self.parser.mvb_ato2tcms_status
-                    type_name = 'ATO状态信息'
-                    field_name = self.ato_stat_name
-                elif num == pat_ato_ctrl:
-                    form = self.parser.mvb_ato2tcms_ctrl
-                    type_name = 'ATO控制信息'
-                    field_name = self.ato_ctrl_name
-                elif num == pat_tcms_stat:
-                    form = self.parser.mvb_tcms2ato_status
-                    type_name = '车辆状态信息'
-                    field_name = self.tcms_stat_name
-                else:
-                    err_flag = 1
-                # 计算剪切
-                if err_flag == 0:
-                    # 根据格式列表切片按字节8位
-                    for item in form:
-                        field_value.append(tmp_text[adder:adder + 2 * item])
-                        adder += 2 * item
-
-                        try:
-                            tmp = int(tmp_text[adder:adder + 2 * item], 16)
-                        except Exception as err:
-                            err_flag = 1
-                            print(err)
-                    field_value.remove(field_value[0])
-                    field_value.insert(0, tmp_text[0:2])
-                    field_value.insert(1, tmp_text[2:4])
-                    field_value.insert(2, tmp_text[6:8] + tmp_text[4:6])
-
-                    field_result = self.result_analysis(field_value, num)
-
-                    self.show_parser_result(type_name, field_name, field_value, field_result)
-
+            mvbLine = re.sub('\s+', '', inputLine)
+            [self.a2tCtrl,self.a2tStat, self.t2aStat] = self.parser.parseProtocol(mvbLine)
+            self.show_parser_rst(self.a2tCtrl,self.a2tStat, self.t2aStat)
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                       "错误",
-                                                      "注意：数据异常或非16进制数据",
+                                                      "注意:数据异常或非16进制数据",
                                                       QtWidgets.QMessageBox.Yes)
-        # 校验结束开始解析
 
-    # 根据结果解析
-    def result_analysis(self, field_value=list, num=int):
-        global pat_ato_ctrl
-        global pat_ato_stat
-        global pat_tcms_stat
-        field_result = []
-        # 除去开头的帧头等
-        tmp = field_value[3:]
-        if field_value[0] == '01':
-            field_result.append('类型:发送数据帧')
-        elif field_value[0] == '03':
-            field_result.append('类型,接收数据')
-        else:
-            field_result.append('类型,错误%s' % field_value[0])
-
-        field_result.append(str(int(field_value[1], 16)))
-        field_result.append(str(int(field_value[2], 16)))
-        # 控制命令
-        if num == pat_ato_ctrl:
-            field_result.append(str(int(tmp[0], 16)))  # 控制命令心跳
-            if tmp[1] == 'AA':
-                field_result.append('有效')  # ATO有效
-            elif tmp[1] == '00':
-                field_result.append('无效')
-            else:
-                field_result.append('异常值%s' % tmp[1])
-
-            # 牵引制动状态
-            if tmp[2] == 'AA':
-                field_result.append('牵引')
-            elif tmp[2] == '55':
-                field_result.append('制动')
-            elif tmp[2] == 'A5':
-                field_result.append('惰行')
-            elif tmp[2] == '00':
-                field_result.append('无命令')
-            else:
-                field_result.append('异常值%s' % tmp[2])
-
-            # 牵引控制量
-            field_result.append(str(int(tmp[3], 16)))
-            # 制动控制量
-            field_result.append(str(int(tmp[4], 16)))
-            # 保持制动施加
-            if tmp[5] == 'AA':
-                field_result.append('施加')
-            elif tmp[5] == '00':
-                field_result.append('无效')
-            else:
-                field_result.append('异常值%s' % tmp[5])
-            # 开左门/右门
-            if tmp[6][0] == 'C' and tmp[6][1] == 'C':
-                field_result.append('开左/右有效')
-            elif tmp[6][0] == '0' and tmp[6][1] == 'C':
-                field_result.append('左无动作，右开门')
-            elif tmp[6][0] == 'C' and tmp[6][1] == '0':
-                field_result.append('右无动作，左开门')
-            elif tmp[6][0] == '0' and tmp[6][1] == '0':
-                field_result.append('左右门无动作')
-            else:
-                field_result.append('异常%s' % tmp[6][0])
-            # 恒速命令
-            if tmp[7] == 'AA':
-                field_result.append('启动')
-            elif tmp[7] == '00':
-                field_result.append('取消')
-            else:
-                field_result.append('异常值%s' % tmp[7])
-            # 恒速目标速度
-            field_result.append(str(int(tmp[8], 16)))
-            # ATO启动灯
-            if tmp[9] == 'AA':
-                field_result.append('亮')
-            elif tmp[9] == '00':
-                field_result.append('灭')
-            else:
-                field_result.append('异常值%s' % tmp[9])
-        # ATO2TCMS 状态信息
-        if num == pat_ato_stat:
-            field_result.append(str(int(tmp[0], 16)))  # 状态命令心跳
-            if tmp[1] == 'AA':
-                field_result.append('无故障')  # ATO故障
-            elif tmp[1] == '00':
-                field_result.append('故障')
-            else:
-                field_result.append('异常值%s' % tmp[1])  # ATO故障
-            if tmp[2] == 'FFFFFFFF':
-                field_result.append('无效值')
-            else:
-                field_result.append(str(int(tmp[2], 16)) + 'm')  # 公里标
-            if tmp[3] == 'FFFF':
-                field_result.append('无效值')
-            else:
-                field_result.append(str(int(tmp[3], 16)) + 'm')  # 隧道入口
-            if tmp[4] == 'FFFF':
-                field_result.append('无效值')
-            else:
-                field_result.append(str(int(tmp[4], 16)) + 'm')  # 隧道长度
-            field_result.append(str(int(tmp[5], 16) / 10) + 'km/h')  # ato速度
-        # TCMS2ATO 状态信息
-        if num == pat_tcms_stat:
-            field_result.append(str(int(tmp[0], 16)))  # TCMS状态命令心跳
-            # 门模式
-            if tmp[1][0] == 'C':
-                field_result.append('MM有效,AM无效')
-            elif tmp[1][0] == '3':
-                field_result.append('AM有效,MM无效')
-            elif tmp[1][0] == '0':
-                field_result.append('MM无效,AM无效')
-            else:
-                field_result.append('异常值%s' % tmp[1][0])
-            # ATO启动灯
-            if tmp[1][1] == '3':
-                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + ',启动灯有效'
-            elif tmp[1][1] == '0':
-                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + ',启动灯无效'
-            else:
-                field_result[len(field_result) - 1] = field_result[len(field_result) - 1] + '异常值' + tmp[1][1]
-
-            # ATO有效反馈
-            if tmp[2] == 'AA':
-                field_result.append('有效')
-            elif tmp[2] == '00':
-                field_result.append('无效')
-            else:
-                field_result.appendt('异常值%s' % tmp[2])
-
-            # 牵引制动反馈
-            if tmp[3] == 'AA':
-                field_result.append('牵引')
-            elif tmp[3] == '55':
-                field_result.append('制动')
-            elif tmp[3] == 'A5':
-                field_result.append('惰行')
-            elif tmp[3] == '00':
-                field_result.append('无命令')
-            else:
-                field_result.append('异常值%s' % tmp[3])
-
-            # 牵引反馈
-            field_result.append(str(int(tmp[4], 16)))
-            # 制动反馈
-            field_result.append(str(int(tmp[5], 16)))
-            # 保持制动施加
-            if tmp[6] == 'AA':
-                field_result.append('有效')
-            elif tmp[6] == '00':
-                field_result.append('无效')
-            else:
-                field_result.append('异常值%s' % tmp[6])
-            # 左门反馈，右门反馈
-            if tmp[7][0] == 'C' and tmp[7][1] == 'C':
-                field_result.append('左/右门有效')
-            elif tmp[7][0] == '0' and tmp[7][1] == 'C':
-                field_result.append('左门无效,右门有效')
-            elif tmp[7][0] == 'C' and tmp[7][1] == '0':
-                field_result.append('左门有效,右门无效')
-            elif tmp[7][0] == '0' and tmp[7][1] == '0':
-                field_result.append('左/右门无效')
-            else:
-                field_result.append('异常值%s' % tmp[7][0])
-            # 恒速反馈
-            if tmp[8] == 'AA':
-                field_result.append('有效')
-            elif tmp[8] == '00':
-                field_result.append('无效')
-            else:
-                field_result.append('异常值%s' % tmp[8])
-            # 车门状态
-            if tmp[9] == 'AA':
-                field_result.append('关')
-            elif tmp[9] == '00':
-                field_result.append('开')
-            else:
-                field_result.append('异常值%s' % tmp[9])
-            # 空转打滑
-            if tmp[10][0] == 'A' and tmp[10][1] == 'A':
-                field_result.append('空转,打滑')
-            elif tmp[10][0] == '0' and tmp[10][1] == 'A':
-                field_result.append('打滑')
-            elif tmp[10][0] == 'A' and tmp[10][1] == '0':
-                field_result.append('空转')
-            elif tmp[10][0] == '0' and tmp[10][1] == '0':
-                field_result.append('未发生')
-            else:
-                field_result.append('异常值%s' % tmp[10][0])
-            # 编组信息
-            tmp_units = int(tmp[11], 16)
-            if tmp_units == 1:
-                field_result.append('8编组')
-            elif tmp_units == 2:
-                field_result.append('8编重连')
-            elif tmp_units == 3:
-                field_result.append('16编组')
-            elif tmp_units == 4:
-                field_result.append('18编组')
-            else:
-                field_result.append('异常值%s' % tmp[11])
-            # 车重
-            field_result.append(str(int(tmp[12], 16)))
-            # 动车组允许
-            if tmp[13] == 'AA':
-                field_result.append('允许')
-            elif tmp[13] == '00':
-                field_result.append('不允许')
-            else:
-                field_result.append('异常值%s' % tmp[13])
-
-            # 主断状态
-            if tmp[14] == 'AA':
-                field_result.append('闭合')
-            elif tmp[14] == '00':
-                field_result.append('断开')
-            else:
-                field_result.append('异常值%s' % tmp[14])
-            # ATP允许 人工允许
-            if tmp[15] == 'C0':
-                field_result.append('atp有效,人工无效')
-            elif tmp[15] == '30':
-                field_result.append('atp无效，人工有效')
-            elif tmp[15] == '00':
-                field_result.append('atp和人工均无效')
-            else:
-                field_result.append('异常值%s' % tmp[15])
-            # 不允许状态字
-            str_tcms = ''
-            str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
-                       '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
-                       'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
-            if tmp[16] == '00':
-                field_result.append('正常')
-            else:
-                val_field = int(tmp[16], 16)
-                for cnt in range(7, -1, -1):
-                    if val_field & (1 << cnt) != 0:
-                        str_tcms = str_tcms + str_raw[cnt]
-                field_result.append('异常原因:%s' % str_tcms)
-
-        return field_result
-
-    # 显示最终结果
-    def show_parser_result(self, data_type=str, field_name=list, field_value=list, field_result=list):
+    def show_parser_rst(self, a2t_ctrl=Ato2TcmsCtrl, a2tStat=Ato2TcmsState, t2aStat=Tcms2AtoState):
         self.treeWidget.clear()
         root = QtWidgets.QTreeWidgetItem(self.treeWidget)
-        root.setText(0, data_type)
-        # 开始生成
-        if len(field_name) == len(field_result) and len(field_name) == len(field_value):
-            for idx, item in enumerate(field_name):
-                item_field = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
-                item_field.setText(1, field_name[idx])
-                item_field.setText(2, field_value[idx])
-                item_field.setText(3, field_result[idx])
-        self.treeWidget.expandAll()
-
+        if a2t_ctrl.updateflag:
+            root.setText(0, "ATO控制信息")
+            DisplayMVBField.disNameOfTreeWidget(a2t_ctrl,root)     
+        elif a2tStat.updateflag:
+            root.setText(0, "ATO状态信息")
+            DisplayMVBField.disNameOfTreeWidget(a2tStat,root)    
+        elif t2aStat.updateflag:
+            root.setText(0, "TCMS状态信息")
+            DisplayMVBField.disNameOfTreeWidget(t2aStat,root)    
 
 # UTC时间解析器
 class UTCTransferDlg(QtWidgets.QDialog):
@@ -824,8 +522,8 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.trainComTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         self.sp.mpl_toolbar = NavigationToolbar(self.sp, self.widget)  # 传入FigureCanvas类或子类实例，和父窗体
-
-        # l.addWidget(self.trainComTable)
+        self.mvbParser = MVBParse()
+        #l.addWidget(self.trainComTable)
         l.addWidget(self.sp)
         l.addWidget(self.sp.mpl_toolbar)
         self.acc_table_format()
@@ -834,10 +532,12 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'车辆通信时延观测器')
         self.resize(500, 600)
+        self.a2tCtrl = Ato2TcmsCtrl()
+        self.t2aStat = Tcms2AtoState()
         # 初始化内容
-        self.ato2tcms_tb_ctrl = []
-        self.tcms2ato_tb_fbk = []
-        self.cycle_ord = []  # 为了使得绘图由周期信息，考虑到某个周期可能没有输入只有输出，所以需要人工组合，使得输入保持
+        self.atoCtrlCmdList = []
+        self.tcmsCtrlFbList = []
+        self.unifyCycleList = []  # 为了使得绘图由周期信息，考虑到某个周期可能没有输入只有输出，所以需要人工组合，使得输入保持
         self.mvbdialog = MVBPortDlg()
 
     # 设置显示表显示表
@@ -848,76 +548,53 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
     # 计算所有牵引制动及反馈情况情况
     def comput_all_ctrl_info(self):
-
-        pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
-        pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
-        pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
-        tb_stat = ''
-        tb_fbk = ''
         # 读取该周期内容
         try:
             for idx in range(len(self.log.cycle)):
-                ato_ctrl_flag = 0  # 这个标志用于当该周期里既有车辆反馈又有ATO输出时才认为成功
-                tcms_fbk_flag = 0
                 for line in self.log.cycle_dic[self.log.cycle[idx]].raw_analysis_lines:
-                    if pat_ato_ctrl in line:
-                        if '@' in line:
-                            pass
-                        else:
-                            real_idx = line.find('MVB[')
-                            tmp = line[real_idx + 28:real_idx + 42].split()  # 取出命令字段中的牵引制动及命令
-                            tb_stat = tmp[0]
-                            t_cmd = tmp[1] + tmp[2]
-                            b_cmd = tmp[3] + tmp[4]
-                            ato_ctrl_flag = 1
-                    elif pat_tcms_stat in line:
-                        if '@' in line:
-                            pass
-                        else:
-                            real_idx = line.find('MVB[')
-                            tmp = line[real_idx + 31:real_idx + 45].split()  # 还有一个冒号需要截掉
-                            tb_fbk = tmp[0]
-                            t_fbk = tmp[1] + tmp[2]
-                            b_fbk = tmp[3] + tmp[4]
-                            tcms_fbk_flag = 1
-                if ato_ctrl_flag and tcms_fbk_flag:
-                    if tb_stat == 'AA':
-                        self.ato2tcms_tb_ctrl.append(int(t_cmd, 16))
-                    elif tb_stat == '55':
-                        self.ato2tcms_tb_ctrl.append(0 - int(b_cmd, 16))
-                    elif tb_stat == 'A5':
-                        self.ato2tcms_tb_ctrl.append(0)
+                    if '@' in line:
+                        pass
+                    elif 'MVB[' in line:# 前提条件
+                        [self.a2tCtrl, nouse, self.t2aStat] = self.mvbParser.parseProtocol(line)
                     else:
-                        print('mvb delay plot compute err!')
-                        self.ato2tcms_tb_ctrl.append(0)
+                        pass
 
-                    if tb_fbk == 'AA':
-                        self.tcms2ato_tb_fbk.append(int(t_fbk, 16))
-                    elif tb_fbk == '55':
-                        self.tcms2ato_tb_fbk.append(0 - int(b_fbk, 16))
-                    elif tb_fbk == 'A5':
-                        self.tcms2ato_tb_fbk.append(0)
+                # 既有车辆反馈又有ATO输出时才认为成功        
+                if self.a2tCtrl.updateflag and self.t2aStat.updateflag:
+                    if self.a2tCtrl.track_brake_cmd == 0xAA:
+                        self.atoCtrlCmdList.append(self.a2tCtrl.track_value)
+                    if self.a2tCtrl.track_brake_cmd == 0x55:
+                        self.atoCtrlCmdList.append(0 - self.a2tCtrl.track_value)
+                    elif self.a2tCtrl.track_brake_cmd == 0xA5:
+                        self.atoCtrlCmdList.append(0)
                     else:
-                        print('mvb delay plot compute err!')
-                        self.tcms2ato_tb_fbk.append(0)
+                        print('mvb ctrl delay plot compute err!')
 
+                    if self.t2aStat.track_brack_cmd_feedback == 0xAA:
+                        self.tcmsCtrlFbList.append(self.t2aStat.track_value_feedback)
+                    if self.t2aStat.track_brack_cmd_feedback == 0x55:
+                        self.tcmsCtrlFbList.append(0 - self.t2aStat.brake_value_feedback)
+                    elif self.t2aStat.track_brack_cmd_feedback == 0xA5:
+                        self.tcmsCtrlFbList.append(0)
+                    else:
+                        print('mvb fb delay plot compute err!')
                     # 获取周期信息
-                    self.cycle_ord.append(self.log.cycle[idx])
+                    self.unifyCycleList.append(self.log.cycle[idx])
         except Exception as err:
-            print(err)
+            print('mvb delay statistics plot line process err!')
 
     # 用于绘制估计加速度曲线
     def measure_plot(self):
         self.comput_all_ctrl_info()
-        self.sp.ax.plot(self.cycle_ord, self.ato2tcms_tb_ctrl,label='ATO输出MVB命令', color='blue', marker='.', markersize=0.5)
-        self.sp.ax.plot(self.cycle_ord, self.tcms2ato_tb_fbk, label='TCMS反馈MVB命令',color='green', marker='.', markersize=0.5)
+        self.sp.ax.plot(self.unifyCycleList, self.atoCtrlCmdList,label='ATO输出MVB命令', color='blue', marker='.', markersize=0.5)
+        self.sp.ax.plot(self.unifyCycleList, self.tcmsCtrlFbList, label='TCMS反馈MVB命令',color='green', marker='.', markersize=0.5)
         self.ax1 = self.sp.ax.twinx()
         self.ax1.plot(self.log.cycle, self.log.v_ato, color='red', marker='.', markersize=0.5)
-        self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.cycle_ord, self.ato2tcms_tb_ctrl)  # 初始化一个光标
+        self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.unifyCycleList, self.atoCtrlCmdList)  # 初始化一个光标
         self.tb_cursor.reset_cursor_plot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
         self.tb_cursor.move_signal.connect(self.cursor_plot)
-        self.sp.ax.set_xlim(self.cycle_ord[0], self.cycle_ord[len(self.cycle_ord) - 1])  # 默认与不带光标统一的显示范围
+        self.sp.ax.set_xlim(self.unifyCycleList[0], self.unifyCycleList[len(self.unifyCycleList) - 1])  # 默认与不带光标统一的显示范围
         self.sp.ax.set_ylim(-17000, 17000)
         self.sp.ax.legend(loc='upper right')
         self.sp.ax.grid(which='both',linestyle='-')
@@ -925,10 +602,10 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
     # 光标跟随
     def cursor_plot(self, idx):
         self.sp.ax.texts.clear()
-        str_ato_cycle = '当前系统周期:%d \n' % (self.cycle_ord[idx])
+        str_ato_cycle = '当前系统周期:%d \n' % (self.unifyCycleList[idx])
         str_ato_v = '当前系统速度:%dcm/s\n' % (self.log.v_ato[idx])
-        str_ato_ctrl = 'ATO输出牵引制动值:%d \n' % (self.ato2tcms_tb_ctrl[idx])
-        str_tcms_fbk = '车辆反馈牵引制动值:%d ' % (self.tcms2ato_tb_fbk[idx])
+        str_ato_ctrl = 'ATO输出牵引制动值:%d \n' % (self.atoCtrlCmdList[idx])
+        str_tcms_fbk = '车辆反馈牵引制动值:%d ' % (self.tcmsCtrlFbList[idx])
         str_show = str_ato_cycle + str_ato_v +  str_ato_ctrl + str_tcms_fbk
         props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
 

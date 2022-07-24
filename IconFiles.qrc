@@ -33,5 +33,6 @@
      <file alias="acc.png">./IconFiles/acc.png</file>
      <file alias="export.png">./IconFiles/export.png</file>
      <file alias="translator.png">./IconFiles/translator.png</file>
+     <file alias="replay.png">./IconFiles/replay.png</file>
   </qresource>
 </RCC>
