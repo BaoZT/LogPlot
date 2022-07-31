@@ -1,7 +1,15 @@
 #!/usr/bin/env python
-
 # encoding: utf-8
+'''
+Author: Zhengtang Bao
+Contact: baozhengtang@crscd.com.cn
+File: main_fun.py
+Desc: 本文件功能集成的主框架
+LastEditors: Zhengtang Bao
+LastEditTime: 2022-07-31 13:49:33
+'''
 
+from itertools import cycle
 import os
 import sys
 import threading
@@ -20,40 +28,39 @@ from KeyWordPlot import Figure_Canvas, SnaptoCursor, Figure_Canvas_R
 from LogMainWin import Ui_MainWindow
 from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, UTCTransferDlg, RealTimePlotDlg, CtrlMeasureDlg, \
     Cyclewindow, TrainComMeasureDlg, C3ATOTransferDlg
-from TCMSParse import MVBParse
+from TcmsParse import MVBParse,Ato2TcmsCtrl,Ato2TcmsState,Tcms2AtoState,DisplayMVBField,MVBFieldDic
+from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atpFieldDic, DisplayMsgield
 from RealTimeExtension import SerialRead, RealPaintWrite
-
-# 全局静态变量
-load_flag = 0  # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
-cursor_in_flag = 0  # 区分光标是否在图像内,初始化为0,in=1，out=2
-curve_flag = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
-cur_interface = 0  # 当前界面， 1=离线界面，2=在线界面
+from ConfigInfo import ConfigFile
+from MainWinDisplay import BtmInfoDisplay,AtoInfoDisplay
 
 
 # 主界面类
 class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
-    is_cursor_created = 0
-    LinkBtnStatus = 0  # 实时按钮状态信息
-
     # 建立的是Main Window项目，故此处导入的是QMainWindow
     def __init__(self):
         super(Mywindow, self).__init__()
         self.setupUi(self)
         self.initUI()
         self.icon_from_file()
+        self.ver = '3.1.0' # 标示软件版本
+        # 定义界面变量
         self.file = ''
-        self.savePath = os.getcwd()  # 实时存储的文件保存路径（文件夹）,增加斜线直接添加文件名即可
-        self.savefilename = ''  # 实时存储的写入文件名(含路径)
+        self.savePath = os.getcwd()   # 实时存储的文件保存路径（文件夹）,增加斜线直接添加文件名即可
+        self.savefilename = ''        # 实时存储的写入文件名(含路径)
         self.pathlist = []
-        self.BTM_cycle = []  # 存储含有BTM的周期号，用于操作计数器间接索引
-        self.mode = 0  # 默认0是浏览模式，1是标注模式
-        self.ver = '3.1.0'  # 标示软件版本
+        self.BTM_cycle = []           # 存储含有BTM的周期号，用于操作计数器间接索引
+        self.curWinMode = 0                 # 默认0是浏览模式，1是标注模式
+        self.curInterface = 0         # 当前界面， 1=离线界面，2=在线界面
+        self.seriaLinkBtnStatus = 0   # 实时按钮状态信息0=断开,1=连接
+        self.isCursorCreated = 0      # 是否创建光标
+        self.curveCordType = 1        # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
+        self.isCursorInFram = 0       # 区分光标是否在图像内-仅离线模式,初始化为0,in=1，out=2
+        self.islogLoad = 0            # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
         self.serdialog = SerialDlg()  # 串口设置对话框，串口对象，已经实例
         self.serport = serial.Serial(timeout=None)  # 操作串口对象
-
         self.mvbdialog = MVBPortDlg()
         self.comboBox.addItems(self.serdialog.Port_List())  # 调用对象方法获取串口对象
-        #self.resize(1300, 700)
         self.setWindowTitle('LogPlot-V' + self.ver)
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -62,6 +69,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         l = QtWidgets.QVBoxLayout(self.widget)
         self.sp = Figure_Canvas(self.widget)  # 这是继承FigureCanvas的子类，使用子窗体widget作为父亲类
         self.sp.mpl_toolbar = NavigationToolbar(self.sp, self.widget)  # 传入FigureCanvas类或子类实例，和父窗体
+        self.c_vato = None
         l.addWidget(self.sp)
         # l.addWidget(self.sp.mpl_toolbar)
 
@@ -77,10 +85,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         lr.addWidget(self.sp_real)  # 必须创造布局并且加入才行
         # 设置BTM表
         self.tableATPBTM.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-
         # MVB解析面板
         self.mvbParserPage = MVBParse()
-
+        # ATP解析面板
+        self.Atp2atoParserPage = Atp2atoParse()
         # MVB解析器
         self.mvbparaer = MVBParserDlg()
         # UTC转换器
@@ -89,13 +97,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.C3ATORecordTransfer = C3ATOTransferDlg()
         # 绘图界面设置器
         self.realtime_plot_dlg = RealTimePlotDlg()  # 实时绘图界面设置
-        self.realtime_plot_interval = 1  # 默认1s绘图
+        self.realtime_plot_interval = 0.1  # 默认0.1s绘图
         self.is_realtime_paint = False  # 实时绘图否
         self.realtime_plot_dlg.realtime_plot_set_signal.connect(self.realtime_plot_set)
         # 实时btm和io
         self.real_io_in_list = []
         self.real_io_out_list = []
-        self.real_btm_list = []
         # 实时速传检测
         self.sdu_info_s = [0, 0]  # ato 速传位置， atp速传位置
         self.widget.setFocus()
@@ -164,6 +171,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableATPBTM.itemClicked.connect(self.BTM_selected_info)
         self.tableATPBTM.itemDoubleClicked.connect(self.BTM_selected_cursor_go)
         self.tb_ato_IN.horizontalHeader().setVisible(True)
+     
+        self.cfg = ConfigFile()
 
     def initUI(self):
 
@@ -205,13 +214,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.fileOpen.setDisabled(True)  # 设置文件读取不可用
         self.cyclewin = Cyclewindow()
         self.realtime_plan_table_format()
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
+
         self.show()
 
     # 事件处理函数，打开文件读取并初始化界面
     def showDialog(self):
         temp = '/'
-        global curve_flag
-        global load_flag
+
         if len(self.pathlist) == 0:
             filepath = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', 'c:/', "txt files(*.txt *.log)")
             path = filepath[0]  # 取出文件地址
@@ -238,22 +249,33 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 显示实时界面
     def showRealTimeUI(self):
-        global cur_interface
-        cur_interface = 2
+        self.curInterface = 2
         self.stackedWidget.setCurrentWidget(self.page_4)
         self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
         self.fileOpen.setDisabled(True)  # 设置文件读取不可用
-        self.btn_plan.setDisabled(True)
-        self.btn_train.setDisabled(True)
         self.btn_filetab.setDisabled(True)
-        self.btn_atp.setDisabled(True)
-        self.btn_filetab.setDisabled(True)
+        # 初始化绘图
+        self.CBvato.setChecked(True)
+        self.CBacc.setChecked(True)
+        self.CBatpcmdv.setChecked(True)
+        self.CBlevel.setChecked(True)
+        self.CBcmdv.setChecked(True)
+        self.CBvato.setChecked(True)
+        # 解绑
+        self.CBvato.stateChanged.disconnect(self.update_up_cure)
+        self.CBatpcmdv.stateChanged.disconnect(self.update_up_cure)
+        self.CBlevel.stateChanged.disconnect(self.update_up_cure)
+        self.CBcmdv.stateChanged.disconnect(self.update_up_cure)
+        self.CBacc.stateChanged.disconnect(self.update_down_cure)
+        self.CBramp.stateChanged.disconnect(self.update_down_cure)
+        self.CBatppmtv.stateChanged.disconnect(self.update_up_cure)
+
         # 如有转换重置右边列表
         self.actionView.trigger()
         self.tableWidget.clear()
         self.set_table_format()
         self.treeWidget.clear()
-        self.tableWidgetPlan_2.clear()
+        self.tableWidgetPlan.clear()
         self.set_tree_fromat()
         self.tb_ato_IN.clear()
         self.tb_ato_OUT.clear()
@@ -262,23 +284,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tb_ato_OUT.setHorizontalHeaderLabels(['时间', '周期', '输出信号'])
         self.tb_ato_OUT.setColumnCount(3)
         # 初始化表格
-        self.tableATPBTM.clear()
-        self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值', '公里标'])
-        self.tableATPBTM.setColumnWidth(0, 60)
-        self.tableATPBTM.setColumnWidth(1, 80)
-        self.tableATPBTM.setColumnWidth(2, 70)
-        self.tableATPBTM.setColumnWidth(3, 70)
-        self.tableATPBTM.resizeRowsToContents()
-        self.tableATPBTM.resizeColumnsToContents()
-        self.tableATPBTM.verticalHeader().setVisible(True)
-        self.real_btm_list=[]
+        BtmInfoDisplay.displayInitClear(self.tableATPBTM)
         self.real_io_out_list=[]
         self.real_io_in_list=[]
 
     # 显示离线界面
     def showOffLineUI(self):
-        global cur_interface
-        cur_interface = 1
+        self.curInterface = 1
         self.stackedWidget.setCurrentWidget(self.page_3)
         self.fileOpen.setEnabled(True)  # 设置文件读取可用
         self.stackedWidget_RightCol.setCurrentWidget(self.stackedWidgetPage1)
@@ -286,6 +298,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_train.setEnabled(True)
         self.btn_atp.setEnabled(True)
         self.btn_filetab.setEnabled(True)
+        self.CBvato.stateChanged.connect(self.update_up_cure)
+        self.CBatpcmdv.stateChanged.connect(self.update_up_cure)
+        self.CBlevel.stateChanged.connect(self.update_up_cure)
+        self.CBcmdv.stateChanged.connect(self.update_up_cure)
+        self.CBacc.stateChanged.connect(self.update_down_cure)
+        self.CBramp.stateChanged.connect(self.update_down_cure)
+        self.CBatppmtv.stateChanged.connect(self.update_up_cure)
 
     # 显示控车情况
     def showOffRight_ATO(self):
@@ -340,9 +359,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def btnLinkorBreak(self):
         # 初始化串口
         ser_is_open = 0
-        if Mywindow.LinkBtnStatus == 0:
+        if self.seriaLinkBtnStatus == 0:
             RealTimeExtension.exit_flag = 0
-            Mywindow.LinkBtnStatus = 1
+            self.seriaLinkBtnStatus = 1
+            self.actionoffline.setEnabled(False)
             self.btn_PortLink.setText('断开')
             self.btn_PortLink.setStyleSheet("background: rgb(191, 255, 191);")
             tmpfilename = self.serdialog.filenameLine.text()
@@ -351,7 +371,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.serdialog.OpenButton.click()
             self.serport.port = self.comboBox.currentText()
             # 当串口没有打开过
-            #ser_is_open = 1   # 测试时打开
+            ser_is_open = 1   # 测试时打开
             while ser_is_open == 0:
                 try:
                     self.serport.open()
@@ -375,9 +395,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 thPaintWrite = RealPaintWrite(self.savePath, tmpfilename, self.serport.port)  # 文件写入线程
                 thpaint = threading.Thread(target=self.run_paint)  # 绘图线程
                 # 链接显示
-                thPaintWrite.pat_show_signal.connect(self.realtime_Content_show)  # 界面显示处理
+                thPaintWrite.pat_show_signal.connect(self.realtime_content_show)  # 界面显示处理
                 thPaintWrite.plan_show_signal.connect(self.realtime_plan_show)  # 局部变量无需考虑后续解绑
-                thPaintWrite.sp7_show_signal.connect(self.realtime_btm_show)  # 应答器更新
+                #thPaintWrite.sp7_show_signal.connect(self.realtime_btm_show)  # 应答器更新
                 thPaintWrite.io_show_signal.connect(self.realtime_io_show)  # io信息更新
                 thPaintWrite.sdu_show_signal.connect(self.realtime_sdu_show) # sdu 信息更新
                 # 设置线程
@@ -394,14 +414,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 # 打开失败设置回去
                 self.show_message('Info:读取记录及绘图线程启动失败！')
-                Mywindow.LinkBtnStatus = 0
+                self.seriaLinkBtnStatus = 0
+                self.actionoffline.setEnabled(True)
                 RealTimeExtension.exit_flag = 1
                 self.reatimelbl_defaultshow()
                 self.btn_PortLink.setText('连接')
                 self.btn_PortLink.setStyleSheet(" background: rgb(238, 86, 63);")
 
         else:
-            Mywindow.LinkBtnStatus = 0
+            self.seriaLinkBtnStatus = 0
+            self.actionoffline.setEnabled(True)
             self.btn_PortLink.setText('连接')
             self.btn_PortLink.setStyleSheet(" background: rgb(238, 86, 63);")
             RealTimeExtension.exit_flag = 1
@@ -415,9 +437,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def run_paint(self):
         while self.is_realtime_paint:
             try:
+                self.sp_real.show()
                 time.sleep(self.realtime_plot_interval)  # 绘图线程非常消耗性能，当小于1s直接影响读取和写入
                 self.sp_real.realTimePlot()
-                self.sp_real.draw()
             except Exception as err:
                 self.Log(err, __name__, sys._getframe().f_lineno)
                 self.show_message('Error:绘图线程异常！')
@@ -425,447 +447,135 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.show_message('Info:绘图线程结束!')
 
     # 界面更新信号槽函数
-    def realtime_Content_show(self, result=tuple):
-        cycle_num = result[0]
-        cycle_time = result[1]
-        fsm_list = result[2]
-        sc_ctrl = result[3]
-        stoppoint = result[4]
-        ato2tcms_ctrl = result[5]
-        ato2tcms_stat = result[6]
-        tcms2ato_stat = result[7]
-        gfx_flag = result[8]
-        sp2_list = result[9]
-        sp5_list = result[10]
-        sp131_list = result[11]
+    def realtime_content_show(self, result="tuple"):
+        cycle_num       = result[0]
+        cycle_time      = result[1]
+        fsm_list        = result[2]
+        sc_ctrl         = result[3]
+        stoppoint       = result[4]
+        ato2tcms_ctrl   = result[5]
+        ato2tcms_stat   = result[6]
+        tcms2ato_stat   = result[7]
+        atp2ato_msg     = result[8]
+        time_statictics = result[9]
         # 显示到侧面
-        self.realtime_table_show(cycle_num, cycle_time, sc_ctrl, stoppoint, gfx_flag)
-        self.realtime_fsm_show(fsm_list)
+        self.realtime_table_show(cycle_num, cycle_time, sc_ctrl, stoppoint)
+        self.atoFsmInfoShow(fsm_list,sc_ctrl,atp2ato_msg,tcms2ato_stat)
         # 显示主界面
-        self.realtime_mvb_show(ato2tcms_ctrl, ato2tcms_stat, tcms2ato_stat)
-        self.realtime_atp_common_show(sp2_list)
-        self.realtime_ato_dmi_show(sp131_list)
-        self.realtime_train_data_show(sp5_list)
+        self.mvbShowByData(ato2tcms_ctrl, ato2tcms_stat, tcms2ato_stat)
+        self.atpCommonInfoShowByMsg(atp2ato_msg)
+        self.atoDmiShowByMsg(atp2ato_msg)
+        self.atpTrainDataShowByMsg(atp2ato_msg)
+        self.atpBtmShowByMsg(cycle_time, atp2ato_msg)
+        self.atoCyleTimeStatistics(time_statictics)
+
+    # 显示时间统计信息
+    def atoCyleTimeStatistics(self,time_statictics):
+        if time_statictics:
+            self.lbl_mean_slot_rtn.setText(str(round(time_statictics[0],1))+'ms')
+            self.lbl_max_slot_rtn.setText(str(time_statictics[1])+'ms')
+            self.lbl_max_slot_cycle_rtn.setText(str(time_statictics[2]))
+            self.lbl_min_slot_rtn.setText(str(time_statictics[3])+'ms')
+            self.lbl_slot_count_rtn.setText(str(time_statictics[4]))
 
     # 显示ATP通用信息SP2
-    def realtime_atp_common_show(self, sp_tpl):
-        if sp_tpl != ():
-            # 门允许状态
-            if sp_tpl[2].strip() == '1':  # 左门允许
-                self.lbl_door_pmt_2.setText('左门允许')
-                self.lbl_door_pmt_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-            elif sp_tpl[3].strip() == '1':  # 右门允许
-                self.lbl_door_pmt_2.setText('右门允许')
-                self.lbl_door_pmt_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_door_pmt_2.setText('无门允许')
-                self.lbl_door_pmt_2.setStyleSheet("background-color: rgb(255, 0, 0);")
-            # ATP停准停稳状态
-            if sp_tpl[16].strip() == '0':
-                self.lbl_atp_stop_ok_2.setText('车未停稳')
-                self.lbl_atp_stop_ok_2.setStyleSheet("background-color: rgb(255, 0, 0);")
-            elif sp_tpl[16].strip() == '1':
-                self.lbl_atp_stop_ok_2.setText('停稳未停准')
-                self.lbl_atp_stop_ok_2.setStyleSheet("background-color: rgb(0, 200, 127);")
-            elif sp_tpl[16].strip() == '2':
-                self.lbl_atp_stop_ok_2.setText('停稳停准')
-                self.lbl_atp_stop_ok_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-
-            # 是否TSM区
-            if sp_tpl[21].strip() == '2147483647' or sp_tpl[21].strip() != '4294967295':
-                self.lbl_tsm_2.setText('恒速区')
-                self.lbl_tsm_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_tsm_2.setText('减速区')
-                self.lbl_tsm_2.setStyleSheet("background-color: rgb(255, 255, 0);")
-
-            # 是否立折
-            if sp_tpl[5].strip() == '1':
-                self.lbl_tb_2.setText('立折换端')
-                self.lbl_tb_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_tb_2.setText('非换端')
-                self.lbl_tb_2.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-            # 是否切牵引
-            if sp_tpl[24].strip() == '1':
-                self.lbl_atp_cut_traction_2.setText('ATP切除牵引')
-                self.lbl_atp_cut_traction_2.setStyleSheet("background-color:  rgb(255, 0, 0);")
-            else:
-                self.lbl_atp_cut_traction_2.setText('未切除牵引')
-                self.lbl_atp_cut_traction_2.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-            # 是否制动
-            if sp_tpl[25].strip() == '1':
-                self.lbl_atp_brake_2.setText('ATP施加制动')
-                self.lbl_atp_brake_2.setStyleSheet("background-color: rgb(255, 0, 0);")
-            else:
-                self.lbl_atp_brake_2.setText('未施加制动')
-                self.lbl_atp_brake_2.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-            # ATP等级/模式
-            if sp_tpl[8].strip() == '1':
-                self.lbl_atp_level_2.setText('CTCS 2')
-
-                if sp_tpl[9].strip() == '1':
-                    self.lbl_atp_mode_2.setText('待机模式')
-                elif sp_tpl[9].strip() == '2':
-                    self.lbl_atp_mode_2.setText('完全模式')
-                elif sp_tpl[9].strip() == '3':
-                    self.lbl_atp_mode_2.setText('部分模式')
-                elif sp_tpl[9].strip() == '5':
-                    self.lbl_atp_mode_2.setText('引导模式')
-                elif sp_tpl[9].strip() == '7':
-                    self.lbl_atp_mode_2.setText('目视模式')
-                elif sp_tpl[9].strip() == '8':
-                    self.lbl_atp_mode_2.setText('调车模式')
-                elif sp_tpl[9].strip() == '9':
-                    self.lbl_atp_mode_2.setText('隔离模式')
-                elif sp_tpl[9].strip() == '10':
-                    self.lbl_atp_mode_2.setText('机信模式')
-                elif sp_tpl[9].strip() == '11':
-                    self.lbl_atp_mode_2.setText('休眠模式')
-            elif sp_tpl[8].strip() == '3':
-                self.lbl_atp_level_2.setText('CTCS 3')
-
-                if sp_tpl[9].strip() == '6':
-                    self.lbl_atp_mode_2.setText('待机模式')
-                elif sp_tpl[9].strip() == '0':
-                    self.lbl_atp_mode_2.setText('完全模式')
-                elif sp_tpl[9].strip() == '1':
-                    self.lbl_atp_mode_2.setText('引导模式')
-                elif sp_tpl[9].strip() == '2':
-                    self.lbl_atp_mode_2.setText('目视模式')
-                elif sp_tpl[9].strip() == '3':
-                    self.lbl_atp_mode_2.setText('调车模式')
-                elif sp_tpl[9].strip() == '10':
-                    self.lbl_atp_mode_2.setText('隔离模式')
-                elif sp_tpl[9].strip() == '5':
-                    self.lbl_atp_mode_2.setText('休眠模式')
-
-            # 显示信息
-            if '4294967295' != sp_tpl[23].strip():
-                self.led_atp_milestone_2.setText(
-                    'K' + str(int(int(sp_tpl[23]) / 1000)) + '+' + str(int(sp_tpl[23]) % 1000))
-            else:
-                self.led_atp_milestone.setText('未知')
-            self.led_stn_center_dis_2.setText(sp_tpl[18].strip() + 'cm')
-            self.led_jz_signal_dis_2.setText(sp_tpl[19].strip() + 'cm')
-            self.led_cz_signal_dis_2.setText(sp_tpl[20].strip() + 'cm')
-            self.led_atp_tsm_dis_2.setText(sp_tpl[21].strip() + 'cm')
-            self.led_cz_signal_dis_2.setText(sp_tpl[20].strip() + 'cm')
-            self.led_atp_target_dis_2.setText(sp_tpl[7].strip() + 'cm')
-            self.led_atp_gfx_dis_2.setText(sp_tpl[14].strip() + 'm')
-            self.led_atp_target_v_2.setText(sp_tpl[6].strip() + 'cm/s')
-            self.led_atp_ma_2.setText(sp_tpl[12].strip() + 'm')
-            self.led_atp_stoperr_2.setText(sp_tpl[17].strip() + 'cm')
+    def atpCommonInfoShowByMsg(self, msg_obj=Atp2atoProto):
+        if msg_obj and msg_obj.sp2_obj.updateflag:
+            # 门允许左右门合并
+            DisplayMsgield.disAtpDoorPmt(msg_obj.sp2_obj.q_leftdoorpermit,msg_obj.sp2_obj.q_rightdoorpermit, self.lbl_door_pmt)
+            DisplayMsgield.disNameOfLable("q_stopstatus", msg_obj.sp2_obj.q_stopstatus, self.lbl_atp_stop_ok, 2)
+            DisplayMsgield.disTsmStat(msg_obj.sp2_obj.d_tsm, self.lbl_tsm)
+            DisplayMsgield.disNameOfLable("m_tco_state", msg_obj.sp2_obj.m_tco_state, self.lbl_atp_cut_traction,2,1)
+            DisplayMsgield.disNameOfLable("reserve", msg_obj.sp2_obj.reserve, self.lbl_atp_brake,2,1)
+            DisplayMsgield.disNameOfLable("q_tb", msg_obj.sp2_obj.q_tb, self.lbl_tb)
+            DisplayMsgield.disNameOfLable("m_level", msg_obj.sp2_obj.m_level, self.lbl_atp_level)
+            DisplayMsgield.disAtpMode("m_mode",msg_obj.sp2_obj.m_level,msg_obj.sp2_obj.m_mode,self.lbl_atp_mode)
+            DisplayMsgield.disNameOfLineEdit("m_position",msg_obj.sp2_obj.m_position, self.led_atp_milestone)
+            DisplayMsgield.disNameOfLineEdit("d_station_mid_pos",msg_obj.sp2_obj.d_station_mid_pos, self.led_stn_center_dis)
+            DisplayMsgield.disNameOfLineEdit("d_jz_sig_pos",msg_obj.sp2_obj.d_jz_sig_pos, self.led_jz_signal_dis)
+            DisplayMsgield.disNameOfLineEdit("d_cz_sig_pos",msg_obj.sp2_obj.d_cz_sig_pos, self.led_cz_signal_dis)
+            DisplayMsgield.disNameOfLineEdit("d_tsm",msg_obj.sp2_obj.d_tsm, self.led_atp_tsm_dis)
+            DisplayMsgield.disNameOfLineEdit("d_target",msg_obj.sp2_obj.d_target, self.led_atp_target_dis)
+            DisplayMsgield.disNameOfLineEdit("v_target",msg_obj.sp2_obj.v_target, self.led_atp_target_v)
+            DisplayMsgield.disNameOfLineEdit("d_neu_sec",msg_obj.sp2_obj.d_neu_sec, self.led_atp_gfx_dis)
+            DisplayMsgield.disNameOfLineEdit("d_ma",msg_obj.sp2_obj.d_ma, self.led_atp_ma)
+            DisplayMsgield.disNameOfLineEdit("m_atp_stop_error",msg_obj.sp2_obj.m_atp_stop_error, self.led_atp_stoperr)
 
     # 显示列车数据内容SP5
-    def realtime_train_data_show(self, sp_tpl):
-        if sp_tpl != ():
-            if sp_tpl[0].strip() == '1':
-                self.led_units_2.setText('8编组')
-            elif sp_tpl[0].strip() == '2':
-                self.led_units_2.setText('16编组')
-            elif sp_tpl[0].strip() == '3':
-                self.led_units_2.setText('18编组')
-
-            if sp_tpl[9].strip() == '1':
-                self.led_driver_strategy_2.setText('正常策略')
-            elif sp_tpl[9].strip() == '2':
-                self.led_driver_strategy_2.setText('快行策略')
-            elif sp_tpl[9].strip() == '3':
-                self.led_driver_strategy_2.setText('慢行策略')
-
-            # BTM天线等
-            self.led_atp_btm_pos_2.setText(str(int(sp_tpl[3]) * 10) + 'cm')
-            self.led_head_foor_dis_2.setText(sp_tpl[4].strip() + 'cm')
-            self.led_nid_engine_2.setText(sp_tpl[8].strip())
+    def atpTrainDataShowByMsg(self, msg_obj=Atp2atoProto):
+        if msg_obj and msg_obj.sp5_obj.updateflag:
+            obj = msg_obj.sp5_obj
+            DisplayMsgield.disNameOfLineEdit("n_units",obj.n_units,self.led_units)
+            DisplayMsgield.disNameOfLineEdit("v_ato_permitted",obj.v_ato_permitted,self.led_driver_strategy)
+            DisplayMsgield.disNameOfLineEdit("btm_antenna_position",obj.btm_antenna_position,self.led_atp_btm_pos)
+            DisplayMsgield.disNameOfLineEdit("l_door_distance",obj.l_door_distance,self.led_head_foor_dis)
+            DisplayMsgield.disNameOfLineEdit("nid_engine",obj.nid_engine,self.led_nid_engine)
 
     # ATO图标实时显示SP131
-    def realtime_ato_dmi_show(self, sp_tpl):
-        if sp_tpl != ():
-            if sp_tpl[6].strip() == '1':
-                self.lbl_mvb_link_2.setText('MVB正常')
-                self.lbl_mvb_link_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-            elif sp_tpl[6].strip() == '2':
-                self.lbl_mvb_link_2.setText('MVB中断')
-                self.lbl_mvb_link_2.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            if sp_tpl[4].strip() == '1':
-                self.lbl_ato_radio_2.setText('电台正常')
-                self.lbl_ato_radio_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-            elif sp_tpl[4].strip() == '0':
-                self.lbl_ato_radio_2.setText('电台异常')
-                self.lbl_ato_radio_2.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            if sp_tpl[5].strip() == '1':
-                self.lbl_ato_session_2.setText('无线中断')
-                self.lbl_ato_session_2.setStyleSheet("background-color: rgb(255, 0, 0);")
-            elif sp_tpl[5].strip() == '2':
-                self.lbl_ato_session_2.setText('正在呼叫')
-                self.lbl_ato_session_2.setStyleSheet("background-color: rgb(170, 170, 255);")
-            elif sp_tpl[5].strip() == '3':
-                self.lbl_ato_session_2.setText('无线连接')
-                self.lbl_ato_session_2.setStyleSheet("background-color: rgb(0, 255, 127);")
-
-            if sp_tpl[0].strip() == '1':
-                self.lbl_ato_ctrl_stat_2.setText('计划有效')
+    def atoDmiShowByMsg(self, msg_obj=Atp2atoProto):
+        if msg_obj and msg_obj.sp131_obj.updateflag:
+            obj = msg_obj.sp131_obj
+            DisplayMsgield.disNameOfLable("m_tcms_com",obj.m_tcms_com,self.lbl_mvb_link,1,2)
+            DisplayMsgield.disNameOfLable("m_gprs_radio",obj.m_gprs_radio,self.lbl_ato_radio,1,0)
+            DisplayMsgield.disNameOfLable("m_gprs_session",obj.m_gprs_session,self.lbl_ato_session,3,1)
+            # 计划与策略混合显示
+            if msg_obj.sp131_obj.m_ato_plan == 1:
+                DisplayMsgield.disNameOfLable("m_ato_plan",obj.m_ato_plan,self.lbl_ato_ctrl_stat,1,2)
             else:
-                if sp_tpl[7].strip() == '1':
-                    self.lbl_ato_ctrl_stat_2.setText('正常策略')
-                elif sp_tpl[7].strip() == '2':
-                    self.lbl_ato_ctrl_stat_2.setText('快行策略')
-                elif sp_tpl[7].strip() == '3':
-                    self.lbl_ato_ctrl_stat_2.setText('慢行策略')
-
+                DisplayMsgield.disNameOfLable("m_ato_control_strategy",obj.m_ato_control_strategy,self.lbl_ato_ctrl_stat)
+                
     # 显示MVB数据
-    def realtime_mvb_show(self, ato2tcms_ctrl=list, ato2tcms_stat=list, tcms2ato_stat=list):
-        # ATO2TCMS 控制信息
-        try:
-            if ato2tcms_ctrl != []:
-                self.led_ctrl_hrt.setText(str(int(ato2tcms_ctrl[0], 16)))  # 控制命令心跳
-                if ato2tcms_ctrl[1] == 'AA':
-                    self.led_ctrl_atovalid.setText('有效')  # ATO有效
-                elif ato2tcms_ctrl[1] == '00':
-                    self.led_ctrl_atovalid.setText('无效')
-                else:
-                    self.led_ctrl_atovalid.setText('异常值%s' % ato2tcms_ctrl[1])
-
-                # 牵引制动状态
-                if ato2tcms_ctrl[2] == 'AA':
-                    self.led_ctrl_tbstat.setText('牵引')
-                elif ato2tcms_ctrl[2] == '55':
-                    self.led_ctrl_tbstat.setText('制动')
-                elif ato2tcms_ctrl[2] == 'A5':
-                    self.led_ctrl_tbstat.setText('惰行')
-                elif ato2tcms_ctrl[2] == '00':
-                    self.led_ctrl_tbstat.setText('无命令')
-                else:
-                    self.led_ctrl_tbstat.setText('异常值%s' % ato2tcms_ctrl[2])
-
-                # 牵引控制量
-                self.led_ctrl_tract.setText(str(int(ato2tcms_ctrl[3], 16)))
-                # 制动控制量
-                self.led_ctrl_brake.setText(str(int(ato2tcms_ctrl[4], 16)))
-                # 保持制动施加
-                if ato2tcms_ctrl[5] == 'AA':
-                    self.led_ctrl_keepbrake.setText('施加')
-                elif ato2tcms_ctrl[5] == '00':
-                    self.led_ctrl_keepbrake.setText('无效')
-                else:
-                    self.led_ctrl_keepbrake.setText('异常值%s' % ato2tcms_ctrl[5])
-                # 开左门/右门
-                if ato2tcms_ctrl[6][0] == 'C':
-                    self.led_ctrl_ldoor.setText('有效')
-                elif ato2tcms_ctrl[6][0] == '0':
-                    self.led_ctrl_ldoor.setText('无动作')
-                else:
-                    self.led_ctrl_ldoor.setText('异常%s' % ato2tcms_ctrl[6][0])
-                if ato2tcms_ctrl[6][1] == 'C':
-                    self.led_ctrl_rdoor.setText('有效')
-                elif ato2tcms_ctrl[6][1] == '0':
-                    self.led_ctrl_rdoor.setText('无动作')
-                else:
-                    self.led_ctrl_rdoor.setText('异常%s' % ato2tcms_ctrl[6][1])
-                # 恒速命令
-                if ato2tcms_ctrl[7] == 'AA':
-                    self.led_ctrl_costspeed.setText('启动')
-                elif ato2tcms_ctrl[7] == '00':
-                    self.led_ctrl_costspeed.setText('取消')
-                else:
-                    self.led_ctrl_costspeed.setText('异常值%s' % ato2tcms_ctrl[7])
-                # 恒速目标速度
-                self.led_ctrl_aimspeed.setText(str(int(ato2tcms_ctrl[8], 16)))
-                # ATO启动灯
-                if ato2tcms_ctrl[9].upper() == 'AA':
-                    self.led_ctrl_starlamp.setText('亮')
-                elif ato2tcms_ctrl[9] == '00':
-                    self.led_ctrl_starlamp.setText('灭')
-                else:
-                    self.led_ctrl_starlamp.setText('异常值%s' % ato2tcms_ctrl[9])
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(ato2tcms_ctrl)
-        # ATO2TCMS 状态信息
-        try:
-            if ato2tcms_stat != []:
-                self.led_stat_hrt.setText(str(int(ato2tcms_stat[0], 16)))  # 状态命令心跳
-                if ato2tcms_stat[1] == 'AA':
-                    self.led_stat_error.setText('无故障')  # ATO故障
-                elif ato2tcms_stat[1] == '00':
-                    self.led_stat_error.setText('故障')
-                else:
-                    self.led_stat_error.setText('异常值%s' % ato2tcms_stat[1])  # ATO故障
-                self.led_stat_stonemile.setText(str(int(ato2tcms_stat[2], 16)))  # 公里标
-                self.led_stat_tunnelin.setText(str(int(ato2tcms_stat[3], 16)))  # 隧道入口
-                self.led_stat_tunnellen.setText(str(int(ato2tcms_stat[4], 16)))  # 隧道长度
-                self.led_stat_atospeed.setText(str(int(ato2tcms_stat[5], 16)))  # ato速度
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(ato2tcms_stat)
-        # TCMS2ATO 状态信息
-        try:
-            if tcms2ato_stat:
-                self.led_tcms_hrt.setText(str(int(tcms2ato_stat[0], 16)))  # TCMS状态命令心跳
-                # 门模式
-                if tcms2ato_stat[1][0] == 'C':
-                    self.led_tcms_mm.setText('有效')
-                    self.led_tcms_am.setText('无效')
-                elif tcms2ato_stat[1][0] == '3':
-                    self.led_tcms_am.setText('有效')
-                    self.led_tcms_mm.setText('无效')
-                elif tcms2ato_stat[1][0] == '0':
-                    self.led_tcms_am.setText('无效')
-                    self.led_tcms_mm.setText('无效')
-                else:
-                    self.led_tcms_mm.setText('异常值%s' % tcms2ato_stat[1][0])
-                    self.led_tcms_am.setText('异常值%s' % tcms2ato_stat[1][0])
-                # ATO启动灯
-                if tcms2ato_stat[1][1] == '3':
-                    self.led_tcms_startlampfbk.setText('有效')
-                elif tcms2ato_stat[1][1] == '0':
-                    self.led_tcms_startlampfbk.setText('无效')
-                else:
-                    self.led_tcms_startlampfbk.setText('异常值%s' % tcms2ato_stat[1][1])
-
-                # ATO有效反馈
-                if tcms2ato_stat[2] == 'AA':
-                    self.led_tcms_atovalid_fbk.setText('有效')
-                elif tcms2ato_stat[2] == '00':
-                    self.led_tcms_atovalid_fbk.setText('无效')
-                else:
-                    self.led_tcms_atovalid_fbk.setText('异常值%s' % tcms2ato_stat[2])
-
-                # 牵引制动反馈
-                if tcms2ato_stat[3] == 'AA':
-                    self.led_tcms_fbk.setText('牵引')
-                elif tcms2ato_stat[3] == '55':
-                    self.led_tcms_fbk.setText('制动')
-                elif tcms2ato_stat[3] == 'A5':
-                    self.led_tcms_fbk.setText('惰行')
-                elif tcms2ato_stat[3] == '00':
-                    self.led_tcms_fbk.setText('无命令')
-                else:
-                    self.led_tcms_fbk.setText('异常值%s' % tcms2ato_stat[3])
-
-                # 牵引反馈
-                self.led_tcms_tractfbk.setText(str(int(tcms2ato_stat[4], 16)))
-                # 制动反馈
-                self.led_tcms_bfbk.setText(str(int(tcms2ato_stat[5], 16)))
-                # 保持制动施加
-                if tcms2ato_stat[6] == 'AA':
-                    self.led_tcms_keepbfbk.setText('有效')
-                elif tcms2ato_stat[6] == '00':
-                    self.led_tcms_keepbfbk.setText('无效')
-                else:
-                    self.led_tcms_keepbfbk.setText('异常值%s' % tcms2ato_stat[6])
-                # 左门反馈，右门反馈
-                if tcms2ato_stat[7][0] == 'C':
-                    self.led_tcms_ldoorfbk.setText('有效')
-                elif tcms2ato_stat[7][0] == '0':
-                    self.led_tcms_ldoorfbk.setText('无效')
-                else:
-                    self.led_tcms_ldoorfbk.setText('异常值%s' % tcms2ato_stat[7][0])
-                if tcms2ato_stat[7][1] == 'C':
-                    self.led_tcms_rdoorfbk.setText('有效')
-                elif tcms2ato_stat[7][1] == '0':
-                    self.led_tcms_rdoorfbk.setText('无效')
-                else:
-                    self.led_tcms_rdoorfbk.setText('异常值%s' % tcms2ato_stat[7][0])
-                # 恒速反馈
-                if tcms2ato_stat[8] == 'AA':
-                    self.led_tcms_costspeedfbk.setText('有效')
-                elif tcms2ato_stat[8] == '00':
-                    self.led_tcms_costspeedfbk.setText('无效')
-                else:
-                    self.led_tcms_costspeedfbk.setText('异常值%s' % tcms2ato_stat[8])
-                # 车门状态
-                if tcms2ato_stat[9] == 'AA':
-                    self.led_tcms_doorstat.setText('关')
-                elif tcms2ato_stat[9] == '00':
-                    self.led_tcms_doorstat.setText('开')
-                else:
-                    self.led_tcms_doorstat.setText('异常值%s' % tcms2ato_stat[9])
-                # 空转打滑
-                if tcms2ato_stat[10][0] == 'A':
-                    self.led_tcms_kz.setText('空转')
-                elif tcms2ato_stat[10][0] == '0':
-                    self.led_tcms_kz.setText('未发生')
-                else:
-                    self.led_tcms_kz.setText('异常值%s' % tcms2ato_stat[10][0])
-
-                if tcms2ato_stat[10][1] == 'A':
-                    self.led_tcms_dh.setText('打滑')
-                elif tcms2ato_stat[10][1] == '0':
-                    self.led_tcms_dh.setText('未发生')
-                else:
-                    self.led_tcms_dh.setText('异常值%s' % tcms2ato_stat[10][1])
-                # 编组信息
-                tmp_units = int(tcms2ato_stat[11], 16)
-                if tmp_units == 1:
-                    self.led_tcms_nunits.setText('8编组')
-                elif tmp_units == 2:
-                    self.led_tcms_nunits.setText('8编重连')
-                elif tmp_units == 3:
-                    self.led_tcms_nunits.setText('16编组')
-                elif tmp_units == 4:
-                    self.led_tcms_nunits.setText('18编组')
-                else:
-                    self.led_tcms_nunits.setText('异常值%s' % tcms2ato_stat[11])
-                # 车重
-                self.led_tcms_weight.setText(str(int(tcms2ato_stat[12], 16)))
-                # 动车组允许
-                if tcms2ato_stat[13] == 'AA':
-                    self.led_tcms_pm.setText('允许')
-                elif tcms2ato_stat[13] == '00':
-                    self.led_tcms_pm.setText('不允许')
-                else:
-                    self.led_tcms_pm.setText('异常值%s' % tcms2ato_stat[13])
-
-                # 主断状态
-                if tcms2ato_stat[14] == 'AA':
-                    self.led_tcms_breakstat.setText('闭合')
-                    self.lbl_dcmd.setText('主断闭合')
-                    self.lbl_dcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
-                elif tcms2ato_stat[14] == '00':
-                    self.led_tcms_breakstat.setText('断开')
-                    self.lbl_dcmd.setText('主断断开')
-                    self.lbl_dcmd.setStyleSheet("background-color: rgb(255, 0, 0);")
-                else:
-                    self.led_tcms_breakstat.setText('异常值%s' % tcms2ato_stat[14])
-                # ATP允许 人工允许
-                if tcms2ato_stat[15] == 'C0':
-                    self.led_tcms_atpdoorpm.setText('有效')
-                    self.led_tcms_mandoorpm.setText('无效')
-                elif tcms2ato_stat[15] == '30':
-                    self.led_tcms_atpdoorpm.setText('无效')
-                    self.led_tcms_mandoorpm.setText('有效')
-                elif tcms2ato_stat[15] == '00':
-                    self.led_tcms_atpdoorpm.setText('无效')
-                    self.led_tcms_mandoorpm.setText('无效')
-                else:
-                    self.led_tcms_atpdoorpm.setText('异常值%s' % tcms2ato_stat[15])
-                    self.led_tcms_mandoorpm.setText('异常值%s' % tcms2ato_stat[15])
-                # 不允许状态字
-                str_tcms = ''
-                str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
-                           '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
-                           'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
-                if tcms2ato_stat[16] == '00':
-                    self.led_tcms_pmt_state.setText('正常')
-                else:
-                    val_field = int(tcms2ato_stat[16], 16)
-                    for cnt in range(7, -1, -1):
-                        if val_field & (1 << cnt) != 0:
-                            str_tcms = str_tcms + str_raw[cnt]
-                    self.led_tcms_pmt_state.setText('异常原因:%s' % str_tcms)
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(tcms2ato_stat)
-
+    def mvbShowByData(self, a2t_ctrl=Ato2TcmsCtrl, a2t_stat=Ato2TcmsState, t2a_stat=Tcms2AtoState):
+        if a2t_ctrl and a2t_ctrl.updateflag == True:
+            DisplayMVBField.disNameOfLineEdit("ato_heartbeat",a2t_ctrl.ato_heartbeat,self.led_ctrl_hrt)
+            DisplayMVBField.disNameOfLineEdit("ato_valid",a2t_ctrl.ato_valid,self.led_ctrl_atovalid)
+            DisplayMVBField.disNameOfLineEdit("track_brake_cmd",a2t_ctrl.track_brake_cmd,self.led_ctrl_tbstat)
+            DisplayMVBField.disNameOfLineEdit("track_value",a2t_ctrl.track_value,self.led_ctrl_tract)
+            DisplayMVBField.disNameOfLineEdit("brake_value",a2t_ctrl.brake_value,self.led_ctrl_brake)
+            DisplayMVBField.disNameOfLineEdit("keep_brake_on",a2t_ctrl.keep_brake_on,self.led_ctrl_keepbrake)
+            DisplayMVBField.disNameOfLineEdit("open_left_door",a2t_ctrl.open_left_door,self.led_ctrl_ldoor)
+            DisplayMVBField.disNameOfLineEdit("open_right_door",a2t_ctrl.open_right_door,self.led_ctrl_rdoor)
+            DisplayMVBField.disNameOfLineEdit("const_speed_cmd",a2t_ctrl.const_speed_cmd,self.led_ctrl_costspeed)
+            DisplayMVBField.disNameOfLineEdit("const_speed_value",a2t_ctrl.const_speed_value,self.led_ctrl_aimspeed)
+            DisplayMVBField.disNameOfLineEdit("ato_start_light",a2t_ctrl.ato_start_light,self.led_ctrl_starlamp)
+            a2t_ctrl.updateflag = False
+        elif a2t_stat and a2t_stat.updateflag == True:
+            DisplayMVBField.disNameOfLineEdit("ato_heartbeat", a2t_stat.ato_heartbeat,self.led_stat_hrt)
+            DisplayMVBField.disNameOfLineEdit("ato_error", a2t_stat.ato_error,self.led_stat_error)
+            DisplayMVBField.disNameOfLineEdit("killometer_marker", a2t_stat.killometer_marker,self.led_stat_stonemile)
+            DisplayMVBField.disNameOfLineEdit("tunnel_entrance", a2t_stat.tunnel_entrance,self.led_stat_tunnelin)
+            DisplayMVBField.disNameOfLineEdit("tunnel_length", a2t_stat.tunnel_length,self.led_stat_tunnellen)
+            DisplayMVBField.disNameOfLineEdit("ato_speed", a2t_stat.ato_speed,self.led_stat_atospeed)
+            a2t_stat.updateflag = False
+        elif t2a_stat and t2a_stat.updateflag == True:
+            DisplayMVBField.disNameOfLineEdit("tcms_heartbeat", t2a_stat.tcms_heartbeat, self.led_tcms_hrt)
+            DisplayMVBField.disNameOfLineEdit("door_mode_mo_mc", t2a_stat.door_mode_mo_mc, self.led_tcms_mm)
+            DisplayMVBField.disNameOfLineEdit("door_mode_ao_mc", t2a_stat.door_mode_ao_mc, self.led_tcms_am)
+            DisplayMVBField.disNameOfLineEdit("ato_start_btn_valid", t2a_stat.ato_start_btn_valid, self.led_tcms_startlampfbk)
+            DisplayMVBField.disNameOfLineEdit("ato_valid_feedback", t2a_stat.ato_valid_feedback, self.led_tcms_atovalid_fbk)
+            DisplayMVBField.disNameOfLineEdit("track_brack_cmd_feedback", t2a_stat.track_brack_cmd_feedback, self.led_tcms_fbk)
+            DisplayMVBField.disNameOfLineEdit("track_value_feedback", t2a_stat.track_value_feedback, self.led_tcms_tractfbk)
+            DisplayMVBField.disNameOfLineEdit("brake_value_feedback", t2a_stat.brake_value_feedback, self.led_tcms_bfbk)
+            DisplayMVBField.disNameOfLineEdit("ato_keep_brake_on_feedback", t2a_stat.ato_keep_brake_on_feedback, self.led_tcms_keepbfbk)
+            DisplayMVBField.disNameOfLineEdit("open_left_door_feedback", t2a_stat.open_left_door_feedback, self.led_tcms_ldoorfbk)
+            DisplayMVBField.disNameOfLineEdit("open_right_door_feedback", t2a_stat.open_right_door_feedback, self.led_tcms_rdoorfbk)
+            DisplayMVBField.disNameOfLineEdit("constant_state_feedback", t2a_stat.constant_state_feedback, self.led_tcms_costspeedfbk)
+            DisplayMVBField.disNameOfLineEdit("door_state", t2a_stat.door_state, self.led_tcms_doorstat)
+            DisplayMVBField.disNameOfLineEdit("spin_state", t2a_stat.spin_state, self.led_tcms_kz)
+            DisplayMVBField.disNameOfLineEdit("slip_state", t2a_stat.slip_state, self.led_tcms_dh)
+            DisplayMVBField.disNameOfLineEdit("train_unit", t2a_stat.train_unit, self.led_tcms_nunits)
+            DisplayMVBField.disNameOfLineEdit("train_weight", t2a_stat.train_weight, self.led_tcms_weight)
+            DisplayMVBField.disNameOfLineEdit("train_permit_ato", t2a_stat.train_permit_ato, self.led_tcms_pm)
+            DisplayMVBField.disNameOfLineEdit("main_circuit_breaker", t2a_stat.main_circuit_breaker, self.led_tcms_breakstat)
+            DisplayMVBField.disNameOfLineEdit("atp_door_permit", t2a_stat.atp_door_permit, self.led_tcms_atpdoorpm)
+            DisplayMVBField.disNameOfLineEdit("man_door_permit", t2a_stat.man_door_permit, self.led_tcms_mandoorpm)
+            DisplayMVBField.disNameOfLineEdit("no_permit_ato_state", t2a_stat.no_permit_ato_state, self.led_tcms_pmt_state)
+            t2a_stat.updateflag = False
+        else:
+            pass
+    
     # 右侧边栏显示
-    def realtime_table_show(self, cycle_num=str, cycle_time=str, sc_ctrl="list", stoppoint="list", gfx_flag=int):
+    def realtime_table_show(self, cycle_num=str, cycle_time=str, sc_ctrl="list", stoppoint="list"):
         item_value = []
         if sc_ctrl:
             if 1 == int(sc_ctrl[20]):
@@ -912,127 +622,37 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if cycle_num != '':
             self.spinBox.setValue(int(cycle_num))
 
-        if gfx_flag == 1:
-            self.lbl_atpdcmd.setText('过分相')
-            self.lbl_atpdcmd.setStyleSheet("background-color: rgb(255, 0, 0);")
-        else:
-            self.lbl_atpdcmd.setText('非过分相')
-            self.lbl_atpdcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
-
     # 更新FSM信息相关
-    def realtime_fsm_show(self, fsm_list="list"):
-        temp = fsm_list[:]
-        # 如果解析出来
-        if temp != []:
-            # ATO模式
-            if temp[1] == '1':
-                self.lbl_mode.setText('AOS模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(180, 180, 180);")
-            elif temp[1] == '2':
-                self.lbl_mode.setText('AOR模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[1] == '3':
-                self.lbl_mode.setText('AOM模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(255, 255, 255);")
-            else:
-                self.lbl_mode.setText('ATO模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-            # 硬允许
-            if temp[2] == '1':
-                self.lbl_hpm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_hpm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 软允许
-            if temp[3] == '1':
-                self.lbl_pm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_pm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 动车组允许
-            if temp[4] == '1':
-                self.lbl_carpm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_carpm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 自检状态
-            if temp[5] == '1':
-                self.lbl_check.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_check.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 发车指示灯
-            if temp[6] == '0':
-                self.lbl_lamp.setText('发车灯灭')
-            elif temp[6] == '1':
-                self.lbl_lamp.setText('发车灯闪')
-            elif temp[6] == '2':
-                self.lbl_lamp.setText('发车灯亮')
-
-            # 车长
-            self.lbl_trainlen.setText('车长' + str(int(temp[9]) / 100) + 'm')
-
-            # 门状态
-            if temp[10] == '55':
-                self.lbl_doorstatus.setText('门开')
-            elif temp[10].upper() == 'AA':
-                self.lbl_doorstatus.setText('门关')
-
-            # 低频
-            if temp[11] == '0':
-                self.lbl_freq.setText('H码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 0, 0);")
-            elif temp[11] == '2':
-                self.lbl_freq.setText('HU码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 215, 15);")
-            elif temp[11] == '10':
-                self.lbl_freq.setText('HB码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(163, 22, 43);")
-            elif temp[11].upper() == '2A':
-                self.lbl_freq.setText('L4码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11].upper() == '2B':
-                self.lbl_freq.setText('L5码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '25':
-                self.lbl_freq.setText('U2S码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '23':
-                self.lbl_freq.setText('UUS码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '22':
-                self.lbl_freq.setText('UU码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '21':
-                self.lbl_freq.setText('U码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '24':
-                self.lbl_freq.setText('U2码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '26':
-                self.lbl_freq.setText('LU码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(205, 255, 25);")
-            elif temp[11] == '28':
-                self.lbl_freq.setText('L2码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '27':
-                self.lbl_freq.setText('L码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '29':
-                self.lbl_freq.setText('L3码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            # 站台
-            if temp[13] == '1':
-                self.lbl_stn.setText('站内')
-            else:
-                self.lbl_stn.setText('站外')
+    def atoFsmInfoShow(self, fsm='list', ctrl='tuple', msg_obj=Atp2atoProto,t2a_stat=Tcms2AtoState):
+        # 显示ATP2ATO接口协议内容
+        if msg_obj:
+            if  msg_obj.sp2_obj.updateflag:
+                AtoInfoDisplay.lableFieldDisplay("q_ato_hardpermit",msg_obj.sp2_obj.q_ato_hardpermit, Atp2atpFieldDic, self.lbl_hpm)
+                AtoInfoDisplay.lableFieldDisplay("q_atopermit",msg_obj.sp2_obj.q_atopermit, Atp2atpFieldDic, self.lbl_pm)
+                AtoInfoDisplay.lableFieldDisplay("m_ms_cmd",msg_obj.sp2_obj.m_ms_cmd, Atp2atpFieldDic, self.lbl_atpdcmd)
+                AtoInfoDisplay.lableFieldDisplay("m_low_frequency",msg_obj.sp2_obj.m_low_frequency, Atp2atpFieldDic, self.lbl_freq)
+            if msg_obj.sp5_obj.updateflag:
+                AtoInfoDisplay.lableFieldDisplay("n_units",msg_obj.sp5_obj.n_units, Atp2atpFieldDic, self.lbl_trainlen)
+            if msg_obj.sp130_obj.updateflag:
+                AtoInfoDisplay.lableFieldDisplay("m_atomode",msg_obj.sp130_obj.m_atomode, Atp2atpFieldDic, self.lbl_mode)
+                # 显示MVB接口协议内容
+        if t2a_stat and t2a_stat.updateflag:
+            AtoInfoDisplay.lableFieldDisplay("train_permit_ato",t2a_stat.train_permit_ato, MVBFieldDic, self.lbl_carpm)
+            AtoInfoDisplay.lableFieldDisplay("door_state",t2a_stat.door_state, MVBFieldDic, self.lbl_doorstatus)
+            AtoInfoDisplay.lableFieldDisplay("main_circuit_breaker",t2a_stat.main_circuit_breaker, MVBFieldDic, self.lbl_dcmd)
+        # 软件内部状态通过打印
+        if fsm:
+            AtoInfoDisplay.labelInterDisplay("ato_self_check", int(fsm[5]), self.lbl_check)
+            AtoInfoDisplay.labelInterDisplay("ato_start_lamp", int(fsm[6]), self.lbl_lamp)
+            # 站台标志由于FSM中记录后会经过处理，采用SC才是本周期控车使用的
+            if ctrl:  # 按周期索引取控制信息，妨不连续
+                AtoInfoDisplay.labelInterDisplay("station_flag", int(list(ctrl)[17]), self.lbl_stn)
 
     # 实时操作时更新曲线选择
     def realtimeLineChoose(self):
-        global load_flag
+
         linelist = [0, 0, 0, 0, 0]
-        if load_flag == 0:
+        if self.islogLoad == 0:
             if self.CBvato.isChecked():
                 linelist[0] = 1
             else:
@@ -1077,48 +697,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tableWidgetPlan.resizeColumnToContents(i)
 
     # 显示BTM表格
-    def realtime_btm_show(self, ret_btm="tuple"):
-        time = ret_btm[0]
-        sp7_show = ret_btm[1]
-        mile_stone = ret_btm[2]
-        if sp7_show:
-            self.real_btm_list.append(sp7_show)
-            self.tableATPBTM.setColumnCount(4)
-            self.tableATPBTM.setRowCount(len(self.real_btm_list))
-            # 获取附加索引
-            row_btm_idx = len(self.real_btm_list)-1
-            if time:
-                d_t = time.split(" ")[1]  # 取时间
-            else:
-                d_t = ''
-            item_dt = QtWidgets.QTableWidgetItem(d_t)
-            item_balise_bum = QtWidgets.QTableWidgetItem(self.real_btm_list[row_btm_idx][0])
-            item_adjpos = QtWidgets.QTableWidgetItem(self.real_btm_list[row_btm_idx][2] + 'cm')
-
-            item_dt.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            item_balise_bum.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            item_adjpos.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            # 刷公里标
-            if '4294967295' != mile_stone.strip() and mile_stone:
-                item_milestone = QtWidgets.QTableWidgetItem('K' + str(int(int(mile_stone) / 1000)) + '+' +
-                                                            str(int(mile_stone) % 1000))
-            else:
-                item_milestone = QtWidgets.QTableWidgetItem('未知')
-            # 虽然目前有SP2必有SP7但不能保证，所有还是单独条件
-            if self.real_btm_list[row_btm_idx][3].strip() == '13':
-                item_milestone.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-            # 所有都居中，但只SP7刷红
-            item_milestone.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            self.tableATPBTM.setItem(row_btm_idx, 3, item_milestone)
-            # JD正常刷颜色
-            if self.real_btm_list[row_btm_idx][3].strip() == '13':
-                item_dt.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                item_balise_bum.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                item_adjpos.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-
-            self.tableATPBTM.setItem(row_btm_idx, 0, item_dt)
-            self.tableATPBTM.setItem(row_btm_idx, 1, item_balise_bum)
-            self.tableATPBTM.setItem(row_btm_idx, 2, item_adjpos)
+    def atpBtmShowByMsg(self, time=str, msg_obj=Atp2atoProto):
+        BtmInfoDisplay.displayRealTimeBtmTable(msg_obj, time, self.tableATPBTM)
 
     # 显示IO表格
     def realtime_io_show(self, ret_io="tuple"):
@@ -1181,10 +761,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # 计算测速测距偏差
                 self.led_sdu_err.setText(str(abs(ato_v - atp_v))+'cm/s')
                 # 判断情况
-                if (ato_v - atp_v) < -28: # 若偏低1km/h
+                if (ato_v - atp_v) < -self.cfg.monitor_config.sdu_spd_fault_th: # 若偏低
                     self.lbl_sdu_judge.setText("ATO速度偏低")
                     self.lbl_sdu_judge.setStyleSheet("background-color: rgb(255, 255, 0);")
-                elif(ato_v - atp_v) > 28: # 若偏高1km/h
+                elif(ato_v - atp_v) > self.cfg.monitor_config.sdu_spd_fault_th: # 若偏高
                     self.lbl_sdu_judge.setText("ATO速度偏高")
                     self.lbl_sdu_judge.setStyleSheet("background-color: rgb(255, 0, 0);")
                 else:
@@ -1196,10 +776,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.led_sdu_s_err.setText(str((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1]))+'cm')
 
                 # 判断情况
-                if ((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) < -6:  # 若偏低6cm
+                if ((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) < -self.cfg.monitor_config.sdu_dis_fault_th:  # 若偏低
                     self.lbl_sdu_s_judge.setText("ATO测距偏低")
                     self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(255, 255, 0);")
-                elif((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) > 6: # 若偏高6cm
+                elif((ato_s - self.sdu_info_s[0]) - (atp_s - self.sdu_info_s[1])) > self.cfg.monitor_config.sdu_dis_fault_th: # 若偏高
                     self.lbl_sdu_s_judge.setText("ATO测距偏高")
                     self.lbl_sdu_s_judge.setStyleSheet("background-color: rgb(255, 0, 0);")
                 else:
@@ -1311,24 +891,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 更新MVB识别端口的
     def update_mvb_port_pat(self):
-        RealTimeExtension.pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
-        RealTimeExtension.pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
-        RealTimeExtension.pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
-
-        FileProcess.pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
-        FileProcess.pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
-        FileProcess.pat_tcms_Stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
-
-        MiniWinCollection.pat_ato_ctrl = int(self.mvbdialog.led_ato_ctrl.text(), 16)
-        MiniWinCollection.pat_ato_stat = int(self.mvbdialog.led_ato_stat.text(), 16)
-        MiniWinCollection.pat_tcms_Stat = int(self.mvbdialog.led_tcms_stat.text(), 16)
+        self.cfg.readConfigFile()
 
     # MVB解析器
     def show_mvb_parser(self):
-        MiniWinCollection.pat_ato_ctrl = int(self.mvbdialog.led_ato_ctrl.text(), 16)
-        MiniWinCollection.pat_ato_stat = int(self.mvbdialog.led_ato_stat.text(), 16)
-        MiniWinCollection.pat_tcms_stat = int(self.mvbdialog.led_tcms_stat.text(), 16)
-
         self.mvbparaer.show()
 
     # utc转换器
@@ -1337,8 +903,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数绘制统计区域的 车辆牵引制动统计图
     def show_statistics_mvb_delay(self):
-        global load_flag
-        if load_flag == 1:
+        if self.islogLoad == 1:
             self.train_com_delay = TrainComMeasureDlg(None, self.log)
             self.Log('Plot statistics info!', __name__, sys._getframe().f_lineno)
             try:
@@ -1417,8 +982,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 记录文件处理核心函数，生成周期字典和绘图值列表
     def log_process(self):
-        global cursor_in_flag
-        cursor_in_flag = 0
+        self.isCursorInFram = 0
         # 创建文件读取对象
         self.log = FileProcess.FileProcess(self.file)  # 类的构造函数，函数中给出属性
         # 绑定信号量
@@ -1434,6 +998,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 文件处理线程执行完响应方法
     def log_process_result(self):
         self.Log('End log read thread!', __name__, sys._getframe().f_lineno)
+        isok = -1
         # 处理返回结果
         if self.log.get_time_use():
             [t1, t2, isok] = self.log.get_time_use()     # 0=ato控车，1=没有控车,2=没有周期
@@ -1470,11 +1035,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 文件加载后处理方法
     def after_log_process(self, is_ato_control):
-        global load_flag
+
         self.Log("End all file process", __name__, sys._getframe().f_lineno)
         try:
             if is_ato_control == 0:
-                load_flag = 1  # 记录加载且ATO控车
+                self.islogLoad = 1  # 记录加载且ATO控车
+                self.actionRealtime.setEnabled(False)
                 # self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                 self.show_message('界面准备中...')
                 self.clear_axis()
@@ -1482,17 +1048,25 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.CBvato.setChecked(True)
                 self.Log('Set View mode and choose Vato', __name__, sys._getframe().f_lineno)
             elif is_ato_control == 1:
-                load_flag = 2  # 记录加载但是ATO没有控车
+                self.islogLoad = 2  # 记录加载但是ATO没有控车
                 reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                           "无曲线",
-                                                          "注意：记录中ATO没有控车！ATO处于非AOM和AOR模式！",
+                                                          "注意:记录中ATO没有控车！ATO处于非AOM和AOR模式!",
                                                           QtWidgets.QMessageBox.Yes)
             elif is_ato_control == 2:
-                load_flag = 0  # 记录加载但是没有检测到周期
+                self.islogLoad = 0  # 记录加载但是没有检测到周期
+                self.actionRealtime.setEnabled(True)
+            elif is_ato_control == -1:
+                self.islogLoad = 0  # 记录加载但是没有检测到周期
+                self.actionRealtime.setEnabled(True)
+                reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                          "解析错误",
+                                                          "注意: 遇到未知解析错误导致中断，请将记录发送开发人员进行诊断定位!",
+                                                          QtWidgets.QMessageBox.Yes)
             else:
                 reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                           "待处理",
-                                                          "注意：记录中包含ATO重新上下电过程，列车绝对位置重叠"
+                                                          "注意:记录中包含ATO重新上下电过程，列车绝对位置重叠"
                                                           "需手动分解记录！\nATO记录启机行号:Line：" + str(is_ato_control),
                                                           QtWidgets.QMessageBox.Yes)
 
@@ -1502,38 +1076,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 用于一些界面加载记录初始化后显示的内容,如数据包一次显示
     def win_init_log_processed(self):
-        global load_flag
-        # 初始化列车数据界面，如果后面更新再有动态光标触发更新，更新后保持
-        sp5_tpl = ()
-        sp5_snipper = 0
-        sp7_cnt = 0
+        self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
+        trainDataFind = False
         bar = 95
         cnt = 0
-        bar_cnt = int(len(self.log.cycle_dic.keys()) / 5)  # 从90%开始，界面准备占比10%
-        # ATP 右侧标签显示相关
-        self.Log("Begin init log show", __name__, sys._getframe().f_lineno)
-        # 初始化表格
-        self.tableATPBTM.clear()
-        self.tableATPBTM.setHorizontalHeaderLabels(['时间', '应答器编号', '位置矫正值', '公里标'])
-        self.tableATPBTM.setColumnWidth(0, 60)
-        self.tableATPBTM.setColumnWidth(1, 80)
-        self.tableATPBTM.setColumnWidth(2, 70)
-        self.tableATPBTM.setColumnWidth(3, 70)
-        self.tableATPBTM.resizeRowsToContents()
-        self.tableATPBTM.resizeColumnsToContents()
-        self.tableATPBTM.verticalHeader().setVisible(True)
-        self.BTM_cycle = []  # 首先初始化列表
-        # BTM TABLE 计数
-        sp7_table_row_cnt = 1
-        for c in self.log.cycle_dic.keys():
-            if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                sp7_table_row_cnt = sp7_table_row_cnt + 1
-                self.BTM_cycle.append(c)
-        self.tableATPBTM.setColumnCount(4)
-        self.tableATPBTM.setRowCount(sp7_table_row_cnt)
-        self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
-        # 对于信息5,7包，必须搜索所有周期而非AOR.AOM周期
-        for c in self.log.cycle_dic.keys():
+        bar_cnt = int(len(self.log.cycle_dic.keys()) / 5)  # 从95%开始，界面准备占比5%
+        for cycle_num in self.log.cycle_dic.keys():
             # 计算进度条
             cnt = cnt + 1
             if int(cnt % bar_cnt) == 0:
@@ -1541,56 +1089,20 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.progressBar.setValue(bar)
             else:
                 pass
-            if 5 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                sp5_tpl = self.log.cycle_dic[c].cycle_sp_dict[5]
-                self.set_atp_info_win(sp5_tpl, 5)
-                sp5_snipper = 1
-            # 加载应答器信息
-            if 7 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                c_show_sp7 = self.log.cycle_dic[c]
-                d_t = c_show_sp7.time.split(" ")[1]  # 取时间
-                item_dt = QtWidgets.QTableWidgetItem(d_t)
-                item_balise_bum = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][0])
-                item_adjpos = QtWidgets.QTableWidgetItem(c_show_sp7.cycle_sp_dict[7][2] + 'cm')
+            # 预先设置 设置列车数据
+            msg_atp2ato = self.log.cycle_dic[cycle_num].msg_atp2ato
+            if (not trainDataFind) and msg_atp2ato.sp5_obj.updateflag:
+                self.atpTrainDataShowByMsg(self.log.cycle_dic[cycle_num].msg_atp2ato)
+                AtoInfoDisplay.lableFieldDisplay("n_units",msg_atp2ato.sp5_obj.n_units, Atp2atpFieldDic, self.lbl_trainlen)
+                trainDataFind = True
 
-                item_dt.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-                item_balise_bum.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-                item_adjpos.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-
-                # 获取公里标
-                if 2 in self.log.cycle_dic[c].cycle_sp_dict.keys():
-                    sp2_tpl = self.log.cycle_dic[c].cycle_sp_dict[2]
-                    if '4294967295' != sp2_tpl[23].strip():
-                        item_milestone = QtWidgets.QTableWidgetItem('K' + str(int(int(sp2_tpl[23]) / 1000)) + '+' +
-                                                                    str(int(sp2_tpl[23]) % 1000))
-                    else:
-                        item_milestone = QtWidgets.QTableWidgetItem('未知')
-                    # 虽然目前有SP2必有SP7但不能保证，所有还是单独条件
-                    if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
-                        item_milestone.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                    # 所有都居中，但只SP7刷红
-                    item_milestone.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-                    self.tableATPBTM.setItem(sp7_cnt, 3, item_milestone)
-                # JD正常刷颜色
-                if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
-                    item_dt.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                    item_balise_bum.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-                    item_adjpos.setForeground(QtGui.QBrush(QtGui.QColor(225, 0, 0)))
-
-                self.tableATPBTM.setItem(sp7_cnt, 0, item_dt)
-                self.tableATPBTM.setItem(sp7_cnt, 1, item_balise_bum)
-                self.tableATPBTM.setItem(sp7_cnt, 2, item_adjpos)
-                sp7_cnt = sp7_cnt + 1
-
+        BtmInfoDisplay.displayOffLineBtmTable(self.log.cycle_dic, self.tableATPBTM)
         # 显示IO信息
         self.Log("Begin search IO info", __name__, sys._getframe().f_lineno)
         self.set_io_page_content()
-        # 文本显示
-        if sp5_snipper == 0:
-            self.show_message("Info: N0 SP5 in log,no train data")
         try:
             # 事件发生相关
-            if load_flag == 1:
+            if self.islogLoad == 1:
                 self.sp.set_wayside_info_in_cords(self.log.cycle_dic, self.log.s, self.log.cycle)
                 if self.actionJD.isChecked():
                     self.update_event_point()    # 若已经选中直接更新
@@ -1663,21 +1175,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，计数器数值变化触发事件，绑定光标和内容更新
     def spin_value_changed(self):
-        global cursor_in_flag
-        global curve_flag
         xy_lim = []
         track_flag = self.sp.get_track_status()  # 获取之前光标的锁定状态
 
         # 光标离开图像
-        if cursor_in_flag == 2:
+        if self.isCursorInFram == 2 and self.curInterface == 1:
             cur_cycle = self.spinBox.value()  # 获取当前周期值
 
             if cur_cycle in self.log.cycle_dic.keys():
                 c = self.log.cycle_dic[cur_cycle]  # 查询周期字典
                 # 该周期没有控制信息，或打印丢失,不发送光标移动信号
-                if c.control != ():
+                if c.control != () and self.isCursorCreated == 1:
                     info = list(c.control)
-                    if curve_flag == 0:
+                    if self.curveCordType == 0:
                         # 先更新坐标轴范围（索引0和1是位置速度）
                         xy_lim = self.sp.update_cord_with_cursor((int(info[0]), int(info[1])), self.sp.axes1.get_xlim(),
                                                                  self.sp.axes1.get_ylim())
@@ -1693,7 +1203,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                         # 再更新光标
                         self.c_vato.sim_mouse_move(int(info[0]), int(info[1]))  # 其中前两者位置和速度为移动目标
-                    elif curve_flag == 1:
+                    elif self.curveCordType == 1:
                         # 先更新坐标轴范围
                         xy_lim = self.sp.update_cord_with_cursor((int(cur_cycle), int(info[1])),
                                                                  self.sp.axes1.get_xlim(),
@@ -1718,9 +1228,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，启动后进入测量状态
     def ctrl_measure(self):
-        global load_flag
         # 加载文件才能测量
-        if load_flag == 1:
+        if self.islogLoad == 1:
             self.ctrl_measure_status = 1  # 一旦单击则进入测量开始状态
             self.sp.setCursor(QtCore.Qt.WhatsThisCursor)
             self.Log('start measure!', __name__, sys._getframe().f_lineno)
@@ -1729,29 +1238,27 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，标记单击事件
     def ctrl_measure_clicked(self, event):
-        global curve_flag
-
         # 如果开始测量则进入，则获取终点
         if self.ctrl_measure_status == 2:
             # 下面是当前鼠标坐标
             x, y = event.xdata, event.ydata
             # 速度位置曲线
-            if curve_flag == 0:
+            if self.curveCordType == 0:
                 self.indx_measure_end = min(np.searchsorted(self.log.s, [x])[0], len(self.log.s) - 1)
             # 周期速度曲线
-            if curve_flag == 1:
+            if self.curveCordType == 1:
                 self.indx_measure_end = min(np.searchsorted(self.log.cycle, [x])[0], len(self.log.cycle) - 1)
             self.measure = CtrlMeasureDlg(None, self.log)
-            self.measure.measure_plot(self.indx_measure_start, self.indx_measure_end, curve_flag)
+            self.measure.measure_plot(self.indx_measure_start, self.indx_measure_end, self.curveCordType)
             self.measure.show()
 
             # 获取终点索引，测量结束
             self.ctrl_measure_status = 3
             self.Log('end measure!', __name__, sys._getframe().f_lineno)
             # 更改图标
-            if self.mode == 1:  # 标记模式
+            if self.curWinMode == 1:  # 标记模式
                 self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
-            elif self.mode == 0:  # 浏览模式
+            elif self.curWinMode == 0:  # 浏览模式
                 self.sp.setCursor(QtCore.Qt.ArrowCursor)
 
         # 如果是初始状态，则设置为启动
@@ -1760,25 +1267,23 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 下面是当前鼠标坐标
             x, y = event.xdata, event.ydata
             # 速度位置曲线
-            if curve_flag == 0:
+            if self.curveCordType == 0:
                 self.indx_measure_start = min(np.searchsorted(self.log.s, [x])[0], len(self.log.s) - 1)
                 self.ctrl_measure_status = 2
             # 周期速度曲线
-            if curve_flag == 1:
+            if self.curveCordType == 1:
                 self.indx_measure_start = min(np.searchsorted(self.log.cycle, [x])[0], len(self.log.cycle) - 1)
                 self.ctrl_measure_status = 2
 
     # 事件处理函数，更新光标进入图像标志，in=1
     def cursor_in_fig(self, event):
-        global cursor_in_flag
-        cursor_in_flag = 1
+        self.isCursorInFram = 1
         self.c_vato.move_signal.connect(self.set_table_content)  # 进入图后绑定光标触发
         self.Log('connect ' + 'enter figure', __name__, sys._getframe().f_lineno)
 
     # 事件处理函数，更新光标进入图像标志,out=2
     def cursor_out_fig(self, event):
-        global cursor_in_flag
-        cursor_in_flag = 2
+        self.isCursorInFram = 2
         try:
             self.c_vato.move_signal.disconnect(self.set_table_content)  # 离开图后解除光标触发
         except Exception as err:
@@ -1788,18 +1293,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.ctrl_measure_status > 0:
             self.ctrl_measure_status = 0
             # 更改图标
-            if self.mode == 1:  # 标记模式
+            if self.curWinMode == 1:  # 标记模式
                 self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
-            elif self.mode == 0:  # 浏览模式
+            elif self.curWinMode == 0:  # 浏览模式
                 self.sp.setCursor(QtCore.Qt.ArrowCursor)
             self.Log('exit measure', __name__, sys._getframe().f_lineno)
 
     # 绘制各种速度位置曲线
     def update_up_cure(self):
-        global load_flag
-        global curve_flag
         # file is load
-        if load_flag == 1:
+        if self.islogLoad == 1:
             x_monitor = self.sp.axes1.get_xlim()
             y_monitor = self.sp.axes1.get_ylim()
             if self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
@@ -1807,75 +1310,73 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.clear_axis()
                 self.Log("Mode Change recreate the paint", __name__, sys._getframe().f_lineno)
                 # 清除光标重新创建
-                if self.mode == 1:
+                if self.curWinMode == 1:
                     # 重绘文字
-                    self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
+                    self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, self.curveCordType)
                     self.Log("Update ctrl text ", __name__, sys._getframe().f_lineno)
-                    if Mywindow.is_cursor_created == 1:
-                        Mywindow.is_cursor_created = 0
+                    if self.isCursorCreated == 1:
+                        self.isCursorCreated = 0
                         del self.c_vato
                     self.tag_cursor_creat()
                     self.Log("Update Curve recreate curve and tag cursor ", __name__, sys._getframe().f_lineno)
                 # 处理ATO速度
                 if self.CBvato.isChecked():
-                    self.sp.plotlog_vs(self.log, self.mode, curve_flag)
+                    self.sp.plotlog_vs(self.log, self.curWinMode, self.curveCordType)
                 else:
                     self.CBvato.setChecked(False)
                 # 处理命令速度
                 if self.CBcmdv.isChecked():
-                    self.sp.plotlog_vcmdv(self.log, self.mode, curve_flag)
+                    self.sp.plotlog_vcmdv(self.log, self.curWinMode, self.curveCordType)
                 else:
                     self.CBcmdv.setChecked(False)
                 # 处理允许速度
                 if self.CBatppmtv.isChecked():
-                    self.sp.plotlog_v_atp_pmt_s(self.log, self.mode, curve_flag)
+                    self.sp.plotlog_v_atp_pmt_s(self.log, self.curWinMode, self.curveCordType)
                 else:
                     self.CBatppmtv.setChecked(False)
                 # 处理顶棚速度
                 if self.CBatpcmdv.isChecked():
-                    self.sp.plotlog_vceil(self.log, curve_flag)
+                    self.sp.plotlog_vceil(self.log, self.curveCordType)
                 else:
                     self.CBatpcmdv.setChecked(False)
                 # 处理级位
                 if self.CBlevel.isChecked():
-                    self.sp.plotlog_level(self.log, curve_flag)
+                    self.sp.plotlog_level(self.log, self.curveCordType)
                 else:
                     self.CBlevel.setChecked(False)
             elif self.CBacc.isChecked() or self.CBramp.isChecked():
                 self.update_down_cure()  # 当没有选择下图时更新上图
             else:
                 self.clear_axis()
-            self.sp.plot_cord1(self.log, curve_flag, x_monitor, y_monitor)
+            self.sp.plot_cord1(self.log, self.curveCordType, x_monitor, y_monitor)
             self.sp.draw()
         else:
             pass
 
     # 绘制加速度和坡度曲线
     def update_down_cure(self):
-        global load_flag
-        global curve_flag
-        if load_flag == 1:
-            if self.mode == 0:  # 只有浏览模式才可以
+        if self.islogLoad == 1:
+            if self.curWinMode == 0:  # 只有浏览模式才可以
                 if self.CBacc.isChecked() or self.CBramp.isChecked():
                     self.clear_axis()
                     # 加速度处理
                     if self.CBacc.isChecked():
-                        self.sp.plotlog_sa(self.log, curve_flag)
+                        self.sp.plotlog_sa(self.log, self.curveCordType)
                     else:
                         self.CBacc.setChecked(False)
                     # 坡度处理
                     if self.CBramp.isChecked():
-                        self.sp.plotlog_ramp(self.log, curve_flag)
+                        self.sp.plotlog_ramp(self.log, self.curveCordType)
                     else:
                         self.CBramp.setChecked(False)
                 elif self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
                         or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
                     # 图形切换时，先重置轴范围再画图
-                    self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
+                    self.sp.plot_cord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
                     self.update_up_cure()  # 当没有选择下图时更新上图
                 else:
                     self.clear_axis()
-                self.sp.plot_cord2(self.log, curve_flag)  # 绘制坐标系II
+                self.sp.plot_cord2(self.log, self.curveCordType)  # 绘制坐标系II
                 self.sp.draw()
             else:
                 pass
@@ -1885,7 +1386,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 绘制离线模式下事件选择点
     def update_event_point(self):
         event_dict = {}
-        global load_flag
+
         # 记录显示应答器事件
         if self.actionBTM.isChecked():
             event_dict['BTM'] = 1
@@ -1909,7 +1410,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             event_dict['PLAN'] = 0
 
         # 如果文件加载成功，传递数据字典和选择信息（必须加载后才能调用）
-        if load_flag == 1:
+        if self.islogLoad == 1:
             self.sp.set_event_info_plot(event_dict, self.log.cycle_dic, self.log.s, self.log.cycle)
             self.update_up_cure()
 
@@ -1937,45 +1438,43 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 模式转换函数，修改全局模式变量和光标
     def mode_change(self):
-        global load_flag
         sender = self.sender()
         # 查看信号发送者
-        if sender.text() == '标注模式' and self.mode == 0:  # 由浏览模式进入标注模式不重绘范围
-            self.mode = 1
-            if load_flag == 1 and self.CBvato.isChecked():
+        if sender.text() == '标注模式' and self.curWinMode == 0:  # 由浏览模式进入标注模式不重绘范围
+            self.curWinMode = 1
+            if self.islogLoad == 1 and self.CBvato.isChecked():
                 self.Log("Mode Change excute!", __name__, sys._getframe().f_lineno)
                 self.update_up_cure()
                 self.tag_cursor_creat()  # 只针对速度曲线
-        elif sender.text() == '浏览模式' and self.mode == 1:  # 进入浏览模式重绘
-            self.mode = 0
-            if load_flag == 1:
+        elif sender.text() == '浏览模式' and self.curWinMode == 1:  # 进入浏览模式重绘
+            self.curWinMode = 0
+            if self.islogLoad == 1:
                 self.update_up_cure()
                 # 重置坐标轴范围,恢复浏览模式必须重置范围
-                self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
+                self.sp.plot_cord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
             self.tag_cursor_creat()
         else:
             pass
             # 其他情况目前无需重置坐标系
         self.sp.draw()
         # 更改图标
-        if self.mode == 1:  # 标记模式
+        if self.curWinMode == 1:  # 标记模式
             self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
-        elif self.mode == 0:  # 浏览模式
+        elif self.curWinMode == 0:  # 浏览模式
             self.sp.setCursor(QtCore.Qt.ArrowCursor)
         self.statusbar.showMessage(self.file + " " + "当前模式：" + sender.text())
 
     # 曲线类型转换函数，修改全局模式变量
     def cmd_change(self):
-        global curve_flag
-        global load_flag
-        if load_flag == 1:
+
+        if self.islogLoad == 1:
             sender = self.sender()
             if sender.text() == '位置速度曲线':
-                if curve_flag == 1:
-                    curve_flag = 0  # 曲线类型改变，如果有光标则删除，并重置标志
-                    if Mywindow.is_cursor_created == 1:
+                if self.curveCordType == 1:
+                    self.curveCordType = 0  # 曲线类型改变，如果有光标则删除，并重置标志
+                    if self.isCursorCreated == 1:
                         del self.c_vato
-                        Mywindow.is_cursor_created = 0
+                        self.isCursorCreated = 0
                     else:
                         pass
                     self.update_up_cure()
@@ -1983,11 +1482,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     pass
             if sender.text() == "周期速度曲线":
-                if curve_flag == 0:
-                    curve_flag = 1  # 曲线类型改变
-                    if Mywindow.is_cursor_created == 1:
+                if self.curveCordType == 0:
+                    self.curveCordType = 1  # 曲线类型改变
+                    if self.isCursorCreated == 1:
                         del self.c_vato
-                        Mywindow.is_cursor_created = 0
+                        self.isCursorCreated = 0
                     else:
                         pass
                     self.update_up_cure()
@@ -1995,7 +1494,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     pass
             # 重置坐标轴范围
-            self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
+            self.sp.plot_cord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
             self.sp.draw()
             self.statusbar.showMessage(self.file + " " + "曲线类型：" + sender.text())
         else:
@@ -2003,10 +1502,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 用于模式转换后处理，创建光标绑定和解绑槽函数
     def tag_cursor_creat(self):
-        global curve_flag
         # 标注模式
-        if self.mode == 1 and 0 == Mywindow.is_cursor_created:
-            if curve_flag == 0:
+        if self.curWinMode == 1 and 0 == self.isCursorCreated:
+            if self.curveCordType == 0:
                 self.c_vato = SnaptoCursor(self.sp, self.sp.axes1, self.log.s, self.log.v_ato)  # 初始化一个光标
             else:
                 self.c_vato = SnaptoCursor(self.sp, self.sp.axes1, self.log.cycle, self.log.v_ato)  # 初始化一个光标
@@ -2031,9 +1529,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.connect(self.set_sdu_info_content)
             self.c_vato.move_signal.connect(self.set_ato_status_label)  # 标签
             self.c_vato.sim_move_singal.connect(self.set_ato_status_label)
-            Mywindow.is_cursor_created = 1
+            self.isCursorCreated = 1
             self.Log("Mode changed Create tag cursor ", __name__, sys._getframe().f_lineno)
-        elif self.mode == 0 and 1 == Mywindow.is_cursor_created:
+        elif self.curWinMode == 0 and 1 == self.isCursorCreated:
             self.sp.mpl_disconnect(self.cid1)
             self.sp.mpl_disconnect(self.cid2)
             self.sp.mpl_disconnect(self.cid3)
@@ -2053,7 +1551,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.c_vato.sim_move_singal.disconnect(self.set_ato_status_label)
             self.c_vato.move_signal.disconnect(self.set_sdu_info_content)  # 标签
             self.c_vato.sim_move_singal.disconnect(self.set_sdu_info_content)
-            Mywindow.is_cursor_created = 0
+            self.isCursorCreated = 0
             del self.c_vato
             self.Log("Mode changed clear tag cursor ", __name__, sys._getframe().f_lineno)
         else:
@@ -2062,39 +1560,36 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 封装工具栏函数，图形缩放
     def zoom(self):
         self.sp.mpl_toolbar.zoom()
-        if self.mode == 1:
+        if self.curWinMode == 1:
             self.sp.setCursor(QtCore.Qt.PointingHandCursor)
         else:
             pass
 
     # 封装工具栏函数，显示画板初始状态，清除曲线
     def home_show(self):
-        global load_flag
-        global curve_flag
         self.clear_axis()
         self.reset_all_checkbox()
         self.CBvato.setChecked(True)
         self.reset_text_edit()
-        if load_flag == 1:
-            self.sp.plot_cord1(self.log, curve_flag, (0.0, 1.0), (0.0, 1.0))
+        if self.islogLoad == 1:
+            self.sp.plot_cord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
             self.update_up_cure()
         else:
             pass
 
     # 关闭当前绘图
     def close_figure(self, evt):
-        global load_flag
-        if load_flag == 1:
+        if self.islogLoad == 1:
             self.textEdit.append('Close Log Plot\n')
             self.clear_axis()
-            load_flag = 0
+            self.islogLoad = 0
+            self.actionRealtime.setEnabled(True)
             self.sp.draw()
         else:
             pass
 
     # 事件处理函数，用于弹窗显示当前索引周期
     def cycle_print(self):
-        global load_flag
         self.cyclewin.statusBar.showMessage('')  # 清除上一次显示内容
         idx = self.spinBox.value()
         print_flag = 0  # 是否弹窗打印，0=不弹窗，1=弹窗
@@ -2103,7 +1598,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         pat_cycle_start = re.compile(r'---CORE_TARK CY_B (\d+),(\d+).')  # 周期终点匹配
         self.cyclewin.textEdit.clear()
 
-        if 1 == load_flag or 2 == load_flag:  # 文件已经加载
+        if 1 == self.islogLoad or 2 == self.islogLoad:  # 文件已经加载
             # 前提是必须有周期，字典能查到
             if idx in self.log.cycle_dic.keys():
                 c_num = self.log.cycle_dic[idx].cycle_num
@@ -2234,22 +1729,21 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def set_ctrl_bubble_format(self):
         sender = self.sender()
         # 清除光标重新创建
-        if self.mode == 1:
+        if self.curWinMode == 1:
             if sender.text() == '跟随光标':
                 self.bubble_status = 1  # 1 跟随模式，立即更新
-                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
+                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, self.curveCordType)
             elif sender.text() == '停靠窗口':
                 self.bubble_status = 0  # 0 是停靠，默认右上角，立即更新
-                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, curve_flag)
+                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, self.curveCordType)
             else:
                 pass
         self.sp.draw()
 
     # 事件处理函数，计算控车数据悬浮气泡窗并显示
     def set_ctrl_bubble_content(self, idx):
-        global curve_flag
         # 根据输入类型设置气泡
-        self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, curve_flag)
+        self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, self.curveCordType)
         self.tag_latest_pos_idx = idx
 
     # 设置树形结构
@@ -2469,295 +1963,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，设置车辆接口MVB信息
     def set_train_page_content(self, idx):
-        ato2tcms_ctrl = []
-        ato2tcms_state = []
-        tcms2ato_stat = []
-        # 读取该周期内容
-        try:
-            for line in self.log.cycle_dic[self.log.cycle[idx]].raw_analysis_lines:
-                pat_ato_ctrl = 'MVB[' + str(int(self.mvbdialog.led_ato_ctrl.text(), 16)) + ']'
-                pat_ato_stat = 'MVB[' + str(int(self.mvbdialog.led_ato_stat.text(), 16)) + ']'
-                pat_tcms_stat = 'MVB[' + str(int(self.mvbdialog.led_tcms_stat.text(), 16)) + ']'
-                real_idx = 0
-                tmp = ''
-                parse_flag = 0
-                if pat_ato_ctrl in line:
-                    if '@' in line:
-                        pass
-                    else:
-                        real_idx = line.find('MVB[')
-                        tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                        ato2tcms_ctrl = self.mvbParserPage.ato_tcms_parse(1025, tmp)
-                        if ato2tcms_ctrl != []:
-                            parse_flag = 1
-                elif pat_ato_stat in line:
-                    if '@' in line:
-                        pass
-                    else:
-                        real_idx = line.find('MVB[')
-                        tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                        ato2tcms_state = self.mvbParserPage.ato_tcms_parse(1041, tmp)
-                        if ato2tcms_state != []:
-                            parse_flag = 1
-                elif pat_tcms_stat in line:
-                    if '@' in line:
-                        pass
-                    else:
-                        real_idx = line.find('MVB[')
-                        tmp = line[real_idx + 10:]  # 还有一个冒号需要截掉
-                        tcms2ato_stat = self.mvbParserPage.ato_tcms_parse(1032, tmp)
-                        if tcms2ato_stat != []:
-                            parse_flag = 1
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(ato2tcms_ctrl)
-        # 显示
-        # ATO2TCMS 控制信息
-        try:
-            if ato2tcms_ctrl != []:
-                self.led_ctrl_hrt_2.setText(str(int(ato2tcms_ctrl[0], 16)))  # 控制命令心跳
-                if ato2tcms_ctrl[1] == 'AA':
-                    self.led_ctrl_atovalid_2.setText('有效')  # ATO有效
-                elif ato2tcms_ctrl[1] == '00':
-                    self.led_ctrl_atovalid_2.setText('无效')
-                else:
-                    self.led_ctrl_atovalid_2.setText('异常值%s' % ato2tcms_ctrl[1])
-
-                # 牵引制动状态
-                if ato2tcms_ctrl[2] == 'AA':
-                    self.led_ctrl_tbstat_2.setText('牵引')
-                elif ato2tcms_ctrl[2] == '55':
-                    self.led_ctrl_tbstat_2.setText('制动')
-                elif ato2tcms_ctrl[2] == 'A5':
-                    self.led_ctrl_tbstat_2.setText('惰行')
-                elif ato2tcms_ctrl[2] == '00':
-                    self.led_ctrl_tbstat_2.setText('无命令')
-                else:
-                    self.led_ctrl_tbstat_2.setText('异常值%s' % ato2tcms_ctrl[2])
-
-                # 牵引控制量
-                self.led_ctrl_tract_2.setText(str(int(ato2tcms_ctrl[3], 16)))
-                # 制动控制量
-                self.led_ctrl_brake_2.setText(str(int(ato2tcms_ctrl[4], 16)))
-                # 保持制动施加
-                if ato2tcms_ctrl[5] == 'AA':
-                    self.led_ctrl_keepbrake_2.setText('施加')
-                elif ato2tcms_ctrl[5] == '00':
-                    self.led_ctrl_keepbrake_2.setText('无效')
-                else:
-                    self.led_ctrl_keepbrake_2.setText('异常值%s' % ato2tcms_ctrl[5])
-                # 开左门/右门
-                if ato2tcms_ctrl[6][0] == 'C':
-                    self.led_ctrl_ldoor_2.setText('有效')
-                elif ato2tcms_ctrl[6][0] == '0':
-                    self.led_ctrl_ldoor_2.setText('无动作')
-                else:
-                    self.led_ctrl_ldoor_2.setText('异常%s' % ato2tcms_ctrl[6][0])
-                if ato2tcms_ctrl[6][1] == 'C':
-                    self.led_ctrl_rdoor_2.setText('有效')
-                elif ato2tcms_ctrl[6][1] == '0':
-                    self.led_ctrl_rdoor_2.setText('无动作')
-                else:
-                    self.led_ctrl_rdoor_2.setText('异常%s' % ato2tcms_ctrl[6][1])
-                # 恒速命令
-                if ato2tcms_ctrl[7] == 'AA':
-                    self.led_ctrl_costspeed_2.setText('启动')
-                elif ato2tcms_ctrl[7] == '00':
-                    self.led_ctrl_costspeed_2.setText('取消')
-                else:
-                    self.led_ctrl_costspeed_2.setText('异常值%s' % ato2tcms_ctrl[7])
-                # 恒速目标速度
-                self.led_ctrl_aimspeed_2.setText(str(int(ato2tcms_ctrl[8], 16)))
-                # ATO启动灯
-                if ato2tcms_ctrl[9] == 'AA':
-                    self.led_ctrl_starlamp_2.setText('亮')
-                elif ato2tcms_ctrl[9] == '00':
-                    self.led_ctrl_starlamp_2.setText('灭')
-                else:
-                    self.led_ctrl_starlamp_2.setText('异常值%s' % ato2tcms_ctrl[9])
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(ato2tcms_ctrl)
-        # ATO2TCMS 状态信息
-        try:
-            if ato2tcms_state:
-                self.led_stat_hrt_2.setText(str(int(ato2tcms_state[0], 16)))  # 状态命令心跳
-                if ato2tcms_state[1] == 'AA':
-                    self.led_stat_error_2.setText('无故障')  # ATO故障
-                elif ato2tcms_state[1] == '00':
-                    self.led_stat_error_2.setText('故障')
-                else:
-                    self.led_stat_error_2.setText('异常值%s' % ato2tcms_state[1])  # ATO故障
-                self.led_stat_stonemile_2.setText(str(int(ato2tcms_state[2], 16)))  # 公里标
-                self.led_stat_tunnelin_2.setText(str(int(ato2tcms_state[3], 16)))  # 隧道入口
-                self.led_stat_tunnellen_2.setText(str(int(ato2tcms_state[4], 16)))  # 隧道长度
-                self.led_stat_atospeed_2.setText(str(int(ato2tcms_state[5], 16)))  # ato速度
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(ato2tcms_state)
-        # TCMS2ATO 状态信息
-        try:
-            if tcms2ato_stat != []:
-                self.led_tcms_hrt_2.setText(str(int(tcms2ato_stat[0], 16)))  # TCMS状态命令心跳
-                # 门模式
-                if tcms2ato_stat[1][0] == 'C':
-                    self.led_tcms_mm_2.setText('有效')
-                    self.led_tcms_am_2.setText('无效')
-                elif tcms2ato_stat[1][0] == '3':
-                    self.led_tcms_am_2.setText('有效')
-                    self.led_tcms_mm_2.setText('无效')
-                elif tcms2ato_stat[1][0] == '0':
-                    self.led_tcms_am_2.setText('无效')
-                    self.led_tcms_mm_2.setText('无效')
-                else:
-                    self.led_tcms_mm_2.setText('异常值%s' % tcms2ato_stat[1][0])
-                    self.led_tcms_am_2.setText('异常值%s' % tcms2ato_stat[1][0])
-                # ATO启动灯
-                if tcms2ato_stat[1][1] == '3':
-                    self.led_tcms_startlampfbk_2.setText('有效')
-                elif tcms2ato_stat[1][1] == '0':
-                    self.led_tcms_startlampfbk_2.setText('无效')
-                else:
-                    self.led_tcms_startlampfbk_2.setText('异常值%s' % tcms2ato_stat[1][1])
-
-                # ATO有效反馈
-                if tcms2ato_stat[2] == 'AA':
-                    self.led_tcms_atovalid_fbk_2.setText('有效')
-                elif tcms2ato_stat[2] == '00':
-                    self.led_tcms_atovalid_fbk_2.setText('无效')
-                else:
-                    self.led_tcms_atovalid_fbk_2.setText('异常值%s' % tcms2ato_stat[2])
-
-                # 牵引制动反馈
-                if tcms2ato_stat[3] == 'AA':
-                    self.led_tcms_fbk_2.setText('牵引')
-                elif tcms2ato_stat[3] == '55':
-                    self.led_tcms_fbk_2.setText('制动')
-                elif tcms2ato_stat[3] == 'A5':
-                    self.led_tcms_fbk_2.setText('惰行')
-                elif tcms2ato_stat[3] == '00':
-                    self.led_tcms_fbk_2.setText('无命令')
-                else:
-                    self.led_tcms_fbk_2.setText('异常值%s' % tcms2ato_stat[3])
-
-                # 牵引反馈
-                self.led_tcms_tractfbk_2.setText(str(int(tcms2ato_stat[4], 16)))
-                # 制动反馈
-                self.led_tcms_bfbk_2.setText(str(int(tcms2ato_stat[5], 16)))
-                # 保持制动施加
-                if tcms2ato_stat[6] == 'AA':
-                    self.led_tcms_keepbfbk_2.setText('有效')
-                elif tcms2ato_stat[6] == '00':
-                    self.led_tcms_keepbfbk_2.setText('无效')
-                else:
-                    self.led_tcms_keepbfbk_2.setText('异常值%s' % tcms2ato_stat[6])
-                # 左门反馈，右门反馈
-                if tcms2ato_stat[7][0] == 'C':
-                    self.led_tcms_ldoorfbk_2.setText('有效')
-                elif tcms2ato_stat[7][0] == '0':
-                    self.led_tcms_ldoorfbk_2.setText('无效')
-                else:
-                    self.led_tcms_ldoorfbk_2.setText('异常值%s' % tcms2ato_stat[7][0])
-                if tcms2ato_stat[7][1] == 'C':
-                    self.led_tcms_rdoorfbk_2.setText('有效')
-                elif tcms2ato_stat[7][1] == '0':
-                    self.led_tcms_rdoorfbk_2.setText('无效')
-                else:
-                    self.led_tcms_rdoorfbk_2.setText('异常值%s' % tcms2ato_stat[7][0])
-                # 恒速反馈
-                if tcms2ato_stat[8] == 'AA':
-                    self.led_tcms_costspeedfbk_2.setText('有效')
-                elif tcms2ato_stat[8] == '00':
-                    self.led_tcms_costspeedfbk_2.setText('无效')
-                else:
-                    self.led_tcms_costspeedfbk_2.setText('异常值%s' % tcms2ato_stat[8])
-                # 车门状态
-                if tcms2ato_stat[9] == 'AA':
-                    self.led_tcms_doorstat_2.setText('关')
-                elif tcms2ato_stat[9] == '00':
-                    self.led_tcms_doorstat_2.setText('开')
-                else:
-                    self.led_tcms_doorstat_2.setText('异常值%s' % tcms2ato_stat[9])
-                # 空转打滑
-                if tcms2ato_stat[10][0] == 'A':
-                    self.led_tcms_kz_2.setText('空转')
-                    self.led_tcms_kz_2.setStyleSheet("background-color:rgb(255, 0, 0);")
-                elif tcms2ato_stat[10][0] == '0':
-                    self.led_tcms_kz_2.setText('未发生')
-                    self.led_tcms_kz_2.setStyleSheet("background-color:rgb(219, 255, 227);")
-                else:
-                    self.led_tcms_kz_2.setText('异常值%s' % tcms2ato_stat[10][0])
-
-                if tcms2ato_stat[10][1] == 'A':
-                    self.led_tcms_dh_2.setText('打滑')
-                    self.led_tcms_dh_2.setStyleSheet("background-color:rgb(255, 0, 0);")
-                elif tcms2ato_stat[10][1] == '0':
-                    self.led_tcms_dh_2.setText('未发生')
-                    self.led_tcms_dh_2.setStyleSheet("background-color:rgb(219, 255, 227);")
-                else:
-                    self.led_tcms_dh_2.setText('异常值%s' % tcms2ato_stat[10][1])
-                # 编组信息
-                tmp_units = int(tcms2ato_stat[11], 16)
-                if tmp_units == 1:
-                    self.led_tcms_nunits_2.setText('8编组')
-                elif tmp_units == 2:
-                    self.led_tcms_nunits_2.setText('8编重连')
-                elif tmp_units == 3:
-                    self.led_tcms_nunits_2.setText('16编组')
-                elif tmp_units == 4:
-                    self.led_tcms_nunits_2.setText('18编组')
-                else:
-                    self.led_tcms_nunits_2.setText('异常值%s' % tcms2ato_stat[11])
-                # 车重
-                self.led_tcms_weight_2.setText(str(int(tcms2ato_stat[12], 16)))
-                # 动车组允许
-                if tcms2ato_stat[13] == 'AA':
-                    self.led_tcms_pm_2.setText('允许')
-                elif tcms2ato_stat[13] == '00':
-                    self.led_tcms_pm_2.setText('不允许')
-                else:
-                    self.led_tcms_pm_2.setText('异常值%s' % tcms2ato_stat[13])
-
-                # 主断状态
-                if tcms2ato_stat[14] == 'AA':
-                    self.led_tcms_breakstat_2.setText('闭合')
-                    self.lbl_dcmd.setText('主断闭合')
-                    self.lbl_dcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
-                elif tcms2ato_stat[14] == '00':
-                    self.led_tcms_breakstat_2.setText('断开')
-                    self.lbl_dcmd.setText('主断断开')
-                    self.lbl_dcmd.setStyleSheet("background-color: rgb(255, 0, 0);")
-                else:
-                    self.led_tcms_breakstat_2.setText('异常值%s' % tcms2ato_stat[14])
-                # ATP允许 人工允许
-                if tcms2ato_stat[15] == 'C0':
-                    self.led_tcms_atpdoorpm_2.setText('有效')
-                    self.led_tcms_mandoorpm_2.setText('无效')
-                elif tcms2ato_stat[15] == '30':
-                    self.led_tcms_atpdoorpm_2.setText('无效')
-                    self.led_tcms_mandoorpm_2.setText('有效')
-                elif tcms2ato_stat[15] == '00':
-                    self.led_tcms_atpdoorpm_2.setText('无效')
-                    self.led_tcms_mandoorpm_2.setText('无效')
-                else:
-                    self.led_tcms_atpdoorpm_2.setText('异常值%s' % tcms2ato_stat[15])
-                    self.led_tcms_mandoorpm_2.setText('异常值%s' % tcms2ato_stat[15])
-                # 不允许状态字
-                str_tcms = ''
-                str_raw = ['未定义', '至少有一个车辆空气制动不可用|', 'CCU存在限速保护|', 'CCU自动施加常用制动|',
-                           '车辆施加紧急制动EB或紧急制动UB|', '保持制动被隔离|',
-                           'CCU判断与ATO通信故障(CCU监测到ATO生命信号32个周期(2s)不变化)|', '预留|']
-                if tcms2ato_stat[16] == '00':
-                    self.led_tcms_pmt_state_2.setText('正常')
-                else:
-                    val_field = int(tcms2ato_stat[16], 16)
-                    for cnt in range(7, -1, -1):
-                        if val_field & (1 << cnt) != 0:
-                            str_tcms = str_tcms + str_raw[cnt]
-                    self.led_tcms_pmt_state_2.setText('异常原因:%s' % str_tcms)
-        except Exception as err:
-            self.Log(err, __name__, sys._getframe().f_lineno)
-            print(tcms2ato_stat)
+        cycleObj = self.log.cycle_dic[self.log.cycle[idx]]
+        if cycleObj.a2t_ctrl.updateflag or cycleObj.a2t_stat.updateflag or cycleObj.t2a_stat.updateflag:
+            self.mvbShowByData(cycleObj.a2t_ctrl, cycleObj.a2t_stat, cycleObj.t2a_stat)
+    
+    # 事件处理函数，设置ATP信息
+    def set_ATP_page_content(self, idx):
+        msg_obj = self.log.cycle_dic[self.log.cycle[idx]].msg_atp2ato
+        self.atpCommonInfoShowByMsg(msg_obj)
+        self.atoDmiShowByMsg(msg_obj)
 
     # 事件处理函数，设置计划信息
     def set_plan_page_content(self, idx):
@@ -2831,27 +2045,27 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 开始计算
         try:
             if rp1 != ():
-                self.led_s_track_2.setText(str(rp1[0]))
+                self.led_s_track.setText(str(rp1[0]))
 
                 if rp1[3] == '1':
-                    self.lbl_stop_flag_2.setText('停稳状态')
-                    self.lbl_stop_flag_2.setStyleSheet("background-color: rgb(0, 255, 0);")
+                    self.lbl_stop_flag.setText('停稳状态')
+                    self.lbl_stop_flag.setStyleSheet("background-color: rgb(0, 255, 0);")
                 elif rp1[3] == '0':
-                    self.lbl_stop_flag_2.setText('非停稳')
-                    self.lbl_stop_flag_2.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    self.lbl_stop_flag.setText('非停稳')
+                    self.lbl_stop_flag.setStyleSheet("background-color: rgb(255, 0, 0);")
 
             if rp2 != ():
                 if rp2[0] == '1':
-                    self.lbl_plan_legal_2.setText('计划合法')
-                    self.lbl_plan_legal_2.setStyleSheet("background-color: rgb(0, 255, 0);")
+                    self.lbl_plan_legal.setText('计划合法')
+                    self.lbl_plan_legal.setStyleSheet("background-color: rgb(0, 255, 0);")
                 elif rp2[0] == '0':
-                    self.lbl_plan_legal_2.setText('计划非法')
-                    self.lbl_plan_legal_2.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    self.lbl_plan_legal.setText('计划非法')
+                    self.lbl_plan_legal.setStyleSheet("background-color: rgb(255, 0, 0);")
 
                 if rp2[1] == '1':
-                    self.lbl_plan_final_2.setText('终到站')
+                    self.lbl_plan_final.setText('终到站')
                 elif rp2[1] == '0':
-                    self.lbl_plan_final_2.setText('非终到站')
+                    self.lbl_plan_final.setText('非终到站')
             # 有计划，准备表格显示内容
             if rp2_list:
                 for item in rp2_list:
@@ -2861,46 +2075,46 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 len_plan = len(rp2_temp_list)
 
                 # 清空表格内容准备更新
-                self.tableWidgetPlan_2.clearContents()
+                self.tableWidgetPlan.clearContents()
 
                 # 计划索引
                 for index, item_plan in enumerate(rp2_temp_list):
                     # 内容索引
                     for idx, name in enumerate(item_plan):
-                        self.tableWidgetPlan_2.setItem(idx, index, QtWidgets.QTableWidgetItem(item_plan[idx]))
-                        self.tableWidgetPlan_2.item(idx, index).setTextAlignment(QtCore.Qt.AlignCenter)
+                        self.tableWidgetPlan.setItem(idx, index, QtWidgets.QTableWidgetItem(item_plan[idx]))
+                        self.tableWidgetPlan.item(idx, index).setTextAlignment(QtCore.Qt.AlignCenter)
             else:
                 # 没有计划，清空表格内容直接清空
-                self.tableWidgetPlan_2.clearContents()
+                self.tableWidgetPlan.clearContents()
 
             if rp3 != ():
                 if rp3[0] == '1':
-                    self.lbl_plan_timeout_2.setText('已超时')
-                    self.lbl_plan_timeout_2.setStyleSheet("background-color: rgb(255, 0, 0)")
+                    self.lbl_plan_timeout.setText('已超时')
+                    self.lbl_plan_timeout.setStyleSheet("background-color: rgb(255, 0, 0)")
                 elif rp3[0] == '0':
-                    self.lbl_plan_timeout_2.setText('未超时')
-                    self.lbl_plan_timeout_2.setStyleSheet("background-color: rgb(0, 255, 0)")
+                    self.lbl_plan_timeout.setText('未超时')
+                    self.lbl_plan_timeout.setStyleSheet("background-color: rgb(0, 255, 0)")
 
                 if rp3[1] == '1':
-                    self.lbl_start_flag_2.setText('发车状态')
-                    self.lbl_start_flag_2.setStyleSheet("background-color: rgb(255, 170, 255);")
+                    self.lbl_start_flag.setText('发车状态')
+                    self.lbl_start_flag.setStyleSheet("background-color: rgb(255, 170, 255);")
                 elif rp3[1] == '2':
-                    self.lbl_start_flag_2.setText('接车状态')
-                    self.lbl_start_flag_2.setStyleSheet("background-color: rgb(85, 255, 255);")
+                    self.lbl_start_flag.setText('接车状态')
+                    self.lbl_start_flag.setStyleSheet("background-color: rgb(85, 255, 255);")
                 elif rp3[1] == '0':
-                    self.lbl_start_flag_2.setText('未知状态')
-                    self.lbl_start_flag_2.setStyleSheet("background-color: rgb(170, 170, 255);")
+                    self.lbl_start_flag.setText('未知状态')
+                    self.lbl_start_flag.setStyleSheet("background-color: rgb(170, 170, 255);")
 
             if rp4 != ():
                 if rp4[0] == '1':
-                    self.lbl_plan_valid_2.setText('计划有效')
-                    self.lbl_plan_valid_2.setStyleSheet("background-color: rgb(0, 255, 0)")
+                    self.lbl_plan_valid.setText('计划有效')
+                    self.lbl_plan_valid.setStyleSheet("background-color: rgb(0, 255, 0)")
                 elif rp4[0] == '0':
-                    self.lbl_plan_valid_2.setText('计划无效')
-                    self.lbl_plan_valid_2.setStyleSheet("background-color: rgb(255, 0, 0)")
+                    self.lbl_plan_valid.setText('计划无效')
+                    self.lbl_plan_valid.setStyleSheet("background-color: rgb(255, 0, 0)")
 
-            self.led_plan_coutdown_2.setText(str(time_count / 1000) + 's')
-            self.led_runtime_2.setText(str(time_remain / 1000) + 's')
+            self.led_plan_coutdown.setText(str(time_count / 1000) + 's')
+            self.led_runtime.setText(str(time_remain / 1000) + 's')
 
         except Exception as err:
             self.Log(err, __name__, sys._getframe().f_lineno)
@@ -2936,225 +2150,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 temp_transfer_list[idx] = t[idx]
         return temp_transfer_list
 
-    # 事件处理函数，设置ATP信息
-    def set_ATP_page_content(self, idx):
-        # 数据包北荣使用tuple类型
-        for k in self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict.keys():
-            if k == 2:
-                sp2_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
-                self.set_atp_info_win(sp2_tpl, 2)
-            elif k == 1001:
-                c2ato_p1_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
-                self.set_atp_info_win(c2ato_p1_tpl, 1001)
-            elif k == 5:
-                sp5_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
-                self.set_atp_info_win(sp5_tpl, 5)
-            elif k == 7:
-                sp7_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
-            elif k == 131:
-                sp131_tpl = self.log.cycle_dic[self.log.cycle[idx]].cycle_sp_dict[k]
-                self.set_atp_info_win(sp131_tpl, 131)
-
-    # 设置数据包显示到界面
-    def set_atp_info_win(self, sp_tpl="tuple", clsify=int):
-        # SP2包内容
-        if clsify == 2:
-            if sp_tpl != ():
-                # 门允许状态
-                if sp_tpl[2].strip() == '1':  # 左门允许
-                    self.lbl_door_pmt.setText('左门允许')
-                    self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
-                elif sp_tpl[3].strip() == '1':  # 右门允许
-                    self.lbl_door_pmt.setText('右门允许')
-                    self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
-                else:
-                    self.lbl_door_pmt.setText('无门允许')
-                    self.lbl_door_pmt.setStyleSheet("background-color: rgb(255, 0, 0);")
-                # ATP停准停稳状态
-                if sp_tpl[16].strip() == '0':
-                    self.lbl_atp_stop_ok.setText('未停稳')
-                    self.lbl_atp_stop_ok.setStyleSheet("background-color: rgb(255, 0, 0);")
-                elif sp_tpl[16].strip() == '1':
-                    self.lbl_atp_stop_ok.setText('停稳未停准')
-                    self.lbl_atp_stop_ok.setStyleSheet("background-color: rgb(0, 200, 127);")
-                elif sp_tpl[16].strip() == '2':
-                    self.lbl_atp_stop_ok.setText('停稳停准')
-                    self.lbl_atp_stop_ok.setStyleSheet("background-color: rgb(0, 255, 127);")
-
-                # 是否TSM区
-                if sp_tpl[21].strip() == '2147483647' or sp_tpl[21].strip() != '4294967295':
-                    self.lbl_tsm.setText('恒速区')
-                    self.lbl_tsm.setStyleSheet("background-color: rgb(0, 255, 127);")
-                else:
-                    self.lbl_tsm.setText('减速区')
-                    self.lbl_tsm.setStyleSheet("background-color: rgb(255, 255, 0);")
-
-                # 是否立折
-                if sp_tpl[5].strip() == '1':
-                    self.lbl_tb.setText('立折换端')
-                    self.lbl_tb.setStyleSheet("background-color: rgb(0, 255, 127);")
-                else:
-                    self.lbl_tb.setText('非换端')
-                    self.lbl_tb.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-                # 是否切牵引
-                if sp_tpl[24].strip() == '1':
-                    self.lbl_atp_cut_traction.setText('ATP切除牵引')
-                    self.lbl_atp_cut_traction.setStyleSheet("background-color:  rgb(255, 0, 0);")
-                else:
-                    self.lbl_atp_cut_traction.setText('未切除牵引')
-                    self.lbl_atp_cut_traction.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-                # 是否制动
-                if sp_tpl[25].strip() == '1':
-                    self.lbl_atp_brake.setText('ATP施加制动')
-                    self.lbl_atp_brake.setStyleSheet("background-color: rgb(255, 0, 0);")
-                else:
-                    self.lbl_atp_brake.setText('未施加制动')
-                    self.lbl_atp_brake.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-                # ATP等级/模式
-                if sp_tpl[8].strip() == '1':
-                    self.lbl_atp_level.setText('CTCS2')
-
-                    if sp_tpl[9].strip() == '1':
-                        self.lbl_atp_mode.setText('待机模式')
-                    elif sp_tpl[9].strip() == '2':
-                        self.lbl_atp_mode.setText('完全模式')
-                    elif sp_tpl[9].strip() == '3':
-                        self.lbl_atp_mode.setText('部分模式')
-                    elif sp_tpl[9].strip() == '5':
-                        self.lbl_atp_mode.setText('引导模式')
-                    elif sp_tpl[9].strip() == '7':
-                        self.lbl_atp_mode.setText('目视模式')
-                    elif sp_tpl[9].strip() == '8':
-                        self.lbl_atp_mode.setText('调车模式')
-                    elif sp_tpl[9].strip() == '9':
-                        self.lbl_atp_mode.setText('隔离模式')
-                    elif sp_tpl[9].strip() == '10':
-                        self.lbl_atp_mode.setText('机信模式')
-                    elif sp_tpl[9].strip() == '11':
-                        self.lbl_atp_mode.setText('休眠模式')
-                elif sp_tpl[8].strip() == '3':
-                    self.lbl_atp_level.setText('CTCS3')
-
-                    if sp_tpl[9].strip() == '6':
-                        self.lbl_atp_mode.setText('待机模式')
-                    elif sp_tpl[9].strip() == '0':
-                        self.lbl_atp_mode.setText('完全模式')
-                    elif sp_tpl[9].strip() == '1':
-                        self.lbl_atp_mode.setText('引导模式')
-                    elif sp_tpl[9].strip() == '2':
-                        self.lbl_atp_mode.setText('目视模式')
-                    elif sp_tpl[9].strip() == '3':
-                        self.lbl_atp_mode.setText('调车模式')
-                    elif sp_tpl[9].strip() == '10':
-                        self.lbl_atp_mode.setText('隔离模式')
-                    elif sp_tpl[9].strip() == '5':
-                        self.lbl_atp_mode.setText('休眠模式')
-
-                # 显示信息
-                if '4294967295' != sp_tpl[23].strip():
-                    self.led_atp_milestone.setText(
-                        'K' + str(int(int(sp_tpl[23]) / 1000)) + '+' + str(int(sp_tpl[23]) % 1000))
-                else:
-                    self.led_atp_milestone.setText('未知')
-                self.led_stn_center_dis.setText(sp_tpl[18].strip() + 'cm')
-                self.led_jz_signal_dis.setText(sp_tpl[19].strip() + 'cm')
-                self.led_cz_signal_dis.setText(sp_tpl[20].strip() + 'cm')
-                self.led_atp_tsm_dis.setText(sp_tpl[21].strip() + 'cm')
-                self.led_cz_signal_dis.setText(sp_tpl[20].strip() + 'cm')
-                self.led_atp_target_dis.setText(sp_tpl[7].strip() + 'cm')
-                self.led_atp_gfx_dis.setText(sp_tpl[14].strip() + 'm')
-                self.led_atp_target_v.setText(sp_tpl[6].strip() + 'cm/s')
-                self.led_atp_ma.setText(sp_tpl[12].strip() + 'm')
-                self.led_atp_stoperr.setText(sp_tpl[17].strip() + 'cm')
-
-        if clsify == 1001:
-            # 门允许状态
-            if sp_tpl[1].strip() == '1':  # 左门允许
-                self.lbl_door_pmt.setText('左门允许')
-                self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
-            elif sp_tpl[2].strip() == '1':  # 右门允许
-                self.lbl_door_pmt.setText('右门允许')
-                self.lbl_door_pmt.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_door_pmt.setText('无门允许')
-                self.lbl_door_pmt.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            self.led_atp_target_v.setText(sp_tpl[3].strip() + 'cm/s')
-            self.led_atp_target_dis.setText(sp_tpl[4].strip() + 'cm')
-            self.led_atp_gfx_dis.setText(sp_tpl[10].strip() + 'm')
-            self.led_atp_ma.setText(sp_tpl[8].strip() + 'm')
-            self.led_atp_stoperr.setText(sp_tpl[12].strip() + 'cm')
-            # 设置ATP速传sdu
-            atp_s = int(sp_tpl[5].strip())
-            self.led_atp_sdu.setText(sp_tpl[6].strip() + 'cm/s')  # atp速度
-            self.led_atp_s_delta.setText(str(atp_s - self.sdu_info_s[1]) + 'cm')
-            self.sdu_info_s[1] = atp_s
-
-        if clsify == 5:
-            if sp_tpl != ():
-                if sp_tpl[0].strip() == '1':
-                    self.led_units.setText('8编组')
-                elif sp_tpl[0].strip() == '2':
-                    self.led_units.setText('16编组')
-                elif sp_tpl[0].strip() == '3':
-                    self.led_units.setText('18编组')
-
-                if sp_tpl[9].strip() == '1':
-                    self.led_driver_strategy.setText('正常策略')
-                elif sp_tpl[9].strip() == '2':
-                    self.led_driver_strategy.setText('快行策略')
-                elif sp_tpl[9].strip() == '3':
-                    self.led_driver_strategy.setText('慢行策略')
-
-                # BTM天线等
-                self.led_atp_btm_pos.setText(str(int(sp_tpl[3]) * 10) + 'cm')
-                self.led_head_foor_dis.setText(sp_tpl[4].strip() + 'cm')
-                self.led_nid_engine.setText(sp_tpl[8].strip())
-
-        if clsify == 131:
-            if sp_tpl != ():
-                if sp_tpl[6].strip() == '1':
-                    self.lbl_mvb_link.setText('MVB正常')
-                    self.lbl_mvb_link.setStyleSheet("background-color: rgb(0, 255, 127);")
-                elif sp_tpl[6].strip() == '2':
-                    self.lbl_mvb_link.setText('MVB中断')
-                    self.lbl_mvb_link.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-                if sp_tpl[4].strip() == '1':
-                    self.lbl_ato_radio.setText('电台正常')
-                    self.lbl_ato_radio.setStyleSheet("background-color: rgb(0, 255, 127);")
-                elif sp_tpl[4].strip() == '0':
-                    self.lbl_ato_radio.setText('电台异常')
-                    self.lbl_ato_radio.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-                if sp_tpl[5].strip() == '1':
-                    self.lbl_ato_session.setText('未连接')
-                    self.lbl_ato_session.setStyleSheet("background-color: rgb(255, 0, 0);")
-                elif sp_tpl[5].strip() == '2':
-                    self.lbl_ato_session.setText('正在呼叫')
-                    self.lbl_ato_session.setStyleSheet("background-color: rgb(170, 170, 255);")
-                elif sp_tpl[5].strip() == '3':
-                    self.lbl_ato_session.setText('正常连接')
-                    self.lbl_ato_session.setStyleSheet("background-color: rgb(0, 255, 127);")
-
-                if sp_tpl[0].strip() == '1':
-                    self.lbl_ato_ctrl_stat.setText('计划有效')
-                else:
-                    if sp_tpl[7].strip() == '1':
-                        self.lbl_ato_ctrl_stat.setText('正常策略')
-                    elif sp_tpl[7].strip() == '2':
-                        self.lbl_ato_ctrl_stat.setText('快行策略')
-                    elif sp_tpl[7].strip() == '3':
-                        self.lbl_ato_ctrl_stat.setText('慢行策略')
-
     # 事件处理函数，双击跳转
     def BTM_selected_cursor_go(self, row_item):
-        global cur_interface
-        if cur_interface == 1 and self.mode == 1:  # 必须标记模式:
-            c_num = self.BTM_cycle[row_item.row()]
+        if self.curInterface == 1 and self.curWinMode == 1:  # 必须标记模式:
+            c_num = BtmInfoDisplay.btmCycleList[row_item.row()]
             try:
                 self.spinBox.setValue(c_num)
             except Exception as err:
@@ -3162,101 +2161,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，应答器表格选中事件显示
     def BTM_selected_info(self, row_item):
-        global cur_interface
-        if cur_interface == 1 and self.mode == 1:  # 必须标记模式:
-            c_num = self.BTM_cycle[row_item.row()]
-            try:
-                if 7 in self.log.cycle_dic[c_num].cycle_sp_dict.keys():
-                    c_show_sp7 = self.log.cycle_dic[c_num]
-                    # JD正常刷颜色
-                    if c_show_sp7.cycle_sp_dict[7][3].strip() == '13':
-                        self.led_with_c13.setText('有')
-                        self.led_with_c13.setStyleSheet("background-color: rgb(225, 0, 0);")
-                        # 站台位置
-                        platform_pos = int(c_show_sp7.cycle_sp_dict[7][5])
-                        if platform_pos == 0:
-                            self.led_platform_pos.setText('左侧')
-                        elif platform_pos == 1:
-                            self.led_platform_pos.setText('右侧')
-                        elif platform_pos == 2:
-                            self.led_platform_pos.setText('双侧')
-                        elif platform_pos == 3:
-                            self.led_platform_pos.setText('无站台')
-                        # 站台门
-                        platform_door = int(c_show_sp7.cycle_sp_dict[7][6])
-                        if platform_door == 1:
-                            self.led_platform_door.setText('有')
-                        elif platform_door == 2:
-                            self.led_platform_door.setText('无')
-                        # 停车点
-                        self.led_track.setText(c_show_sp7.cycle_sp_dict[7][7])
-                        scale = int(c_show_sp7.cycle_sp_dict[7][4])
-                        d_stop = int(c_show_sp7.cycle_sp_dict[7][8])
-                        if d_stop != 32767:
-                            if scale == 0:
-                                scale = 10
-                            elif scale == 1:
-                                scale = 100
-                            elif scale == 2:
-                                scale = 1000
-                            self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
-                        else:
-                            self.led_stop_d_JD.setText('无效值')
-                    else:
-                        self.led_with_c13.setText('无')
-                        self.led_with_c13.setStyleSheet("background-color: rgb(100, 100, 100);")
-                        self.led_platform_door.clear()
-                        self.led_platform_pos.clear()
-                        self.led_track.clear()
-                        self.led_stop_d_JD.clear()
-            except Exception as err:
-                self.Log(err, __name__, sys._getframe().f_lineno)
-        elif cur_interface == 2:
-            cur_sp7 = self.real_btm_list[row_item.row()]    # 通过记录的在线btm数据来二次索引
-            try:
-                # JD正常刷颜色
-                if cur_sp7[3].strip() == '13':
-                    self.led_with_c13.setText('有')
-                    self.led_with_c13.setStyleSheet("background-color: rgb(225, 0, 0);")
-                    # 站台侧位置
-                    platform_pos = int(cur_sp7[5])
-                    if platform_pos == 0:
-                        self.led_platform_pos.setText('左侧')
-                    elif platform_pos == 1:
-                        self.led_platform_pos.setText('右侧')
-                    elif platform_pos == 2:
-                        self.led_platform_pos.setText('双侧')
-                    elif platform_pos == 3:
-                        self.led_platform_pos.setText('无站台')
-                    # 站台门
-                    platform_door = int(cur_sp7[6])
-                    if platform_door == 1:
-                        self.led_platform_door.setText('有')
-                    elif platform_door == 2:
-                        self.led_platform_door.setText('无')
-                    # 停车点
-                    self.led_track.setText(cur_sp7[7])
-                    scale = int(cur_sp7[4])
-                    d_stop = int(cur_sp7[8])
-                    if d_stop != 32767:
-                        if scale == 0:
-                            scale = 10
-                        elif scale == 1:
-                            scale = 100
-                        elif scale == 2:
-                            scale = 1000
-                        self.led_stop_d_JD.setText(str(scale * d_stop) + 'cm')
-                    else:
-                        self.led_stop_d_JD.setText('无效值')
-                else:
-                    self.led_with_c13.setText('无')
-                    self.led_with_c13.setStyleSheet("background-color: rgb(100, 100, 100);")
-                    self.led_platform_door.clear()
-                    self.led_platform_pos.clear()
-                    self.led_track.clear()
-                    self.led_stop_d_JD.clear()
-            except Exception as err:
-                self.Log(err, __name__, sys._getframe().f_lineno)
+        # 获取SP7应答器包对象
+        sp7_obj = BtmInfoDisplay.GetBtmItemSelected(self.log.cycle_dic, row_item, 
+        self.curInterface, self.curWinMode)
+        if sp7_obj:
+            BtmInfoDisplay.displayBtmItemSelInfo(sp7_obj, self.led_with_c13, self.led_platform_pos, 
+            self.led_platform_door,self.led_track, self.led_stop_d_JD)
 
     # 事件处理函数，显示测速测距信息
     def set_sdu_info_content(self, idx):
@@ -3304,7 +2214,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBvato.setChecked(False)
         self.CBramp.setChecked(False)
         self.CBatppmtv.setChecked(False)
-
+       
     # 重置主界面文本框
     def reset_text_edit(self):
         self.textEdit.setPlainText(time.strftime("%Y-%m-%d %H:%M:%S \n", time.localtime(time.time())))
@@ -3312,21 +2222,20 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 重绘图形并重置选择框
     def reset_logplot(self):
-        global load_flag
-        global curve_flag
         # 当文件路径不为空
         if self.file == '':
             pass
         else:
             try:
                 self.Log('Init global vars', __name__, sys._getframe().f_lineno)
-                load_flag = 0  # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
-                curve_flag = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
+                self.islogLoad = 0  # 区分是否已经加载文件,1=加载且控车，2=加载但没有控车
+                self.actionRealtime.setEnabled(True)
+                self.curveCordType = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
                 self.Log('Init UI widgt', __name__, sys._getframe().f_lineno)
                 self.update_filetab()
                 self.reset_all_checkbox()
                 self.reset_text_edit()
-                self.mode = 0  # 恢复初始浏览模式
+                self.curWinMode = 0  # 恢复初始浏览模式
                 self.update_mvb_port_pat()  # 更新mvb索引端口信息
                 self.Log("Clear axes", __name__, sys._getframe().f_lineno)
                 self.sp.axes1.clear()
@@ -3345,152 +2254,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # ATO状态显示标签
     def set_ato_status_label(self, idx):
-        temp = ()
-        c = self.log.cycle_dic[self.log.cycle[idx]]
-        if c.fsm != ():
-            temp = self.log.cycle_dic[self.log.cycle[idx]].fsm
-            # ATO模式
-            if temp[1] == '1':
-                self.lbl_mode.setText('AOS模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(180, 180, 180);")
-            elif temp[1] == '2':
-                self.lbl_mode.setText('AOR模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[1] == '3':
-                self.lbl_mode.setText('AOM模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(255, 255, 255);")
-            else:
-                self.lbl_mode.setText('ATO模式')
-                self.lbl_mode.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-            # 软允许
-            if temp[3] == '1':
-                self.lbl_pm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_pm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 硬允许
-            if temp[2] == '1':
-                self.lbl_hpm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_hpm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 动车组允许
-            if temp[4] == '1':
-                self.lbl_carpm.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_carpm.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 自检状态
-            if temp[5] == '1':
-                self.lbl_check.setStyleSheet("background-color: rgb(0, 255, 127);")
-            else:
-                self.lbl_check.setStyleSheet("background-color: rgb(255, 0, 0);")
-
-            # 发车指示灯
-            if temp[6] == '0':
-                self.lbl_lamp.setText('发车灯灭')
-                self.lbl_lamp.setStyleSheet("background-color: rgb(100, 100, 100);")
-            elif temp[6] == '1':
-                self.lbl_lamp.setText('发车灯闪')
-                self.lbl_lamp.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[6] == '2':
-                self.lbl_lamp.setText('发车灯亮')
-                self.lbl_lamp.setStyleSheet("background-color: rgb(0, 255, 0);")
-
-            # 车长
-            self.lbl_trainlen.setText('车长' + str(int(temp[9]) / 100) + 'm')
-
-            # 门状态
-            if temp[10] == '55':
-                self.lbl_doorstatus.setText('门开')
-            elif temp[10] == 'AA':
-                self.lbl_doorstatus.setText('门关')
-
-            # 低频
-            if temp[11] == '0':
-                self.lbl_freq.setText('H码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 0, 0);")
-            elif temp[11] == '1':
-                self.lbl_freq.setText('B码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(161, 161, 161);")
-            elif temp[11] == '2':
-                self.lbl_freq.setText('HU码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 215, 15);")
-            elif temp[11] == '10':
-                self.lbl_freq.setText('HB码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(163, 22, 43);")
-            elif temp[11] == '2A':
-                self.lbl_freq.setText('L4码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '2B':
-                self.lbl_freq.setText('L5码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '25':
-                self.lbl_freq.setText('U2S码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '23':
-                self.lbl_freq.setText('UUS码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '22':
-                self.lbl_freq.setText('UU码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '21':
-                self.lbl_freq.setText('U码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '24':
-                self.lbl_freq.setText('U2码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(255, 255, 0);")
-            elif temp[11] == '26':
-                self.lbl_freq.setText('LU码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(205, 255, 25);")
-            elif temp[11] == '28':
-                self.lbl_freq.setText('L2码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '27':
-                self.lbl_freq.setText('L码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            elif temp[11] == '29':
-                self.lbl_freq.setText('L3码')
-                self.lbl_freq.setStyleSheet("background-color: rgb(0, 255, 0);")
-            # 站台标志由于FSM中记录后会经过处理，采用SC才是本周期控车使用的
-            if self.log.cycle_dic[self.log.cycle[idx]].control:  # 按周期索引取控制信息，妨不连续
-                stn_flag = list(self.log.cycle_dic[self.log.cycle[idx]].control)[17]
-                if stn_flag == '1':
-                    self.lbl_stn.setText('站内')
-                else:
-                    self.lbl_stn.setText('站外')
-        # 主断和分相
-        if c.break_status == 1:
-            self.lbl_dcmd.setText('主断断开')
-            self.lbl_dcmd.setStyleSheet("background-color: rgb(255, 0, 0);")
-        else:
-            self.lbl_dcmd.setText('主断闭合')
-            self.lbl_dcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
-        if c.gfx_flag == 1:
-            self.lbl_atpdcmd.setText('过分相')
-            self.lbl_atpdcmd.setStyleSheet("background-color: rgb(255, 0, 0);")
-        else:
-            self.lbl_atpdcmd.setText('非过分相')
-            self.lbl_atpdcmd.setStyleSheet("background-color: rgb(0, 255, 127);")
-
+        cycleItem = self.log.cycle_dic[self.log.cycle[idx]]
+        self.atoFsmInfoShow(cycleItem.fsm, cycleItem.control, cycleItem.msg_atp2ato, cycleItem.t2a_stat)
         # 根据分相和主断路器设置光标
-        if c.break_status == 1 or c.gfx_flag == 1:
-            self.c_vato.ly.set_color('red')
-            self.c_vato.lx.set_color('red')
-            self.c_vato.lx.set_linewidth(1.6)
-            self.c_vato.ly.set_linewidth(1.6)
-        else:
-            self.c_vato.ly.set_color('k')
-            self.c_vato.lx.set_color('k')
-            self.c_vato.lx.set_linewidth(0.8)
-            self.c_vato.ly.set_linewidth(0.8)
+        if cycleItem.t2a_stat.main_circuit_breaker == 0x00 or cycleItem.msg_atp2ato.sp2_obj.m_ms_cmd == 1:
+            self.c_vato.boldRedEnabled(True)
 
     # 导出函数
     def export_ato_ctrl_info(self):
-        global load_flag
         # file is load
-        if load_flag == 1:
+        if self.islogLoad == 1:
             try:
                 filepath = QtWidgets.QFileDialog.getSaveFileName(self, "Save file", "d:/", "excel files(*.xls)")
                 if filepath != ('', ''):
@@ -3557,6 +2330,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.action_acc_measure.setIcon(QtGui.QIcon(":IconFiles/acc.png"))
         self.actionExport.setIcon(QtGui.QIcon(":IconFiles/export.png"))
         self.actionC3ATOTrans.setIcon(QtGui.QIcon(":IconFiles/translator.png"))
+        self.actionRplay.setIcon(QtGui.QIcon(":IconFiles/replay.png"))
 
 
 if __name__ == '__main__':

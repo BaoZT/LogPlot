@@ -96,6 +96,18 @@ class SnaptoCursor(QtCore.QObject):
         global cursor_track_flag
         cursor_track_flag = 1
 
+    def boldRedEnabled(self, sw=bool):
+        if sw:
+            self.ly.set_color('red')
+            self.lx.set_color('red')
+            self.lx.set_linewidth(1.6)
+            self.ly.set_linewidth(1.6)
+        else:
+            self.ly.set_color('k')
+            self.lx.set_color('k')
+            self.lx.set_linewidth(0.8)
+            self.ly.set_linewidth(0.8)
+
 
 # 画板类定义
 class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该类既是一个PyQt5的Qwidget，又是一个matplotlib
@@ -179,7 +191,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.ax1_twin.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
 
     # 绘制速度坐标轴相关信息
-    def plot_cord1(self, ob=FileProcess, cmd=int, x_lim=tuple, y_lim=tuple):
+    def plot_cord1(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
         # paint the speed ruler
         self.axes1.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
                            label = '45km/h,80km/h,350km/h', linewidth=1)  # 45km/h   #  0 being the far left of the plot,
@@ -267,7 +279,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 self.axes1.legend(loc='upper left')
 
     # 使光标保持在画面之中，根据给定的数据点更新绘图范围
-    def update_cord_with_cursor(self, data=tuple, x_lim=tuple, y_lim=tuple):
+    def update_cord_with_cursor(self, data='tuple', x_lim='tuple', y_lim='tuple'):
         update_flag = 0
         # 初始化
         x_new_lim = [0, 0]
@@ -415,7 +427,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             pass
 
     # 计算并设置事件绘制信息及标志
-    def set_event_info_plot(self, event_dic=dict, cycle_dic=dict, pos_list=list, cycle_list=list):
+    def set_event_info_plot(self, event_dic='dict', cycle_dic='dict', pos_list='list', cycle_list='list'):
         """
         该函数主要按照事件字典说明，按照传入的周期列表和位置列表
         计算绘制事件需要的绘图列表，即“事件-周期/位置”列表
@@ -456,19 +468,19 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             for idx, item_cycle in enumerate(cycle_list):
                 # 应答器事件字典
                 if event_dic['BTM'] == 1:
-                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                    if cycle_dic[item_cycle].msg_atp2ato.sp7_obj.updateflag:
                         temp_cycle_list_btm.append(item_cycle)      # 直接添加周期号
                         temp_pos_list_btm.append(pos_list[idx])     # 添加对应位置
                 # 无线事件字典
                 if event_dic['WL'] == 1:
                     # 为了简化代码，和流程，不对所有周期检测，只检测AOR和AOM周期，即有SC的
-                    if 8 in cycle_dic[item_cycle].cycle_sp_dict.keys():
+                    if cycle_dic[item_cycle].msg_atp2ato.sp8_obj.updateflag:
                         temp_cycle_list_wl.append(item_cycle)  # 直接添加周期号
                         temp_pos_list_wl.append(pos_list[idx])  # 添加对应位置
                 # JD应答器
                 if event_dic['JD'] == 1:
-                    if 7 in cycle_dic[item_cycle].cycle_sp_dict.keys():
-                        if '13' == cycle_dic[item_cycle].cycle_sp_dict[7][3].strip():
+                    if cycle_dic[item_cycle].msg_atp2ato.sp7_obj.updateflag:
+                        if 13 == cycle_dic[item_cycle].msg_atp2ato.sp7_obj.nid_xuser:
                             temp_cycle_list_jd.append(item_cycle)  # 直接添加周期号
                             temp_pos_list_jd.append(pos_list[idx])  # 添加对应位置
                 # 计划
@@ -521,7 +533,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                                                marker='*',label='运行计划数据', color='Purple')
 
     # 计算需要绘制标志的地方
-    def set_wayside_info_in_cords(self, cycle_dic=dict, pos_list=list, cycle_list=list):
+    def set_wayside_info_in_cords(self, cycle_dic='dict', pos_list='list', cycle_list='list'):
         """
         该函数主要搜索绘制站台和分相区
         :param cycle_dic: 周期列表，用于查询事件信息对应周期
@@ -544,7 +556,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         # 周期字典和周期列表中的周期都是int类型
             for idx, item_cycle in enumerate(cycle_list):
                 # 应答器事件字典
-                if 1 == cycle_dic[item_cycle].gfx_flag:
+                if 1 == cycle_dic[item_cycle].msg_atp2ato.sp2_obj.m_ms_cmd:
                     temp_cycle_list_gfx.append(item_cycle)  # 直接添加周期号
                     temp_pos_list_gfx.append(pos_list[idx])  # 添加对应位置
                 # 改用控车使用的
@@ -607,7 +619,7 @@ class Figure_Canvas_R(FigureCanvas):
         self.top = 10000
 
     # 更新绘制需求
-    def updatePaintSet(self, ch=list):
+    def updatePaintSet(self, ch='list'):
         # 进行处理
         if ch == self.choice:
             pass
@@ -672,8 +684,12 @@ class Figure_Canvas_R(FigureCanvas):
             self.l_atppmtv[0].set_ydata(tmp[3, :])
         if self.choice[4] == 1:
             self.l_level[0].set_ydata(tmp[4, :])
-        # 尝试曲线轴自适应
-        self.axes1.relim()  # 重新计算坐标轴限制
-        self.axes1.autoscale_view(scalex=False, scaley=True)   # 重新适应纵轴
+        # 尝试曲线轴自适应,当速度值大于纵轴80%或小于20%时调整
+        cord_lim_y = self.axes1.get_ylim()
+        delta = abs(cord_lim_y[1] - cord_lim_y[0])
+        if (tmp[0, -1] > delta*0.8 + cord_lim_y[0]) or (tmp[0,-1] < delta*0.2 + cord_lim_y[0]):
+            self.axes1.relim()  # 重新计算坐标轴限制
+            self.axes1.autoscale_view(scalex=False, scaley=True)   # 重新适应纵轴
+        self.draw_idle()
 
 

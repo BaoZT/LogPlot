@@ -8,6 +8,8 @@
 @file: TCMSParse.py
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
+LastEditors: Zhengtang Bao
+LastEditTime: 2022-07-31 15:36:50
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -50,17 +52,17 @@ MVBFieldDic = {
     'track_brack_cmd_feedback':ProtoField("牵引/制动命令状态标志反馈",0,b_endian,8,None,{0xAA:"牵引",0x55:"制动",0xA5:"惰行",0x00:"无命令"}),
     'track_value_feedback':ProtoField("牵引控制量反馈",0,b_endian,16,None,None),
     'brake_value_feedback':ProtoField("制动控制量反馈",0,b_endian,16,None,None),
-    'ato_keep_brake_on_feedback':ProtoField("ATO保持制动施加命令反馈",0,b_endian,8,None,{0xAA:"保持制动施加有效命令",0x00:"保持制动施加无效"}),
+    'ato_keep_brake_on_feedback':ProtoField("ATO保持制动施加命令反馈",0,b_endian,8,None,{0xAA:"保持制动有效",0x00:"保持制动无效"}),
     'open_left_door_feedback':ProtoField("开左门命令反馈",0,b_endian,2,None,{3:"有效命令",0:"无动作"}),
     'open_right_door_feedback':ProtoField("开右门命令反馈",0,b_endian,2,None,{3:"有效命令",0:"无动作"}),
     'constant_state_feedback':ProtoField("恒速反馈(预留)",0,b_endian,8,None,{0xAA:"处于恒速状态",0x00:"退出恒速状态"}),
-    'door_state':ProtoField("车门状态",0,b_endian,8,None,{0xAA:"所有车门关闭且锁闭",0x00:"车门未关闭或未锁闭"}),
+    'door_state':ProtoField("车门状态",0,b_endian,8,None,{0xAA:"车门关锁闭",0x00:"车门未关或锁闭"}),
     'spin_state':ProtoField("空转",0,b_endian,4,None,{10:"发生",0:"未发生"}),
     'slip_state':ProtoField("打滑",0,b_endian,4,None,{10:"发生",0:"不发生"}),
     'train_unit':ProtoField("编组信息",0,b_endian,8,None,{1:"8编组",2:"8编组重连",3:"16编组",4:"17编组"}),
     'train_weight':ProtoField("车重",0,b_endian,16,"0.1t",None),
-    'train_permit_ato':ProtoField("动车组允许ATO控车信号",0,b_endian,8,None,{0xAA:"允许",0x00:"不允许"}),
-    'main_circuit_breaker':ProtoField("主断路器状态",0,b_endian,8,None,{0xAA:"有效",0x00:"无效"}),
+    'train_permit_ato':ProtoField("动车组允许ATO控车信号",0,b_endian,8,None,{0xAA:"车辆允许",0x00:"车辆不允许"}),
+    'main_circuit_breaker':ProtoField("主断路器状态",0,b_endian,8,None,{0xAA:"主断闭合",0x00:"主断断开"}),
     'atp_door_permit':ProtoField("ATP开门允许",0,b_endian,2,None,{3:"有效",0:"无效"}),
     'man_door_permit':ProtoField("人工开门允许",0,b_endian,2,None,{3:"有效",0:"无效"}),
     'no_permit_ato_state':ProtoField("不允许ATO控车信号状态字",0,b_endian,8,None,None)
@@ -91,16 +93,22 @@ class DisplayMVBField(object):
                 # 检查是否有含义
                 if value in MVBFieldDic[keyName].meaning.keys():
                     led.setText(MVBFieldDic[keyName].meaning[value])
+                # 检查是否有单位
+                elif MVBFieldDic[keyName].unit:
+                    led.setText(str(value)+' '+MVBFieldDic[keyName].unit)
                 else:
                     led.setStyleSheet("background-color: rgb(255, 0, 0);")
-                    led.setText('异常值%s' % value)
+                    led.setText('异常值0x%X' % value)
             else:
                 # 针对组合含义特殊解析
                 if keyName == "no_permit_ato_state":
                     led.setText(DisplayMVBField.disTcmsNoPmState(value))
                 else:
-                    # 直接处理显示
-                    led.setText(str(value))
+                    if MVBFieldDic[keyName].unit:
+                        led.setText(str(value)+' '+MVBFieldDic[keyName].unit)
+                    else:
+                        # 直接处理显示
+                        led.setText(str(value))
         else:
             print("[ERR]:disNameOfLineEdit error key name!")
     
@@ -217,6 +225,11 @@ class MVBParse(object):
         self.ato2tcms_ctrl_obj = Ato2TcmsCtrl()
         self.ato2tcms_state_obj = Ato2TcmsState()
         self.tcms2ato_state_obj = Tcms2AtoState()
+    
+    def resetPacket(self):
+        self.ato2tcms_ctrl_obj.updateflag = False
+        self.ato2tcms_state_obj.updateflag = False
+        self.ato2tcms_state_obj.updateflag = False
 
     '''
     @breif 从周期检查中获取的原始line进行解析获取解析结构结构体
@@ -321,8 +334,8 @@ class MVBParse(object):
         obj.slip_state = item.fast_get_segment_by_index(item.curBitsIndex,4)
         obj.train_unit = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.train_weight = item.fast_get_segment_by_index(item.curBitsIndex,16)
-        obj.main_circuit_breaker = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.train_permit_ato = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+        obj.main_circuit_breaker = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.atp_door_permit = item.fast_get_segment_by_index(item.curBitsIndex,2)
         obj.man_door_permit = item.fast_get_segment_by_index(item.curBitsIndex,2)
         item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
