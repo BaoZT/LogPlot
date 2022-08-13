@@ -24,16 +24,17 @@ import numpy as np
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
 from ConfigInfo import ConfigFile
+from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse
 from MsgParse import Atp2atoParse, Atp2atoProto
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState 
 
 
 # 周期类定义
 class CycleLog(object):
-    __slots__ = ['cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end', 'break_status', 
-                'gfx_flag', 'control', 'fsm', 'time', 'cycle_num', 'cycle_sp_dict',"msg_atp2ato",
-                'a2t_ctrl','a2t_stat','t2a_stat','raw_analysis_lines', 'stoppoint', 'io_in', 'io_out', 'file_begin_offset', 
-                'file_end_offset',  'cycle_property']
+    __slots__ = ['cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end',  'control', 
+    'fsm', 'time', 'cycle_num', 'cycle_sp_dict',"msg_atp2ato",'a2t_ctrl','a2t_stat','t2a_stat',
+    'rpInfo','ioInfo','sduInfo','raw_analysis_lines', 'stoppoint', 'file_begin_offset',
+    'file_end_offset',  'cycle_property']
 
     def __init__(self, ):  # 存储的是读取的内容
         # 周期文本索引号
@@ -53,13 +54,16 @@ class CycleLog(object):
         self.a2t_ctrl = Ato2TcmsCtrl()
         self.a2t_stat = Ato2TcmsState()
         self.t2a_stat = Tcms2AtoState()
+        # 内部计划信息
+        self.rpInfo = InerRunningPlanInfo()
+        # 内部速传信息
+        self.sduInfo = InerSduInfo()
+        # 内部IO信息
+        self.ioInfo = InerIoInfo()
         # 二次解析原始记录
         self.raw_analysis_lines = []
         # 停车点
         self.stoppoint = ()
-        # IO信息
-        self.io_in = ()
-        self.io_out = ()
         # 当周期所有信息，使用File指针读取减少内存占用
         self.file_begin_offset = 0
         self.file_end_offset = 0
@@ -72,10 +76,11 @@ class CycleLog(object):
 class FileProcess(threading.Thread, QtCore.QObject):
     bar_show_signal = QtCore.pyqtSignal(int)
     end_result_signal = QtCore.pyqtSignal(bool)
-    __slots__ = ['daemon','atp2atoParser', 'mvbParser', 'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level',\
-                'ceilv', 'atp_permit_v','statmachine', 'v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',\
-                'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic', 'cur_break_status', 'cur_gfx_flag', \
-                'time_use', 'file_lines_count', 'file_path', 'filename']
+    __slots__ = ['daemon','atp2atoParser','rpParser', 'mvbParser','sduParser', 'ioParser', 
+    'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level','ceilv', 
+    'atp_permit_v','statmachine','v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',
+    'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic','time_use', 'file_lines_count',
+    'file_path', 'filename']
 
     # constructors
     def __init__(self, file_path_in):
@@ -85,6 +90,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.daemon = True
         self.mvbParser = MVBParse()
         self.atp2atoParser = Atp2atoParse()
+        self.rpParser = InerRunningPlanParse()
+        self.sduParser = InerSduInfoParse()
+        self.ioParser = InerIoInfoParse()
         self.cfg = ConfigFile()
         self.cfg.readConfigFile()
         # 序列初始化
@@ -112,9 +120,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.stop_error = []
         # 文件读取结果
         self.cycle_dic = {}
-        # 主断及分相是保持的变化才变
-        self.cur_break_status = 0
-        self.cur_gfx_flag = 0
         # 读取耗时
         self.time_use = []
         # 文件总行数
@@ -130,7 +135,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
             isok = 2
             start = time.clock()
             iscycleok = self.readkeyword(self.file_path)
-            print('Create cycle dic!')
+            print('Create cycle dic! rst:%d'%iscycleok)
             t1 = time.clock() - start
             start = time.clock()  # 更新计时起点
             islistok = self.create_ctrl_cycle_list()  # 解析周期内容
@@ -184,7 +189,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 文件总行数
         self.file_lines_count = 0
 
-    # 输入： 文件路径
+    # 输入:文件路径
     def readkeyword(self, file_path):
         ret = 0            # 函数返回值，切割结果
         self.reset_vars()  # 重置所有变量
@@ -228,7 +233,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
         Atp2atoParse.resetMsg(self.atp2atoParser.msg_obj)
         # MVB总是覆盖解析
         self.mvbParser.resetPacket()
-        
+        # 每周期重置更新标志
+        self.rpParser.reset()
+        # 重置测速测距
+        self.sduParser.reset()
+        # 重置IO信息
+        self.ioParser.reset()
 
     # <核心函数>
     # 使用自动迭代获取结果并记录周期偏移字节
@@ -388,9 +398,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输出> ret  解析1=成功，0=失败
     def match_log_packet_contect(self, c=CycleLog, line=str, pat_list="list", pat_extend_list="list"):
         ret = 1
-        # 扩展表达式C2ATO
-        pat_c2ato_p1 = pat_extend_list[0]
-
         # 数据包识别,提高效率
         if '[P->O]' in line:
             if self.cfg.reg_config.pat_p2o.findall(line):
@@ -405,16 +412,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
             c.a2t_stat = copy.deepcopy(self.mvbParser.parseProtocol(line)[1])
             c.t2a_stat = copy.deepcopy(self.mvbParser.parseProtocol(line)[2])
         elif 'v&p' in line:
-            c.raw_analysis_lines.append(line)
+            c.sduInfo =  copy.deepcopy(self.sduParser.sduInfoStringParse(line, c.ostime_start))
         elif '[RP' in line:
-            c.raw_analysis_lines.append(line)
+            c.rpInfo = copy.deepcopy(self.rpParser.rpStringParse(line,c.ostime_start))
         elif '[DOOR]' in line or '[MSG]' in line:
-            if self.cfg.reg_config.pat_io_in.findall(line):
-                c.io_in =  self.cfg.reg_config.pat_io_in.findall(line)[0]
-            elif self.cfg.reg_config.pat_io_out.findall(line):
-                c.io_out =  self.cfg.reg_config.pat_io_out.findall(line)[0]
-            else:
-                pass
+            c.ioInfo = copy.deepcopy(self.ioParser.ioStringParse(line))
         else:
             ret = 0
         return ret
@@ -492,18 +494,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46, pat_io_in, pat_io_out, p_ato_sdu, p_atp_sdu]
 
         return pat_list
-
-    # 创建计划模板
-    @staticmethod
-    def creat_plan_pattern():
-        # 计划解析RP1-RP4
-        pat_rp1 = re.compile('\[RP1\](-?\d+),(\d+),(\d+),(\d+)')
-        pat_rp2 = re.compile('\[RP2\](\d),(\d),(-?\d+),(\d)')
-        pat_rp2_comm = re.compile('\[RP2-(\d+)\](\d+),(\d+),(-?\d+),(-?\d+),(-?\d+),(-?\d+),(\d),(\d)')
-        pat_rp3 = re.compile('\[RP3\](\d),(\d),(-?\d+),(-?\d+),(\d)')
-        pat_rp4 = re.compile('\[RP4\](\d),(-?\d+),(-?\d+),(\d),(\d)')
-
-        return [pat_rp1, pat_rp2, pat_rp2_comm, pat_rp3, pat_rp4]
 
     # 计算相邻周期加速度变化
     # <输出> 返回加速度处理结果
@@ -769,5 +759,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
 
 if __name__ == "__main__":
-    fd  = FileProcess("M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log")
-    fd.readkeyword("M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log")
+    x = InerRunningPlanInfo()
+    fd  = FileProcess("08_M_L-Serial-COM8-1126174824-序列4-姚家窝铺-新民北.log")
+    fd.readkeyword("08_M_L-Serial-COM8-1126174824-序列4-姚家窝铺-新民北.log")

@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-07-31 13:37:15
+LastEditTime: 2022-08-06 20:02:34
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -41,8 +41,8 @@ Atp2atpFieldDic={
         'l_traint':ProtoField("安全车长",0,b_endian,15,None,None),
         'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,None,None),
         'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,None),
-        'm_mode_c2':ProtoField("ATP模式",0,b_endian,4,None,{1:"待机",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车",9:"隔离",10:"机车信号",11:"休眠"}),
-        'm_mode_c3':ProtoField("ATP模式",0,b_endian,4,None,{0:"完全监控",1:"引导",2:"目视行车",3:"调车",5:"休眠",6:"待机",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离",13:"SN",14:"退行"}),
+        'm_mode_c2':ProtoField("ATP模式",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
+        'm_mode_c3':ProtoField("ATP模式",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
         'm_level':ProtoField("ATP等级",0,b_endian,3,None,{1:"CTCS-2",3:"CTCS-3",4:"CTCS-4"}),
         'nid_stm':ProtoField("本国系统等级",0,b_endian,8,None,None),
         'btm_antenna_position':ProtoField("BTM 天线位置",0,b_endian,8,"10cm",None),
@@ -76,7 +76,7 @@ Atp2atpFieldDic={
         'm_doormode':ProtoField("门控模式",0,b_endian,2,None,{1:"MM",2:"AM",3:"AA"}),
         'm_doorstatus':ProtoField("车门状态",0,b_endian,2,None,{0:"异常",1:"车门开",2:"车门关"}),
         'm_gprs_radio':ProtoField("电台注册状态",0,b_endian,2,None,{0:"无电台",1:"电台正常"}),
-        'm_gprs_session':ProtoField("与TSRS连接状态",0,b_endian,2,None,{0:"不显示",1:"未连接",2:"正在连接",3:"已连接"}),
+        'm_gprs_session':ProtoField("与TSRS连接状态",0,b_endian,2,None,{0:"不显示",1:"TSRS未连接",2:"TSRS连接中",3:"TSRS连接"}),
         'm_low_frequency':ProtoField("轨道电路低频信息",0,b_endian,8,None,{0x01:"无码",0x00:"H码",0x02:"HU",0x10:"HB码",0x2A:"L4码",0x2B:"L5码",
         0x25:"U2S码",0x23:"UUS码",0x22:"UU码",0x21:"U码",0x24:"U2码",0x26:"LU码",0x28:"L2码",0x27:"L码",0x29:"L3码"}),
         'm_ms_cmd':ProtoField("ATP断主断命令",0,b_endian,2,None,{1:"ATP断主断",2:"ATP合主断"}),
@@ -96,7 +96,7 @@ Atp2atpFieldDic={
         'nid_text':ProtoField("文本编号",0,b_endian,8,None,{0:"备用",1:"站台门联动失败",2:"动车组不允许控车",3:"停车不办客",4:"ATO起车异常"}),
         'nid_tsrs':ProtoField("TSRS编号",0,b_endian,14,None,None),
         'nid_c':ProtoField("地区编号",0,b_endian,10,None,None),
-        'nid_xuser':ProtoField("子包标识",0,b_endian,8,None,{13:"有精定",0:"无精定"}),
+        'nid_xuser':ProtoField("子包标识",0,b_endian,8,None,{13:"有精确定位包",0:"无精确定位包"}),
         'n_g':ProtoField("列车停靠股道编号",0,b_endian,24,None,None),
         'n_iter':ProtoField("迭代字段",0,b_endian,5,None,None),
         'n_units':ProtoField("列车编组类型",0,b_endian,8,None,{1:"8编组",2:"16编组",3:"17编组"}),
@@ -800,7 +800,7 @@ class Atp2atoParse(object):
         """
         obj.nid_c = item.fast_get_segment_by_index(item.curBitsIndex, 10)
         obj.nid_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 14)
-        obj.nid_tsrs_h = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_radio_h = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         obj.nid_radio_l = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         obj.updateflag = True
 

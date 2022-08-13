@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-07-31 15:36:50
+LastEditTime: 2022-08-06 17:33:41
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -95,7 +95,7 @@ class DisplayMVBField(object):
                     led.setText(MVBFieldDic[keyName].meaning[value])
                 # 检查是否有单位
                 elif MVBFieldDic[keyName].unit:
-                    led.setText(str(value)+' '+MVBFieldDic[keyName].unit)
+                    led.setText(str(value)+'  '+MVBFieldDic[keyName].unit)
                 else:
                     led.setStyleSheet("background-color: rgb(255, 0, 0);")
                     led.setText('异常值0x%X' % value)
@@ -105,7 +105,7 @@ class DisplayMVBField(object):
                     led.setText(DisplayMVBField.disTcmsNoPmState(value))
                 else:
                     if MVBFieldDic[keyName].unit:
-                        led.setText(str(value)+' '+MVBFieldDic[keyName].unit)
+                        led.setText(str(value)+'  '+MVBFieldDic[keyName].unit)
                     else:
                         # 直接处理显示
                         led.setText(str(value))
@@ -236,6 +236,9 @@ class MVBParse(object):
     @mvb_line 原始的line也即只要"MVB["就进行尝试
     '''
     def parseProtocol(self, mvb_line=str):
+        # 防护提高效率
+        if '@' in mvb_line:
+            return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
         port = 0
         # 去除回车
         mvb_line = mvb_line.strip()

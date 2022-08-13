@@ -137,7 +137,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     # 对于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
-    def plotlog_vs(self, ob=FileProcess, mod=int, cmd=int):
+    def plotLogVS(self, ob=FileProcess, mod=int, cmd=int):
         if mod == 1:
             if cmd == 0:   # 位置速度曲线
                 self.axes1.plot(ob.s, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
@@ -152,7 +152,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     # 对命令于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
-    def plotlog_vcmdv(self, ob=FileProcess, mod=int, cmd=int):
+    def plotLogVcmdv(self, ob=FileProcess, mod=int, cmd=int):
         if mod == 1:
             if cmd == 0:    # 位置速度曲线
                 self.axes1.plot(ob.s, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
@@ -166,7 +166,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
 
     # 绘制ATP命令速度曲线（含义改变但名称保留）
     # cmd : 1=周期速度曲线 0=位置速度曲线
-    def plotlog_vceil(self, ob=FileProcess, cmd=int):
+    def plotLogVceil(self, ob=FileProcess, cmd=int):
         if cmd == 0:
             self.axes1.plot(ob.s, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
         else:
@@ -175,7 +175,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     # 对于ATP允许速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
-    def plotlog_v_atp_pmt_s(self, ob=FileProcess, mod=int, cmd=int):
+    def plotLogVatpPmt(self, ob=FileProcess, mod=int, cmd=int):
         if cmd == 0:  # 位置速度曲线
             self.axes1.plot(ob.s, ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
         else:  # 周期速度曲线
@@ -183,7 +183,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
 
     # 绘制级位曲线
     # cmd : 1=周期速度曲线 0=位置速度曲线
-    def plotlog_level(self, ob=FileProcess, cmd=int):
+    def plotLogLevel(self, ob=FileProcess, cmd=int):
         if cmd == 0:
             self.ax1_twin.plot(ob.s, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
         else:
@@ -191,7 +191,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.ax1_twin.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
 
     # 绘制速度坐标轴相关信息
-    def plot_cord1(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
+    def plotCord1(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
         # paint the speed ruler
         self.axes1.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
                            label = '45km/h,80km/h,350km/h', linewidth=1)  # 45km/h   #  0 being the far left of the plot,
@@ -584,12 +584,12 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 self.axes1.scatter(self.wayside_plot_dic['STN'][0], [-350] * len(self.wayside_plot_dic['STN'][0]),
                                    marker='|', label='车站范围' ,color='k', s=100)
 
-                self.axes1.scatter(self.wayside_plot_dic['GFX'][0], [-200] * len(self.wayside_plot_dic['GFX'][0]),
+                self.axes1.scatter(self.wayside_plot_dic['GFX'][0], [-350] * len(self.wayside_plot_dic['GFX'][0]),
                                    marker='|', label='分相区范围',color='red', s=50)
             else:
                 self.axes1.scatter(self.wayside_plot_dic['STN'][1], [-350] * len(self.wayside_plot_dic['STN'][1]),
                                    marker='|', label='车站范围', color='k', s=100)
-                self.axes1.scatter(self.wayside_plot_dic['GFX'][1], [-200] * len(self.wayside_plot_dic['GFX'][1]),
+                self.axes1.scatter(self.wayside_plot_dic['GFX'][1], [-350] * len(self.wayside_plot_dic['GFX'][1]),
                                    marker='|',label='分相区范围', color='red', s=50)
         except Exception as err:
             print(err)
@@ -684,12 +684,9 @@ class Figure_Canvas_R(FigureCanvas):
             self.l_atppmtv[0].set_ydata(tmp[3, :])
         if self.choice[4] == 1:
             self.l_level[0].set_ydata(tmp[4, :])
-        # 尝试曲线轴自适应,当速度值大于纵轴80%或小于20%时调整
-        cord_lim_y = self.axes1.get_ylim()
-        delta = abs(cord_lim_y[1] - cord_lim_y[0])
-        if (tmp[0, -1] > delta*0.8 + cord_lim_y[0]) or (tmp[0,-1] < delta*0.2 + cord_lim_y[0]):
-            self.axes1.relim()  # 重新计算坐标轴限制
-            self.axes1.autoscale_view(scalex=False, scaley=True)   # 重新适应纵轴
+
+        self.axes1.relim()  # 重新计算坐标轴限制
+        self.axes1.autoscale_view(scalex=False, scaley=True)   # 重新适应纵轴
         self.draw_idle()
 
 
