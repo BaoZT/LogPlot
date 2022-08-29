@@ -110,7 +110,7 @@ class SnaptoCursor(QtCore.QObject):
 
 
 # 画板类定义
-class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该类既是一个PyQt5的Qwidget，又是一个matplotlib
+class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该类既是一个PyQt5的Qwidget，又是一个matplotlib
                                      # 的FigureCanvas，这是连接pyqt5与matplotlib的关键
     lock_signal = QtCore.pyqtSignal(int)  # 这个参数用于提醒锁定光标
 
@@ -119,13 +119,13 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                                                                                 # matplotlib下的figure，不是matplotlib
                                                                                 # pyplot下面的figure
         self.fig.subplots_adjust(top=0.952, bottom=0.095, left=0.064, right=0.954, hspace=0.17, wspace=0.25)
-        self.axes1 = self.fig.add_subplot(111)
+        self.mainAxes = self.fig.add_subplot(111)
         super().__init__(self.fig)    # 初始化父类函数,这是Python3的风格，且super不带参数
         self.setParent(parent)
         self.line_list = {}                     # 键值对存储曲线
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
-        self.ax1_twin = self.axes1.twinx()
+        self.twinAxes = self.mainAxes.twinx()
         # 事件绘制字典,存储每个需要绘制的列表，列表是tuple类型
         self.event_plot_dic = {}
         self.event_plot_flag = 0                 # 事件绘制标志
@@ -140,14 +140,14 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     def plotLogVS(self, ob=FileProcess, mod=int, cmd=int):
         if mod == 1:
             if cmd == 0:   # 位置速度曲线
-                self.axes1.plot(ob.s, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
+                self.mainAxes.plot(ob.s, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
             else:           # 周期速度曲线
-                self.axes1.plot(ob.cycle, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
+                self.mainAxes.plot(ob.cycle, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
         else:
             if cmd == 0:
-                self.axes1.plot(ob.s, ob.v_ato, color='deeppink', label="ATO当前速度", linewidth=1)
+                self.mainAxes.plot(ob.s, ob.v_ato, color='deeppink', label="ATO当前速度", linewidth=1)
             else:
-                p1 = self.axes1.plot(ob.cycle, ob.v_ato, color='deeppink', label="ATO当前速度", linewidth=1)
+                p1 = self.mainAxes.plot(ob.cycle, ob.v_ato, color='deeppink', label="ATO当前速度", linewidth=1)
 
     # 对命令于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
@@ -155,52 +155,52 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     def plotLogVcmdv(self, ob=FileProcess, mod=int, cmd=int):
         if mod == 1:
             if cmd == 0:    # 位置速度曲线
-                self.axes1.plot(ob.s, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
+                self.mainAxes.plot(ob.s, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
             else:
-                self.axes1.plot(ob.cycle, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
+                self.mainAxes.plot(ob.cycle, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
         else:
             if cmd == 0:
-                self.axes1.plot(ob.s, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
+                self.mainAxes.plot(ob.s, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
             else:
-                self.axes1.plot(ob.cycle, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
+                self.mainAxes.plot(ob.cycle, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
 
     # 绘制ATP命令速度曲线（含义改变但名称保留）
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogVceil(self, ob=FileProcess, cmd=int):
         if cmd == 0:
-            self.axes1.plot(ob.s, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
+            self.mainAxes.plot(ob.s, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
         else:
-            self.axes1.plot(ob.cycle, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
+            self.mainAxes.plot(ob.cycle, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
 
     # 对于ATP允许速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogVatpPmt(self, ob=FileProcess, mod=int, cmd=int):
         if cmd == 0:  # 位置速度曲线
-            self.axes1.plot(ob.s, ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
+            self.mainAxes.plot(ob.s, ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
         else:  # 周期速度曲线
-            self.axes1.plot(ob.cycle,ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
+            self.mainAxes.plot(ob.cycle,ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
 
     # 绘制级位曲线
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogLevel(self, ob=FileProcess, cmd=int):
         if cmd == 0:
-            self.ax1_twin.plot(ob.s, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
+            self.twinAxes.plot(ob.s, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
         else:
-            self.ax1_twin.plot(ob.cycle, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
-            self.ax1_twin.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
+            self.twinAxes.plot(ob.cycle, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
+            self.twinAxes.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
 
     # 绘制速度坐标轴相关信息
     def plotCord1(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
         # paint the speed ruler
-        self.axes1.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
+        self.mainAxes.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
                            label = '45km/h,80km/h,350km/h', linewidth=1)  # 45km/h   #  0 being the far left of the plot,
-        self.axes1.axhline(y=9722, xmin=0, xmax=1, color='darkblue', ls='dashed',    # 1 the far right of the plot
+        self.mainAxes.axhline(y=9722, xmin=0, xmax=1, color='darkblue', ls='dashed',    # 1 the far right of the plot
                            linewidth=1)  # 350km/h
-        self.axes1.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
+        self.mainAxes.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
                            linewidth=1)  # 80km/h
         # 该条曲线纯粹是为了首次绘图自动范围包括负数
-        self.axes1.axhline(y=-500, xmin=0, xmax=1, color='darkblue', ls='dashed', linewidth=0)
+        self.mainAxes.axhline(y=-500, xmin=0, xmax=1, color='darkblue', ls='dashed', linewidth=0)
 
         # 绘制位置速度坐标系
         if cmd == 0:
@@ -208,34 +208,34 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
             self.plot_event_in_cords(cmd)
             # 如果绘图范围是默认值，还没有绘图，是默认路径
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
-                self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])  # 由于绘制直线会从0开始绘制，这里重置范围
-                self.axes1.set_ylim(-500, 10000)
+                self.mainAxes.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])  # 由于绘制直线会从0开始绘制，这里重置范围
+                self.mainAxes.set_ylim(-500, 10000)
             else:
-                self.axes1.set_xlim(x_lim[0], x_lim[1])
-                self.axes1.set_ylim(y_lim[0], y_lim[1])
-                if self.axes1.get_lines():
-                    self.axes1.legend(loc='upper left')
-                if self.ax1_twin.get_lines():
-                    self.ax1_twin.legend(loc='upper right')
-            self.axes1.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
-            self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
-            self.axes1.set_title(ob.filename+" "+"速度-位置曲线")
+                self.mainAxes.set_xlim(x_lim[0], x_lim[1])
+                self.mainAxes.set_ylim(y_lim[0], y_lim[1])
+                if self.mainAxes.get_lines():
+                    self.mainAxes.legend(loc='upper left')
+                if self.twinAxes.get_lines():
+                    self.twinAxes.legend(loc='upper right')
+            self.mainAxes.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
+            self.mainAxes.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
+            self.mainAxes.set_title(ob.filename+" "+"速度-位置曲线")
         else:
             self.plot_wayside_info_in_cords(ob, cmd)
             self.plot_event_in_cords(cmd)                  # 回去在调试
             if x_lim == (0.0, 1.0) and y_lim == (0.0, 1.0):
-                self.axes1.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])  # 重置范围
-                self.axes1.set_ylim(-500, 10000)
+                self.mainAxes.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])  # 重置范围
+                self.mainAxes.set_ylim(-500, 10000)
             else:
-                self.axes1.set_xlim(x_lim[0], x_lim[1])
-                self.axes1.set_ylim(y_lim[0], y_lim[1])
-                if self.axes1.get_lines():
-                    self.axes1.legend(loc='upper left')
-                if self.ax1_twin.get_lines():
-                    self.ax1_twin.legend(loc='upper right')
-            self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
-            self.axes1.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
-            self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
+                self.mainAxes.set_xlim(x_lim[0], x_lim[1])
+                self.mainAxes.set_ylim(y_lim[0], y_lim[1])
+                if self.mainAxes.get_lines():
+                    self.mainAxes.legend(loc='upper left')
+                if self.twinAxes.get_lines():
+                    self.twinAxes.legend(loc='upper right')
+            self.mainAxes.set_xlabel('ATO周期', fontdict={'fontsize': 10})
+            self.mainAxes.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
+            self.mainAxes.set_title(ob.filename + " " + "速度-周期曲线")
         # 公共纵坐标部分,暂时屏蔽
         #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 10))], minor=False)
         #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 1))], minor=True)
@@ -249,34 +249,34 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
     def plotlog_sa(self, ob=FileProcess, cmd=int):
         # V-A 曲线
         if cmd == 0:
-            p3 = self.axes1.plot(ob.s, ob.a, markersize='0.8',color='darkkhaki', label='加速度')
+            p3 = self.mainAxes.plot(ob.s, ob.a, markersize='0.8',color='darkkhaki', label='加速度')
         else:
-            p3 = self.axes1.plot(ob.cycle, ob.a, markersize='0.8', color='darkkhaki', label='加速度')
-        self.axes1.set_ylabel('列车加速度')
+            p3 = self.mainAxes.plot(ob.cycle, ob.a, markersize='0.8', color='darkkhaki', label='加速度')
+        self.mainAxes.set_ylabel('列车加速度')
 
     # 绘制坡度相关信息
     def plotlog_ramp(self, ob=FileProcess, cmd=int):
         #  S-RAMP 曲线
         if cmd == 0:
-            self.axes1.plot(ob.s, ob.ramp, 'c-', markersize=0.5 ,label='坡度数据', linewidth=0.5)
+            self.mainAxes.plot(ob.s, ob.ramp, 'c-', markersize=0.5 ,label='坡度数据', linewidth=0.5)
         else:
-            self.axes1.plot(ob.cycle, ob.ramp, 'c-', label='坡度数据', linewidth=0.5)
-        self.axes1.set_ylabel('线路坡度')
+            self.mainAxes.plot(ob.cycle, ob.ramp, 'c-', label='坡度数据', linewidth=0.5)
+        self.mainAxes.set_ylabel('线路坡度')
 
     # 绘制对称坐标相关信息
     def plot_cord2(self, ob=FileProcess, cmd=int):
         if cmd == 0:
-            self.axes1.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])
-            self.axes1.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
-            self.axes1.set_title(ob.filename)
-            if self.axes1.get_lines():
-                self.axes1.legend(loc='upper left')
+            self.mainAxes.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])
+            self.mainAxes.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
+            self.mainAxes.set_title(ob.filename)
+            if self.mainAxes.get_lines():
+                self.mainAxes.legend(loc='upper left')
         else:
-            self.axes1.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])
-            self.axes1.set_xlabel('ATO周期', fontdict={'fontsize': 10})
-            self.axes1.set_title(ob.filename + " " + "速度-周期曲线")
-            if self.axes1.get_lines():
-                self.axes1.legend(loc='upper left')
+            self.mainAxes.set_xlim(ob.cycle[0], ob.cycle[len(ob.cycle) - 1])
+            self.mainAxes.set_xlabel('ATO周期', fontdict={'fontsize': 10})
+            self.mainAxes.set_title(ob.filename + " " + "速度-周期曲线")
+            if self.mainAxes.get_lines():
+                self.mainAxes.legend(loc='upper left')
 
     # 使光标保持在画面之中，根据给定的数据点更新绘图范围
     def update_cord_with_cursor(self, data='tuple', x_lim='tuple', y_lim='tuple'):
@@ -346,7 +346,7 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         :return:None
         '''
 
-        self.axes1.texts.clear()    # 删除坐标轴文本信息
+        self.mainAxes.texts.clear()    # 删除坐标轴文本信息
 
         # 根据曲线类型获取文本气泡坐标
         bubble_x = 0
@@ -398,8 +398,8 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                       + '列车时速：%.2fkm/h'%((ob.v_ato[pos_idx]*9)/250)
 
         # 获取当前坐标轴范围，用以计算文本框的偏移比例
-        cord_lim_x = self.axes1.get_xlim()
-        cord_lim_y = self.axes1.get_ylim()
+        cord_lim_x = self.mainAxes.get_xlim()
+        cord_lim_y = self.mainAxes.get_ylim()
 
         x_delta = abs(cord_lim_x[1] - cord_lim_x[0])/60
         y_delta = abs(cord_lim_y[1] - cord_lim_y[0])/48
@@ -416,12 +416,12 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         props_sig = dict(facecolor=paint_color, edgecolor='none', alpha=0.05)
 
         # 设置显示速度信息
-        self.axes1.text(sig_x, sig_y, str_spd_sig, fontsize=12, verticalalignment='top', bbox=props_sig)
+        self.mainAxes.text(sig_x, sig_y, str_spd_sig, fontsize=12, verticalalignment='top', bbox=props_sig)
 
         if 1 == text_pos_type:
-            self.axes1.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
+            self.mainAxes.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
         elif 0 == text_pos_type:
-            self.axes1.text(0.78, 0.95, str_show, transform=self.axes1.transAxes, fontsize=10, verticalalignment='top',
+            self.mainAxes.text(0.78, 0.95, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props_bubble)
         else:
             pass
@@ -503,33 +503,33 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
                 if self.event_plot_dic[k]:
                     if k == 'BTM' and self.event_plot_flag_dic['BTM'] == 1:
                         if cmd == 0:
-                            self.axes1.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][0], [0]*len(self.event_plot_dic[k][0]),
                                                marker='^',label='应答器', color='gold')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][1]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][1], [0]*len(self.event_plot_dic[k][1]),
                                                marker='^', label='应答器', color='gold')
 
                     if k == 'JD' and self.event_plot_flag_dic['JD'] == 1:
                         if cmd == 0:
-                            self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
                                                marker='^', label='精定应答器', linewidth=3, color='Blue')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='^', label='精定应答器', linewidth=3, color='Blue')
 
                     if k == 'WL' and self.event_plot_flag_dic['WL'] == 1:
                         if cmd == 0:
-                            self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
                                                marker='D', label='无线呼叫命令', color='Peru')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='D', label='无线呼叫命令',  color='Peru')
                     if k == 'PLAN' and self.event_plot_flag_dic['PLAN'] == 1:
                         if cmd == 0:
-                            self.axes1.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][0], [0] * len(self.event_plot_dic[k][0]),
                                                marker='*',label='运行计划数据',  color='Purple')
                         else:
-                            self.axes1.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
+                            self.mainAxes.scatter(self.event_plot_dic[k][1], [0] * len(self.event_plot_dic[k][1]),
                                                marker='*',label='运行计划数据', color='Purple')
 
     # 计算需要绘制标志的地方
@@ -581,15 +581,15 @@ class Figure_Canvas(FigureCanvas):   # 通过继承FigureCanvas类，使得该�
         """
         try:
             if cmd == 0:
-                self.axes1.scatter(self.wayside_plot_dic['STN'][0], [-350] * len(self.wayside_plot_dic['STN'][0]),
+                self.mainAxes.scatter(self.wayside_plot_dic['STN'][0], [-350] * len(self.wayside_plot_dic['STN'][0]),
                                    marker='|', label='车站范围' ,color='k', s=100)
 
-                self.axes1.scatter(self.wayside_plot_dic['GFX'][0], [-350] * len(self.wayside_plot_dic['GFX'][0]),
+                self.mainAxes.scatter(self.wayside_plot_dic['GFX'][0], [-350] * len(self.wayside_plot_dic['GFX'][0]),
                                    marker='|', label='分相区范围',color='red', s=50)
             else:
-                self.axes1.scatter(self.wayside_plot_dic['STN'][1], [-350] * len(self.wayside_plot_dic['STN'][1]),
+                self.mainAxes.scatter(self.wayside_plot_dic['STN'][1], [-350] * len(self.wayside_plot_dic['STN'][1]),
                                    marker='|', label='车站范围', color='k', s=100)
-                self.axes1.scatter(self.wayside_plot_dic['GFX'][1], [-350] * len(self.wayside_plot_dic['GFX'][1]),
+                self.mainAxes.scatter(self.wayside_plot_dic['GFX'][1], [-350] * len(self.wayside_plot_dic['GFX'][1]),
                                    marker='|',label='分相区范围', color='red', s=50)
         except Exception as err:
             print(err)

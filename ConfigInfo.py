@@ -5,7 +5,7 @@
 @Date: 2020-06-29 20:45:25
 @Desc: Provide base simp agent Defination
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-07-09 22:25:32
+LastEditTime: 2022-08-28 14:28:58
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -53,12 +53,12 @@ class RegConfig(object):
         # 停车点信息
         self.reg_stoppoint = 'stoppoint:jd=(\d+) ref=(\d+) ma=(\d+)'
         # 原始数据
-        self.reg_p2o = '\[P->O\]\[\d+\]:([\w?\s]*)'
-        self.reg_o2p = '\[O->P\]\[\d+\]:([\w?\s]*)'
-        self.reg_t2a = '\[T->A\]\[\d+\]:([\w?\s]*)'
-        self.reg_a2t = '\[A->T\]\[\d+\]:([\w?\s]*)'
+        self.reg_p2o = '\[P->O\]\[\d+\]:([0-9a-fA-F?\s]*)'
+        self.reg_o2p = '\[O->P\]\[\d+\]:([0-9a-fA-F?\s]*)'
+        self.reg_t2a = '\[T->A\]\[\d+\]:([0-9a-fA-F?\s]*)'
+        self.reg_a2t = '\[A->T\]\[\d+\]:([0-9a-fA-F?\s]*)'
         # MVB原始数据
-        self.reg_mvb = 'MVB\[\d+]:([\w?\s]*)'
+        self.reg_mvb = 'MVB\[\d+]:([0-9a-fA-F?\s]*)'
 
         # IO IN的信息
         self.reg_io_in = '\[DOOR\]IO_IN_(\w+)=(\d)'
