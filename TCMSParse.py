@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-06 17:33:41
+LastEditTime: 2022-08-28 22:27:48
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -37,6 +37,7 @@ MVBFieldDic = {
     'const_speed_cmd':ProtoField("恒速命令(预留)",0,b_endian,8,None,{0xAA:"启动恒速",0x00:"取消恒速"}),
     'const_speed_value':ProtoField("恒速目标速度(预留)",0,b_endian,16,"km/h",{0xFFFF:"按当前速度执行恒速",0:"取消恒速时"}),
     'ato_start_light':ProtoField("ATO启动灯",0,b_endian,8,None,{0xAA:"亮",0x00:"灭"}),
+    'ato_tb_light':ProtoField("折返指示灯",0,b_endian,8,None,{0xAA:"亮",0x00:"灭"}),
     # ATO状态
     'ato_error':ProtoField("ATO故障信息",0,b_endian,8,None,{0xAA:"无故障",0x00:"故障"}),
     'killometer_marker':ProtoField("公里标",0,b_endian,32,"m",None),
@@ -47,7 +48,9 @@ MVBFieldDic = {
     'tcms_heartbeat':ProtoField("TCMS心跳",0,b_endian,8,None,None),
     'door_mode_mo_mc':ProtoField("MO/MC",0,b_endian,2,None,{3:"有效",0:"无效"}),
     'door_mode_ao_mc':ProtoField("AO/MC",0,b_endian,2,None,{3:"有效",0:"无效"}),
+    'door_mode_ao_ac':ProtoField("AO/AC",0,b_endian,2,None,{3:"有效",0:"无效"}),
     'ato_start_btn_valid':ProtoField("ATO启动按钮有效信号",0,b_endian,2,None,{3:"按钮有效",0:"按钮无效"}),
+    'ato_tb_btn_valid':ProtoField("驾驶台折返按钮有效信号",0,b_endian,2,None,{3:"按钮有效",0:"按钮无效"}),
     'ato_valid_feedback':ProtoField("ATO有效命令反馈",0,b_endian,8,None,{0xAA:"ATO有效",0x00:"ATO无效"}),
     'track_brack_cmd_feedback':ProtoField("牵引/制动命令状态标志反馈",0,b_endian,8,None,{0xAA:"牵引",0x55:"制动",0xA5:"惰行",0x00:"无命令"}),
     'track_value_feedback':ProtoField("牵引控制量反馈",0,b_endian,16,None,None),
@@ -113,19 +116,19 @@ class DisplayMVBField(object):
             print("[ERR]:disNameOfLineEdit error key name!")
     
     @staticmethod # 解析工具的 名称、数值、解释 3列显示
-    def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem):
+    def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem, fieldDic='dict'):
         for keyName in obj.__slots__:
             twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
             value = obj.__getattribute__(keyName)
             root.setExpanded(True)
-            if keyName in MVBFieldDic.keys():
-                twi.setText(1,MVBFieldDic[keyName].name)
+            if keyName in fieldDic.keys():
+                twi.setText(1,fieldDic[keyName].name)
                 twi.setText(2,"0x"+("%02x"%value).upper())
                 # 如果有字段定义
-                if MVBFieldDic[keyName].meaning:
+                if fieldDic[keyName].meaning:
                     # 检查是否有含义
-                    if value in MVBFieldDic[keyName].meaning.keys():
-                        twi.setText(3,MVBFieldDic[keyName].meaning[value])
+                    if value in fieldDic[keyName].meaning.keys():
+                        twi.setText(3,fieldDic[keyName].meaning[value])
                     else:
                         brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
                         twi.setBackground(1, brush)
@@ -145,7 +148,7 @@ class DisplayMVBField(object):
 
 class Ato2TcmsCtrl(object):
     __slots__ = ["frame_header_send","frame_seq","frame_port","ato_heartbeat","ato_valid",
-    "track_brake_cmd","track_value","brake_value","keep_brake_on","open_left_door",
+    "track_brake_cmd","track_value","brake_value","keep_brake_on","open_left_door",'ato_tb_light',
     "open_right_door","const_speed_cmd","const_speed_value","ato_start_light","updateflag"]
     def __init__(self) -> None:
         self.updateflag = False
@@ -160,6 +163,7 @@ class Ato2TcmsCtrl(object):
         self.brake_value = 0
         self.keep_brake_on = 0
         self.open_left_door = 0
+        self.ato_tb_light = 0
         self.open_right_door = 0
         self.const_speed_cmd = 0
         self.const_speed_value = 0
@@ -183,11 +187,11 @@ class Ato2TcmsState(object):
 
 class Tcms2AtoState(object):
     __slots__ = ["frame_header_recv","frame_seq","frame_port","tcms_heartbeat","door_mode_mo_mc",
-    "door_mode_ao_mc","ato_start_btn_valid","ato_valid_feedback","track_brack_cmd_feedback",
+    "door_mode_ao_mc","door_mode_ao_ac","ato_start_btn_valid","ato_valid_feedback","track_brack_cmd_feedback",
     "track_value_feedback","brake_value_feedback","ato_keep_brake_on_feedback","open_left_door_feedback",
     "open_right_door_feedback","constant_state_feedback","door_state","spin_state","slip_state","train_unit",
     "train_weight","train_permit_ato","main_circuit_breaker","atp_door_permit","man_door_permit",
-    "no_permit_ato_state","updateflag"]
+    "no_permit_ato_state","ato_tb_btn_valid","updateflag"]
     def __init__(self) -> None:
         self.updateflag = False
         # 定义ATO2TCMS状态字段
@@ -197,7 +201,9 @@ class Tcms2AtoState(object):
         self.tcms_heartbeat = 0
         self.door_mode_mo_mc = 0
         self.door_mode_ao_mc = 0
+        self.door_mode_ao_ac = 0
         self.ato_start_btn_valid = 0
+        self.ato_tb_btn_valid = 0
         self.ato_valid_feedback = 0
         self.track_brack_cmd_feedback = 0
         self.track_value_feedback = 0
@@ -236,42 +242,36 @@ class MVBParse(object):
     @mvb_line 原始的line也即只要"MVB["就进行尝试
     '''
     def parseProtocol(self, mvb_line=str):
-        # 防护提高效率
-        if '@' in mvb_line:
-            return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
         port = 0
         # 去除回车
         mvb_line = mvb_line.strip()
-        # 获取数据头
-        if ']' in mvb_line:
-            real_idx = mvb_line.find(']:')
-            mvb_line = mvb_line[real_idx + 2:]  # 周期解析时已经检查了MVB[,所以这里针对结尾
         # 抽取十六进制字符串
         mvb_line = ''.join(mvb_line.strip().split(' '))
-        # 获取MVB端口,至少16字节数据
-        if len(mvb_line)/2 > 16:
-            try:
+        # 验证
+        try:
+            strByteLen = len(mvb_line)/2
+            # 获取MVB端口,至少16字节数据
+            if (len(mvb_line)%2 == 0) and strByteLen > 4:
                 port = int(mvb_line[6:8] + mvb_line[4:6], 16)
                 mvbData = BytesStream(mvb_line)
-                # 查询端口解析
-                if port == self.cfg.mvb_config.ato2tcms_ctrl_port:
+                # 查询端口解析并核对包长
+                if strByteLen >= 20 and port == self.cfg.mvb_config.ato2tcms_ctrl_port:
                     self.parseAto2TcmsCtrl(mvbData,self.ato2tcms_ctrl_obj)
-                elif port == self.cfg.mvb_config.ato2tcms_state_port:
+                elif strByteLen >= 20 and port == self.cfg.mvb_config.ato2tcms_state_port:
                     self.parseAto2TcmsState(mvbData,self.ato2tcms_state_obj)
-                elif port == self.cfg.mvb_config.tcms2ato_state_port:
+                elif strByteLen >= 36 and port == self.cfg.mvb_config.tcms2ato_state_port:
+                    pass
                     self.parseTcms2AtoState(mvbData, self.tcms2ato_state_obj)
                 else:
-                    print("[MVB]err mvb line"+mvb_line)
-            except Exception as err:
-                print(err) # 当数据错误时忽略本条文本
-                print("[MVB]err mvb parse"+mvb_line)
-        else:
-            pass
-
+                    print("[MVB]err mvb line:"+mvb_line)
+            else:
+                pass
+        except Exception as err:
+            print("err mvb line"+mvb_line)
+            
         return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
 
     def parseAto2TcmsCtrl(self,item=BytesStream,obj=Ato2TcmsCtrl):
-        obj.updateflag = False
         obj.frame_header_send= item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.frame_seq        = item.fast_get_segment_by_index(item.curBitsIndex,8)
         # 端口小端
@@ -291,10 +291,10 @@ class MVBParse(object):
         obj.const_speed_cmd  = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.const_speed_value= item.fast_get_segment_by_index(item.curBitsIndex,16)
         obj.ato_start_light  = item.fast_get_segment_by_index(item.curBitsIndex,8)
+        obj.ato_tb_light     = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.updateflag = True
     
     def parseAto2TcmsState(self,item=BytesStream,obj=Ato2TcmsState):
-        obj.updateflag = False
         obj.frame_header_send= item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.frame_seq        = item.fast_get_segment_by_index(item.curBitsIndex,8)
         # 端口小端
@@ -310,7 +310,6 @@ class MVBParse(object):
         obj.updateflag = True
 
     def parseTcms2AtoState(self,item=BytesStream,obj=Tcms2AtoState):
-        obj.updateflag = False
         obj.frame_header_recv     = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.frame_seq        = item.fast_get_segment_by_index(item.curBitsIndex,8)
         # 端口小端
@@ -320,7 +319,7 @@ class MVBParse(object):
         obj.tcms_heartbeat   = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.door_mode_mo_mc = item.fast_get_segment_by_index(item.curBitsIndex,2)
         obj.door_mode_ao_mc = item.fast_get_segment_by_index(item.curBitsIndex,2)
-        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.door_mode_ao_ac = item.fast_get_segment_by_index(item.curBitsIndex,2)
         obj.ato_start_btn_valid = item.fast_get_segment_by_index(item.curBitsIndex,2)
         obj.ato_valid_feedback = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.track_brack_cmd_feedback = item.fast_get_segment_by_index(item.curBitsIndex,8)
@@ -341,7 +340,7 @@ class MVBParse(object):
         obj.main_circuit_breaker = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.atp_door_permit = item.fast_get_segment_by_index(item.curBitsIndex,2)
         obj.man_door_permit = item.fast_get_segment_by_index(item.curBitsIndex,2)
-        item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
+        obj.ato_tb_btn_valid = item.fast_get_segment_by_index(item.curBitsIndex,2)
         item.fast_get_segment_by_index(item.curBitsIndex,2) #reserved bit
         obj.no_permit_ato_state = item.fast_get_segment_by_index(item.curBitsIndex,8)
         obj.updateflag = True

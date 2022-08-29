@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-13 15:07:57
+LastEditTime: 2022-08-29 12:03:03
 '''
 
 from ast import Pass, Return
@@ -69,8 +69,6 @@ FieldBGColorDic={
                   
     "main_circuit_breaker":{0xAA:"background-color: rgb(0, 255, 127);",
                             0x00:"background-color: rgb(255, 0, 0);"}
-    
-
 }
 
 InerFieldBGColorDic={
@@ -148,26 +146,31 @@ class BtmInfoDisplay(object):
         '''
         实时显示，每次增加一个单行通过 row_cnt计数
         '''
-        sp2_obj = msg_obj.sp2_obj
-        sp7_obj = msg_obj.sp7_obj
-        row_cnt = 0
+        sp2_obj = copy.deepcopy(msg_obj.sp2_obj)
+        sp7_obj = copy.deepcopy(msg_obj.sp7_obj)
         # 检查应答器信息
         if  sp7_obj and sp7_obj.updateflag:
             # 用于后续实时列表缓存使用
             BtmInfoDisplay.btmItemRealList.append(sp7_obj)
             # 扩展表格更新行数
-            table.setColumnCount(len(BtmInfoDisplay.btmHeaders))
-            row_cnt = len(BtmInfoDisplay.btmItemRealList)
-            table.setRowCount(row_cnt)
+            #table.setColumnCount(len(BtmInfoDisplay.btmHeaders))
+            if len(BtmInfoDisplay.btmItemRealList) > 0:
+                rowIdx = len(BtmInfoDisplay.btmItemRealList) - 1
+            else:
+                rowIdx = 0
+            #table.setRowCount(row_cnt)
             if time:
                 d_t = time.split(" ")[1]  # 取时间
             else:
                 d_t = "未知"
             item_dt = QtWidgets.QTableWidgetItem(d_t)
             item_dt.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            table.setItem(row_cnt, 0, item_dt)
+            table.setItem(rowIdx, 0, item_dt)
             # 显示这个单行
-            BtmInfoDisplay.displayBtmTableRow(sp2_obj,sp7_obj,row_cnt,table)
+            BtmInfoDisplay.displayBtmTableRow(sp2_obj,sp7_obj,rowIdx,table)
+            # 对于实时显示使用后重置
+            msg_obj.sp7_obj.updateflag = False
+            msg_obj.sp2_obj.updateflag = False
 
     @staticmethod
     def displayOffLineBtmTable(cycleDic="dict", table=QtWidgets.QTableWidget):
@@ -235,12 +238,21 @@ class BtmInfoDisplay(object):
         led_platform_pos=QtWidgets.QLineEdit,
         led_platform_door=QtWidgets.QLineEdit,
         led_track=QtWidgets.QLineEdit,
-        led_stop_d_JD=QtWidgets.QLineEdit):
+        led_stop_d_JD=QtWidgets.QLineEdit,
+        led_btm_id=QtWidgets.QLineEdit):
         '''
         BTM单行选中后显示辅助信息
         '''
         # 存在应答器包
         if obj and obj.updateflag:
+            # 计算应答器编号解析
+            majorRegion = (obj.nid_bg & 0xFE0000)>>17
+            subRegion   = (obj.nid_bg & 0x01C000)>>14
+            station     = (obj.nid_bg & 0x003F00)>>8
+            balise      = (obj.nid_bg & 0x0000FF)
+            strBalise     = ("(%d-%d-%d-%d)"%(majorRegion,subRegion,station,balise))
+            strBaliseInfo = ("大区编号%d-"%majorRegion)+("分区编号%d-"%subRegion)+("车车站编号%d-"%station)+("应答器编号%d"%balise)
+            led_btm_id.setText(strBalise + 5*' ' + strBaliseInfo) 
             # JD正常刷颜色
             if obj.nid_xuser == 13:
                 DisplayMsgield.disNameOfLineEdit("nid_xuser", obj.nid_xuser, led_with_C13)
@@ -672,7 +684,7 @@ class AtoKeyInfoDisplay(object):
     def displayRpUdpDuration(osTime=int, value=int,lbl=QtWidgets.QLabel):
         duration = (osTime - value)/1000
         lbl.setText(str('已更新时长:%.1fs'%duration))
-
+    
     @staticmethod
     def translateUtc(utc=int):
         if utc == -1:
@@ -778,3 +790,160 @@ class AtoKeyInfoDisplay(object):
         else:
             resultLbl.setText("测距基本一致")
             resultLbl.setStyleSheet("background-color: rgb(170, 170, 255);")
+
+    def btnSerialDisplay(linked=True, btn=QtWidgets.QPushButton):
+        if linked:
+            btn.setText('断开')
+            btn.setStyleSheet("background: rgb(191, 255, 191);")
+        else:
+            btn.setText('连接')
+            btn.setStyleSheet(" background: rgb(238, 86, 63);")
+
+    @staticmethod
+    def ctrlStoppointDisplay(stopTuple=tuple, curPos=int, tb=QtWidgets.QTableWidget):
+        """
+        为了避免过于转换,这里使用原始的字符串位置和停车点
+        """
+        idx = 0
+        if stopTuple and len(stopTuple) > 0:
+            valueList = [int(i) for i in stopTuple]
+            
+            # 设置关键停车点 
+            minValue = min(valueList)
+            idxKey = valueList.index(minValue) 
+            for v in valueList:
+                item = QtWidgets.QTableWidgetItem(str(v)+'cm')
+                if idx == idxKey:
+                    item.setBackground(QtGui.QBrush(QtGui.QColor(255, 107, 107))) # 西瓜红
+                else:
+                    item.setBackground(QtGui.QBrush(QtGui.QColor(243, 243, 243)))
+                tb.setItem(idx, 0, item)
+                idx = idx + 1
+            if curPos:
+                posValue = int(curPos)
+                # 设置误距离停车点误差值
+                item = QtWidgets.QTableWidgetItem(str(minValue-posValue)+'cm')
+                tb.setItem(idx, 0, item)
+        else:
+            pass
+
+    @staticmethod
+    def ctrlStopErrorDisplay(atoError=int, atpError=int, tb=QtWidgets.QTableWidget):
+        item = QtWidgets.QTableWidgetItem(str(atpError)+'cm')
+        tb.setItem(4, 0, item)
+        item = QtWidgets.QTableWidgetItem(str(atoError)+'cm')
+        tb.setItem(5, 0, item)
+
+    @staticmethod
+    def ctrlSpeedDisplay(vstrList='list', tb=QtWidgets.QTableWidget):
+        """
+        使用速度列表按照当前速度, ato命令速度, atp命令速度, atp允许速度
+        """
+        idx = 0
+        if vstrList and (len(vstrList) == 4):
+            curSpeed = vstrList[0]
+            atoCmdv  = vstrList[1]
+            atpCmdv  = vstrList[2]
+            atpPmtv  = vstrList[3]
+            # 最小速度值
+            intList = [atoCmdv, atpCmdv, atpPmtv]
+            minValue = min(intList)
+            idxKey = intList.index(minValue) 
+            for v in intList:
+                item = QtWidgets.QTableWidgetItem(str(v)+'cm/s')
+                if idx == idxKey:
+                    item.setBackground(QtGui.QBrush(QtGui.QColor(255, 107, 107))) # 西瓜红
+                else:
+                    item.setBackground(QtGui.QBrush(QtGui.QColor(243, 243, 243)))
+                tb.setItem(idx, 0, item)
+                idx = idx + 1
+            # 设置误距离停车点误差值
+            item = QtWidgets.QTableWidgetItem(str(minValue-curSpeed)+'cm/s')
+            tb.setItem(idx, 0, item)
+        else:
+            pass
+    
+    @staticmethod
+    def ctrlAtoSpeedDisplay(atoSpeed=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(atoSpeed)+'cm/s')
+
+    @staticmethod
+    def ctrlAtoPosDisplay(atoPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(atoPos)+'cm/s')
+
+    @staticmethod
+    def ctrlStateMachineDisplay(machine=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(machine))
+
+    @staticmethod
+    def ctrlEstimateLevelDisplay(esLvl=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(esLvl))  
+
+    @staticmethod
+    def ctrlLevelDisplay(lvl=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(lvl))  
+    
+    @staticmethod
+    def ctrlRampDisplay(ramp=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(ramp)) 
+
+    @staticmethod
+    def ctrlEstimateRampDisplay(esRamp=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(esRamp)) 
+
+    @staticmethod
+    def ctrlTargetPosDisplay(tPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(tPos)+'cm') 
+    
+    @staticmethod
+    def ctrlTargetSpeedDisplay(tspeed=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(tspeed)+'cm/s') 
+    
+    @staticmethod
+    def ctrlTargetDisDisplay(tPos=int, curPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        led.setText(str(tPos - curPos)+'cm') 
+
+    @staticmethod
+    def ctrlSkipDisplay(skip=int, lbl=QtWidgets.QLineEdit):
+        if skip == 1:
+            lbl.setText('前方站通过')
+        else:
+            lbl.setText('前方站到发') 
+
+class ProgressBarDisplay(object):
+    """
+    Default total percent is 100 and should execute in one thread at the same time
+    """
+    def __init__(self, bar=QtWidgets.QProgressBar) -> None:
+        self.bar           = bar
+        self.percent       = 0
+        self.allTicks      = 0  # 期望总数
+        self.percentTick   = 0  # 计算百分比的tick
+        self.tick          = 0
+    
+    def barMoving(self):
+        """
+        本函数应该在循环中调用
+        """
+        percent = self.barMovingCompute()
+        if percent:
+            self.bar.setValue(self.percent)
+        else:
+            pass
+    
+    def barMovingCompute(self):
+        """
+        本函数应该在循环中调用
+        """
+        self.tick  = self.tick + 1
+        if (self.tick % self.percentTick) == 0:
+            self.percent = self.percent + 1
+            return self.percent
+        else:
+            return None
+
+    def setBarStat(self, initPct=int, movePct=int, allTicks=int):
+        self.percent       = initPct
+        self.allTicks      = allTicks  # 期望总数
+        self.percentTick   = int(allTicks/movePct)  # 计算百分比的tick
+        self.tick          = 0
