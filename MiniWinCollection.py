@@ -13,13 +13,14 @@
 import matplotlib
 
 from CycleInfo import Ui_MainWindow as CycleWin
-from MvbParserWin import Ui_MainWindow as MVBParserWin
+from MsgParse import Atp2atoParse, Atp2atoProto
+from ProtoParserWin import Ui_MainWindow as ParserWin
 from MeasureWin import Ui_MainWindow as MeasureWin
 from C3atoRecordTranslator import Ui_Dialog as C3ATOTransferWin
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState, DisplayMVBField
+from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBFieldDic, MVBParse, Tcms2AtoState, DisplayMVBField
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from KeyWordPlot import SnaptoCursor
@@ -78,7 +79,7 @@ class Cyclewindow(QtWidgets.QMainWindow, CycleWin):
 
 # 串口设置类
 class SerialDlg(QtWidgets.QDialog):
-    serUpdateSingal = QtCore.pyqtSignal()  # 串口设置更新信号
+    serUpdateSingal = QtCore.pyqtSignal(serial.Serial)  # 串口设置更新信号
 
     def __init__(self, parent=None):
         super(SerialDlg, self).__init__(parent)
@@ -167,22 +168,20 @@ class SerialDlg(QtWidgets.QDialog):
 
     # 打开设置串口
     def OpenSerial(self):
-        self.ser = serial.Serial()
-        self.ser.port = self.SerialCOMComboBox.currentText()
-        self.ser.baudrate = self.SerialBaudRateComboBox.currentText()
-        self.ser.bytesize = int(self.SerialDataComboBox.currentText())
+        self.handle = serial.Serial(timeout=0.2)
+        self.handle.port = self.SerialCOMComboBox.currentText()
+        self.handle.baudrate = self.SerialBaudRateComboBox.currentText()
+        self.handle.bytesize = int(self.SerialDataComboBox.currentText())
         ParityValue = self.SerialParityComboBox.currentText()
-        self.ser.parity = ParityValue[0]
-        self.ser.stopbits = int(self.SerialStopBitsComboBox.currentText())
+        self.handle.parity = ParityValue[0]
+        self.handle.stopbits = int(self.SerialStopBitsComboBox.currentText())
+        self.serUpdateSingal.emit(self.handle)
         # 组合文件名
-
         self.close()
-        self.serUpdateSingal.emit()
-
+        return self.handle
 
 # mvb端口设置类
 class MVBPortDlg(QtWidgets.QDialog):
-    mvbPortSingal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(MVBPortDlg, self).__init__(parent)
@@ -236,12 +235,10 @@ class MVBPortDlg(QtWidgets.QDialog):
         self.cfg.mvb_config.ato2tcms_state_port =  int(self.led_ato_stat.text(), 16)
         self.cfg.mvb_config.tcms2ato_state_port =  int(self.led_tcms_stat.text(), 16)
         self.cfg.writeConfigFile()
-        self.mvbPortSingal.emit()
         self.close()
 
-
 # mvb解析器
-class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
+class MVBParserDlg(QtWidgets.QMainWindow, ParserWin):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -250,35 +247,89 @@ class MVBParserDlg(QtWidgets.QMainWindow, MVBParserWin):
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'MVB协议解析')
         self.parser = MVBParse()
-        self.actionMVBParserAct.triggered.connect(self.ParserMVB)
+        self.actionParse.triggered.connect(self.parseMVB)
         self.a2tCtrl = Ato2TcmsCtrl()
         self.a2tStat = Ato2TcmsState()
         self.t2aStat = Tcms2AtoState()
        
-    def ParserMVB(self):
+    def parseMVB(self):
         inputLine = self.textEdit.toPlainText()
         try:
             mvbLine = re.sub('\s+', '', inputLine)
             [self.a2tCtrl,self.a2tStat, self.t2aStat] = self.parser.parseProtocol(mvbLine)
-            self.show_parser_rst(self.a2tCtrl,self.a2tStat, self.t2aStat)
+            self.showParserRst(self.a2tCtrl,self.a2tStat, self.t2aStat)
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                       "错误",
                                                       "注意:数据异常或非16进制数据",
                                                       QtWidgets.QMessageBox.Yes)
 
-    def show_parser_rst(self, a2t_ctrl=Ato2TcmsCtrl, a2tStat=Ato2TcmsState, t2aStat=Tcms2AtoState):
+    def showParserRst(self, a2t_ctrl=Ato2TcmsCtrl, a2tStat=Ato2TcmsState, t2aStat=Tcms2AtoState):
         self.treeWidget.clear()
         root = QtWidgets.QTreeWidgetItem(self.treeWidget)
         if a2t_ctrl.updateflag:
             root.setText(0, "ATO控制信息")
-            DisplayMVBField.disNameOfTreeWidget(a2t_ctrl,root)     
+            DisplayMVBField.disNameOfTreeWidget(a2t_ctrl,root, MVBFieldDic)     
         elif a2tStat.updateflag:
             root.setText(0, "ATO状态信息")
-            DisplayMVBField.disNameOfTreeWidget(a2tStat,root)    
+            DisplayMVBField.disNameOfTreeWidget(a2tStat,root, MVBFieldDic)     
         elif t2aStat.updateflag:
             root.setText(0, "TCMS状态信息")
-            DisplayMVBField.disNameOfTreeWidget(t2aStat,root)    
+            DisplayMVBField.disNameOfTreeWidget(t2aStat,root, MVBFieldDic)     
+
+
+class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/ATPParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+        self.setWindowTitle(u'ATP-ATO协议解析')
+        self.parser = Atp2atoParse()
+        self.actionParse.triggered.connect(self.parseAtp2atoProto)
+        self.msg = Atp2atoProto()
+    
+    def parseAtp2atoProto(self):
+        inputLine = self.textEdit.toPlainText()
+        try:
+            mvbLine = re.sub('\s+', '', inputLine)
+            self.msg = self.parser.msgParse(mvbLine)
+            self.showParserRst(self.msg)
+        except Exception as err:
+            reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                      "错误",
+                                                      "注意:数据异常或非16进制数据",
+                                                      QtWidgets.QMessageBox.Yes)
+    def showParserRst(self, msg=Atp2atoProto):
+        self.treeWidget.clear()
+        root = QtWidgets.QTreeWidgetItem(self.treeWidget)
+        if msg.nid_packet == 250:
+            root.setText(0, "ATP->ATO通信消息")
+        else:
+            root.setText(0, "ATO->ATO通信消息")
+        msgTree = QtWidgets.QTreeWidgetItem(root)
+        msgTree.setText(1,"消息号")
+        msgTree.setText(2, str(msg.nid_msg))
+        msgTree.setText(3, "ATP-ATO通信消息固定ID=45")
+
+        msgTree = QtWidgets.QTreeWidgetItem(root)
+        msgTree.setText(1,"消息长度")
+        msgTree.setText(3, "全部消息长度,单位字节")
+        msgTree.setText(2, str(msg.l_msg))
+
+        msgTree = QtWidgets.QTreeWidgetItem(root)
+        msgTree.setText(1,"信息包号")
+        msgTree.setText(2, str(msg.nid_packet))
+        msgTree.setText(3, "标识ATP-ATO通信方向")
+        
+        msgTree = QtWidgets.QTreeWidgetItem(root)
+        msgTree.setText(1,"信息包长度")
+        msgTree.setText(2, str(msg.l_packet))
+        msgTree.setText(3, "信息包长度（包含所有子信息包）,单位比特")
+
+        root2 = QtWidgets.QTreeWidgetItem(self.treeWidget)
+        root2.setText(0, "SP2")
 
 # UTC时间解析器
 class UTCTransferDlg(QtWidgets.QDialog):
@@ -381,7 +432,7 @@ class RealTimePlotDlg(QtWidgets.QDialog, QtCore.QObject):
 
 
 # 定义画板类适配于后期应用
-class Figure_Canvas(FigureCanvas):
+class MeasureFigureCanvas(FigureCanvas):
 
     def __init__(self, parent=None):
         self.fig = matplotlib.figure.Figure()
@@ -393,31 +444,32 @@ class Figure_Canvas(FigureCanvas):
 class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
 
     # 初始化，获取加载后的处理信息
-    def __init__(self, parent=None, ob=FileProcess.FileProcess):
-        self.log = ob
+    def __init__(self, parent=None, logObj=FileProcess.FileProcess):
+        self.log = logObj
         super().__init__(parent)
         self.setupUi(self)
-        self.sp = Figure_Canvas()  # 这是继承FigureCanvas的子类，使用子窗体widget作为父
+        self.sp = MeasureFigureCanvas()  # 这是继承FigureCanvas的子类，使用子窗体widget作为父
         self.ctrlAccTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         l.addWidget(self.sp)
         l.addWidget(self.ctrlAccTable)
-        self.acc_table_format()
+        self.accTableFormat()
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/acc.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'ATO曲线测量器')
-        self.resize(500, 600)
+        self.resize(800, 500)
 
     # 设置加速度显示表
-    def acc_table_format(self):
+    def accTableFormat(self):
         self.ctrlAccTable.setRowCount(4)
         self.ctrlAccTable.setColumnCount(3)
         self.ctrlAccTable.setHorizontalHeaderLabels(['控车曲线分类', '估计加速度', '单位'])
+        self.ctrlAccTable.setColumnWidth(1, 200)
 
     # 重置索引从到右，统一鼠标点击顺序
     @staticmethod
-    def set_segment_idx(idx_start=int, idx_end=int, ):
+    def setSegmentIdx(idx_start=int, idx_end=int, ):
         # 根据索引大小关系获取实际序列
         if idx_start <= idx_end:
             pass
@@ -426,60 +478,64 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         return idx_start, idx_end
 
     # 计算所有加速度 可以输入原始索引，兼容已经转换
-    def compute_all_acc_estimate(self, idx_start=int, idx_end=int):
-        [idx_start, idx_end] = self.set_segment_idx(idx_start, idx_end)
+    def computeAllAccEstimate(self, idx_start=int, idx_end=int):
+        [idx_start, idx_end] = self.setSegmentIdx(idx_start, idx_end)
 
-        x_list = self.log.cycle[idx_start:idx_end]
+        # 获取所有周期对应的系统时间作为时间轴-将系统时间改为百毫秒
+        time_HMS_list = [self.log.cycle_dic[idx].ostime_start/100 for idx in self.log.cycle[idx_start:idx_end]]
         y_vato_list = self.log.v_ato[idx_start:idx_end]
         y_atppmtv_list = self.log.atp_permit_v[idx_start:idx_end]
         y_atocmdv_list = self.log.cmdv[idx_start:idx_end]
         y_atpcmdvlist = self.log.ceilv[idx_start:idx_end]
         # 计算加速度
-        vato_acc_est = self.get_estimate_acc(x_list, y_vato_list)
-        atppmtv_acc_est = self.get_estimate_acc(x_list, y_atppmtv_list)
-        atocmdv_acc_est = self.get_estimate_acc(x_list, y_atocmdv_list)
-        atpcmdv_acc_est = self.get_estimate_acc(x_list, y_atpcmdvlist)
+        vato_acc_est = self.getEstimateAcc(time_HMS_list, y_vato_list)
+        atppmtv_acc_est = self.getEstimateAcc(time_HMS_list, y_atppmtv_list)
+        atocmdv_acc_est = self.getEstimateAcc(time_HMS_list, y_atocmdv_list)
+        atpcmdv_acc_est = self.getEstimateAcc(time_HMS_list, y_atpcmdvlist)
 
         return [atppmtv_acc_est, atpcmdv_acc_est, atocmdv_acc_est, vato_acc_est]
 
     # 获取速度并计算加速度,用于绘图
-    def compute_vato_acc_estimate_plot(self, idx_start=int, idx_end=int, cmd=int):
+    def computeVatoAccEstimatePlot(self, idx_start=int, idx_end=int, cmd=int):
 
-        [idx_start, idx_end] = self.set_segment_idx(idx_start, idx_end)
+        [idx_start, idx_end] = self.setSegmentIdx(idx_start, idx_end)
         # 获取段
         x_list = self.log.cycle[idx_start:idx_end]
         y_list = self.log.v_ato[idx_start:idx_end]
         # 走行距离
         s_sim = self.log.s[idx_end] - self.log.s[idx_start]
         v_sim = self.log.v_ato[idx_end] - self.log.v_ato[idx_start]
-        # 计算拟合的加速度
-        [a_sim, p_sim] = self.get_estimate_acc(x_list, y_list)  # 一次多项式拟合，相当于线性拟合
+        # 计算拟合的加速度 将单位转换为百毫秒-这样100ms/200ms等周期均可适应
+        time_HMS_list = [self.log.cycle_dic[idx].ostime_start/100 for idx in self.log.cycle[idx_start:idx_end]]
+        [a_sim, p_sim] = self.getEstimateAcc(time_HMS_list, y_list)  # 一次多项式拟合，相当于线性拟合
 
-        return [v_sim, s_sim, a_sim, x_list, y_list, p_sim]
+        return [v_sim, s_sim, a_sim, x_list, time_HMS_list, y_list, p_sim]
 
     # 获取速度并计算加速度
     @staticmethod
-    def get_estimate_acc(x_raw=list, y_raw=list):
+    def getEstimateAcc(x_raw=list, y_raw=list):
         z = np.polyfit(x_raw, y_raw, 1)  # 一次多项式拟合，相当于线性拟合
-        a_sim = z[0] * 10  # 获取估计加速度,由于时间单位是100ms所以乘以10,后者是函数
+        a_sim = z[0] * 10 # 获取估计加速度量纲转为s
         p_sim = np.poly1d(z)
         print(p_sim)  # 打印拟合表达式
         return [a_sim, p_sim]
 
     # 用于绘制估计加速度曲线
-    def measure_plot(self, idx_start=int, idx_end=int, cmd=int):
-        estimate_a_tuple = 0
+    def measurePlot(self, idx_start=int, idx_end=int, cmd=int):
 
-        estimate_a_tuple = self.compute_vato_acc_estimate_plot(idx_start, idx_end, cmd)
+        estimate_a_tuple = self.computeVatoAccEstimatePlot(idx_start, idx_end, cmd)
         v_sim = estimate_a_tuple[0]
         s_sim = estimate_a_tuple[1]
         a_sim = estimate_a_tuple[2]  # 加速度已经转为cm/s^2
         x_list = estimate_a_tuple[3]
-        y_list = estimate_a_tuple[4]
-        # 计算估计曲线
-        y_list_sim = estimate_a_tuple[5](x_list)
+        x_time_HMS_list =  estimate_a_tuple[4]
+        y_list = estimate_a_tuple[5]
+        # 计算拟合点
+        y_list_sim = estimate_a_tuple[6](x_time_HMS_list)
         # 计算表格
-        acc_all = self.compute_all_acc_estimate(idx_start, idx_end)
+        acc_all = self.computeAllAccEstimate(idx_start, idx_end)
+        # 测量时间
+        interval = self.log.cycle_dic[self.log.cycle[idx_end]].ostime_start-self.log.cycle_dic[self.log.cycle[idx_start]].ostime_start
 
         item_name = ['ATP允许速度', 'ATP命令速度', 'ATO命令速度', '实际速度']
         item_unit = ['cm/s^2', 'cm/s^2', 'cm/s^2', 'cm/s^2']
@@ -494,17 +550,17 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
             self.ctrlAccTable.setItem(idx, 1, i_content_value)
             self.ctrlAccTable.setItem(idx, 2, i_content_unit)
 
-        self.sp.ax.plot(x_list, y_list_sim, color='purple')
-        self.sp.ax.plot(x_list, y_list, color='deeppink', marker='.', markersize=0.2)
-        str_asim = '线性拟合加速度:%.*f cm/s^2\n' % (3, a_sim)
-        str_cycle_num = '测量时间:%.*f s\n' % (3, (idx_end - idx_start) / 10.0)
-        str_s_sim = 'ATO走行距离:%d cm\n' % int(s_sim)
-        str_v_sim = 'ATO速度变化:%d cm/s' % (v_sim)
+        self.sp.ax.plot(x_time_HMS_list, y_list_sim, color='purple')
+        self.sp.ax.plot(x_time_HMS_list, y_list, color='deeppink', marker='.', markersize=0.2)
+        str_asim = '拟合加速度:%.*fcm/s^2\n' % (2, a_sim)
+        str_cycle_num = '测量时间:%.*fs\n' % (2, interval / 1000) # 转换为秒
+        str_s_sim = 'ATO走行距离:%dcm\n' % int(s_sim)
+        str_v_sim = 'ATO速度变化:%dcm/s' % (v_sim)
 
         str_show = str_asim + str_cycle_num + str_s_sim + str_v_sim
         props = dict(boxstyle='round', facecolor='pink', alpha=0.15)
         if a_sim > 0:
-            self.sp.ax.text(0.1, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
+            self.sp.ax.text(0.1, 0.90, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
                             bbox=props)
         else:
             self.sp.ax.text(0.48, 0.95, str_show, transform=self.sp.ax.transAxes, fontsize=10, verticalalignment='top',
@@ -518,7 +574,7 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.log = ob
         super().__init__(parent)
         self.setupUi(self)
-        self.sp = Figure_Canvas(self.widget)  # 这是继承FigureCanvas的子类，使用子窗体widget作为
+        self.sp = MeasureFigureCanvas(self.widget)  # 这是继承FigureCanvas的子类，使用子窗体widget作为
         self.trainComTable = QtWidgets.QTableWidget()
         l = QtWidgets.QVBoxLayout(self.widget)
         self.sp.mpl_toolbar = NavigationToolbar(self.sp, self.widget)  # 传入FigureCanvas类或子类实例，和父窗体
@@ -526,7 +582,7 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         #l.addWidget(self.trainComTable)
         l.addWidget(self.sp)
         l.addWidget(self.sp.mpl_toolbar)
-        self.acc_table_format()
+        self.accTableFormat()
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/BZT.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
@@ -541,13 +597,13 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.mvbdialog = MVBPortDlg()
 
     # 设置显示表显示表
-    def acc_table_format(self):
+    def accTableFormat(self):
         self.trainComTable.setRowCount(4)
         self.trainComTable.setColumnCount(3)
         self.trainComTable.setHorizontalHeaderLabels(['统计项目', '时延', '单位'])
 
     # 计算所有牵引制动及反馈情况情况
-    def comput_all_ctrl_info(self):
+    def computAllCtrlInfo(self):
         # 读取该周期内容
         try:
             for idx in range(len(self.log.cycle)):
@@ -555,7 +611,9 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
                     if '@' in line:
                         pass
                     elif 'MVB[' in line:# 前提条件
-                        [self.a2tCtrl, nouse, self.t2aStat] = self.mvbParser.parseProtocol(line)
+                        match = self.cfg.reg_config.pat_mvb.findall(line)
+                        if match:
+                            [self.a2tCtrl, nouse, self.t2aStat] = self.mvbParser.parseProtocol(match[0])
                     else:
                         pass
 
@@ -584,8 +642,8 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
             print('mvb delay statistics plot line process err!')
 
     # 用于绘制估计加速度曲线
-    def measure_plot(self):
-        self.comput_all_ctrl_info()
+    def measurePlot(self):
+        self.computAllCtrlInfo()
         self.sp.ax.plot(self.unifyCycleList, self.atoCtrlCmdList,label='ATO输出MVB命令', color='blue', marker='.', markersize=0.5)
         self.sp.ax.plot(self.unifyCycleList, self.tcmsCtrlFbList, label='TCMS反馈MVB命令',color='green', marker='.', markersize=0.5)
         self.ax1 = self.sp.ax.twinx()
@@ -593,14 +651,14 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.unifyCycleList, self.atoCtrlCmdList)  # 初始化一个光标
         self.tb_cursor.reset_cursor_plot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
-        self.tb_cursor.move_signal.connect(self.cursor_plot)
+        self.tb_cursor.move_signal.connect(self.cursorPlot)
         self.sp.ax.set_xlim(self.unifyCycleList[0], self.unifyCycleList[len(self.unifyCycleList) - 1])  # 默认与不带光标统一的显示范围
         self.sp.ax.set_ylim(-17000, 17000)
         self.sp.ax.legend(loc='upper right')
         self.sp.ax.grid(which='both',linestyle='-')
 
     # 光标跟随
-    def cursor_plot(self, idx):
+    def cursorPlot(self, idx):
         self.sp.ax.texts.clear()
         str_ato_cycle = '当前系统周期:%d \n' % (self.unifyCycleList[idx])
         str_ato_v = '当前系统速度:%dcm/s\n' % (self.log.v_ato[idx])

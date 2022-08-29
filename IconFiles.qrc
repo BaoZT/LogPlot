@@ -25,6 +25,8 @@
      <file alias="offline.png">./IconFiles/offline.png</file>
      <file alias="realtime.png">./IconFiles/realtime.png</file>
      <file alias="MVBParser.png">./IconFiles/MVBParser.png</file>
+     <file alias="TSRSParser.png">./IconFiles/TSRSParser.png</file>
+     <file alias="ATPParser.png">./IconFiles/ATPParser.png</file>
      <file alias="UTCParser.png">./IconFiles/UTCParser.png</file>
      <file alias="dock.png">./IconFiles/dock.png</file>
      <file alias="track.png">./IconFiles/track.png</file>

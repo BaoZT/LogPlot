@@ -14,7 +14,7 @@
 - reset_vars(self): 重置所有列表
 
 """
-from itertools import cycle
+
 import re
 import sys
 import threading
@@ -24,7 +24,7 @@ import numpy as np
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
 from ConfigInfo import ConfigFile
-from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse
+from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, ProgressBarDisplay
 from MsgParse import Atp2atoParse, Atp2atoProto
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState 
 
@@ -95,6 +95,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.ioParser = InerIoInfoParse()
         self.cfg = ConfigFile()
         self.cfg.readConfigFile()
+        self.bar = ProgressBarDisplay()
         # 序列初始化
         self.cycle = np.array([], dtype=np.uint32)
         self.s = np.array([], dtype=np.uint32)
@@ -138,7 +139,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
             print('Create cycle dic! rst:%d'%iscycleok)
             t1 = time.clock() - start
             start = time.clock()  # 更新计时起点
-            islistok = self.create_ctrl_cycle_list()  # 解析周期内容
+            islistok = self.createCtrlCycleList()  # 解析周期内容
             print('Add and analysis dic content')
             t2 = time.clock() - start
             if iscycleok == 1:
@@ -256,20 +257,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
         content_search_state = 0   # 周期搜索状态，0=未知，1=搜索周期头，2=搜索周期尾
         restart_idx = 0   # 软件重启的行号
         restart_flag = 0  # 软件重启标志
-        # 创建周期号模板
-        pat_list = self.create_all_pattern()
-        pat_extend_list = self.create_extend_pattern()
         # 设置每次读取行数
         last_cycle_end_offset = f.tell()                # 初始化最近一次周期结束的指针偏移量
         # 计算进度条判断
-        cnt = 0
-        bar = 0
-        bar_cnt = int(self.file_lines_count / 70)
-        if bar_cnt == 0:
-            self.bar_show_signal.emit(70)  # 文本很短，直接赋值进度条
-            bar_flag = 0
-        else:
-            bar_flag = 1
+        self.bar.setBarStat(0, 70, self.file_lines_count)
         # 记录当前行的文件指针偏移量
         cur_line_head_offset = 0        # 定义初始文件索引
         cur_line_tail_offset = 0
@@ -286,14 +277,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
             if '################' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
                 restart_idx = index
                 restart_flag = 1
-            # 可计算的进度条
-            if bar_flag == 1:
-                cnt = cnt + 1
-                if int(cnt % bar_cnt) == 0:
-                    bar = bar + 1
-                    self.bar_show_signal.emit(bar)
-                else:
-                    pass
+            # 进度条
+            self.barRun()
             # 搜索周期
             s_r = self.cfg.reg_config.pat_cycle_start.findall(line)
             e_r = self.cfg.reg_config.pat_cycle_end.findall(line)
@@ -355,9 +340,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 # 只有搜索尾部时解析，搜索头部属于周期间不处理
                 if content_search_state == 2:
                     ret = 1                                       # 有周期!!!
-                    result = self.match_log_packet_contect(c, line, pat_list, pat_extend_list)
-                    if result == 0:                               # 每一行只能有一种结果，当无数据包，才继续
-                        result = self.match_log_basic_content(c, line, pat_list, pat_extend_list)
+                    if not self.match_log_packet_contect(c, line):
+                        # 每一行只能有一种结果，当无数据包，才继续
+                        self.match_log_basic_content(c, line)
                 else:
                     pass                                          # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
 
@@ -369,26 +354,27 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> line 待查找字符串
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
-    # <输出> ret  解析1=成功，0=失败
-    def match_log_basic_content(self, c=CycleLog, line=str, pat_list="list", pat_extend_list="list"):
-        # 北京时间
+    # <输出> ret  解析1=存在匹配数据，0=无匹配数据
+    def match_log_basic_content(self, c=CycleLog, line=str):
         ret = 1
-        pat_time = pat_list[0]
-        # ATO模式转换条件
-        pat_fsm = pat_list[1]
-        pat_sc = pat_list[2]
-        pat_stop = pat_list[3]
         # 匹配查找
-        if pat_time.findall(line):
-            c.time = str(pat_time.findall(line)[0])
-        elif pat_fsm.findall(line):
-            c.fsm = pat_fsm.findall(line)[0]
-        elif pat_stop.findall(line):
-            c.stoppoint = pat_stop.findall(line)[0]
-        elif pat_sc.findall(line):
-            c.control = pat_sc.findall(line)[0]
+        match = self.cfg.reg_config.pat_time.findall(line)
+        if match:
+            c.time = str(match[0])
         else:
-            ret = 0
+            match = self.cfg.reg_config.pat_fsm.findall(line)
+            if match:
+                c.fsm = match[0]
+            else:
+                match = self.cfg.reg_config.pat_stoppoint.findall(line)
+                if match:
+                    c.stoppoint = match[0]
+                else:
+                    match = self.cfg.reg_config.pat_ctrl.findall(line)
+                    if match:
+                        c.control = match[0]
+                    else:
+                        ret = 0
         return ret
 
     # <待完成>根据构建模板，对字符串分解后周期数据包进行填充
@@ -396,21 +382,23 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
     # <输出> ret  解析1=成功，0=失败
-    def match_log_packet_contect(self, c=CycleLog, line=str, pat_list="list", pat_extend_list="list"):
+    def match_log_packet_contect(self, c=CycleLog, line=str):
         ret = 1
         # 数据包识别,提高效率
         if '[P->O]' in line:
-            if self.cfg.reg_config.pat_p2o.findall(line):
-                msg_line = self.cfg.reg_config.pat_p2o.findall(line)[0]
+            match = self.cfg.reg_config.pat_p2o.findall(line)
+            if match:
+                msg_line = match[0]
                 c.msg_atp2ato = copy.deepcopy(self.atp2atoParser.msgParse(msg_line))
         elif '[O->P]' in line:
-            if self.cfg.reg_config.pat_o2p.findall(line):
-                msg_line = self.cfg.reg_config.pat_o2p.findall(line)[0]
+            match = self.cfg.reg_config.pat_o2p.findall(line)
+            if match:
+                msg_line = match[0]
                 c.msg_atp2ato =  copy.deepcopy(self.atp2atoParser.msgParse(msg_line))
         elif 'MVB[' in line:
-            c.a2t_ctrl = copy.deepcopy(self.mvbParser.parseProtocol(line)[0])
-            c.a2t_stat = copy.deepcopy(self.mvbParser.parseProtocol(line)[1])
-            c.t2a_stat = copy.deepcopy(self.mvbParser.parseProtocol(line)[2])
+            match = self.cfg.reg_config.pat_mvb.findall(line)
+            if match:
+                [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = copy.deepcopy(self.mvbParser.parseProtocol(match[0]))
         elif 'v&p' in line:
             c.sduInfo =  copy.deepcopy(self.sduParser.sduInfoStringParse(line, c.ostime_start))
         elif '[RP' in line:
@@ -421,107 +409,19 @@ class FileProcess(threading.Thread, QtCore.QObject):
             ret = 0
         return ret
 
-    # 创建C2ATO识别模板
-    # <输出> 返回C2ATO模板
-    @staticmethod
-    def create_extend_pattern():
-        pat_list = []
-        pat_c2ato_p1 = re.compile('\[P->O\]P1:pmt\s?(-?\d),ldoorp(\d),\s?rdoorp(\d),tv(\d+),ts(\d+),s(\d+),v(\d+),'
-                                  'pv(\d+),d_ma(\d+),\s?gfx_cmd(\d),gfx_s(\d+),m_low_frequency(\d+),'
-                                  'atp_stop_err(-?\d+)')
-        pat_list = [pat_c2ato_p1]
-
-        return pat_list
-
-    # 创建构建模板序列
-    # <输出> 返回模板列表
-    @staticmethod
-    def create_all_pattern():
-        pat_list = []
-        # 北京时间
-        pat_time = re.compile('time:(\d+-\d+-\d+ \d+:\d+:\d+)')
-        # ATO模式转换条件
-        pat_fsm = re.compile('FSM{(\d) (\d) (\d) (\d) (\d) (\d)}sg{(\d) (\d) (\d+) (\d+) (\w+) (\w+)}ss{(\d+) (\d)}')
-        pat_sc = re.compile(
-            'SC{(\d+) (\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (\d+) (\d+) (-?\d+) (-?\d+)}t (\d+) (\d+) (\d+)'
-            ' (\d+),(\d+)} f (-?\d+) (\d+) (\d+) (-?\w+)} p(\d+) (\d+)}CC')
-        pat_stop = re.compile('stoppoint:jd=(\d+) ref=(\d+) ma=(\d+)')
-
-        # ATP->ATO 数据包
-        pat_sp0 = re.compile('\[P->O\]SP0,')
-        pat_sp1 = re.compile('\[P->O\]SP1,')
-        pat_sp2 = re.compile('\[P->O\]SP2,')
-        pat_sp5 = re.compile('\[P->O\]SP5,.*\s(\d),.*\s(\w+),.*\s(\w+),.*\s(-?\d+),.*\s(\d+),.*\s(\d+),.*\s(\d+),'
-                             '.*\s(\d+),.*\s(\d+),.*\s(\d)')  # 因为有下划线所以不支持\w了
-        pat_sp6 = re.compile('\[P->O\]SP6,')
-        pat_sp7 = re.compile('\[P->O\]SP7,\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(-?\d+),\w*?\s?(\d+),\w*?\s?(\d+),'
-                             '\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+),\w*?\s?(\d+)')
-
-        pat_sp8 = re.compile('\[P->O\]SP8,\w*?\s?(\d),\w*?\s?(\d+),\w*?\s?(\d),\w*?\s?(\w+),\w*?\s?(\w+),'
-                             '\w*?\s?(\d), \w*?\s?(\d)')
-        pat_sp9 = re.compile('\[P->O\]SP9,')
-        # ATO->ATP 数据包
-        pat_sp131 = re.compile(
-            '\[O->P\]SP131:\w*?\s?(\d),\w*?\s?(\d),\w*?\s?(\d),\w*?\s?(-?\d+),\w*?\s?(\d),\w*?\s?(\d)'
-            ',\w*?\s?(\d),\w*?\s?(\d)')  # 最后一个padding不判断
-        pat_sp130 = re.compile('\[O->P\]SP130:\w*?\s?(\d),\w*?\s?(\d),\w*?\s?(-?\d+),\w*?\s?(\d),'
-                               '\w*?\s?(\d)')
-        pat_sp132 = re.compile('\[O->P\]SP132:')
-        pat_sp134 = re.compile('\[O->P\]SP134:')
-        # ATO->TSRS 数据包
-        pat_c41 = re.compile('\[T->A\]C41')
-        pat_c43 = re.compile('\[T->A\]C43')
-        pat_c2 = re.compile('\[T->A\]C2')
-        pat_p27 = re.compile('\[T->A\]P27')
-        pat_p21 = re.compile('\[T->A\]P21')
-        pat_c42 = re.compile('\[T->A\]C42')
-        # TSRS->ATO
-        pat_c44 = re.compile('\[A->T\]C44')
-        pat_c45 = re.compile('\[A->T\]C45')
-        pat_c46 = re.compile('\[A->T\]C46')
-
-        # IO IN的信息
-        pat_io_in = re.compile('\[DOOR\]IO_IN_(\w+)=(\d)')
-        # 匹配多个表达式时，或符号|两边不能有空格！
-        pat_io_out = re.compile("\[MSG\](OPEN\s[LR])|\[MSG\](CLOSE\s[LR])|\[MSG\](OPEN\sPSD[LR])|\[MSG\](CLOSE\sPSD[LR])")
-        # sdu 信息
-        p_ato_sdu = re.compile('v&p_ato:(\d+),(\d+)')
-        p_atp_sdu = re.compile('v&p_atp:(-?\d+),(-?\d+)')
-
-        # 添加列表
-        pat_list = [pat_time, pat_fsm, pat_sc, pat_stop, pat_sp0, pat_sp1, pat_sp2, pat_sp5, pat_sp6, pat_sp7,
-                    pat_sp8, pat_sp9, pat_sp131, pat_sp130, pat_sp132, pat_sp134, pat_c41, pat_c43, pat_c2,
-                    pat_p27, pat_p21, pat_c42, pat_c44, pat_c45, pat_c46, pat_io_in, pat_io_out, p_ato_sdu, p_atp_sdu]
-
-        return pat_list
-
     # 计算相邻周期加速度变化
     # <输出> 返回加速度处理结果
     def comput_acc(self):
-        cnt = 0
-        bar = 81
         temp_delta_v = np.array([], np.int16)
         temp_delta_s = np.array([], np.uint32)
         # 计算分子分母
         temp_delta_v = 0.5 * (self.v_ato[1:] ** 2 - self.v_ato[:-1] ** 2)
         temp_delta_s = self.s[1:] - self.s[:-1]
         # 进度条
-        bar_cnt = int(len(temp_delta_s) / 4)
-        if bar_cnt == 0:
-            self.bar_show_signal.emit(85)  # 文本很短，直接赋值进度条
-            bar_flag = 0
-        else:
-            bar_flag = 1
+        self.bar.setBarStat(81, 4, len(temp_delta_s))
         # 加速度计算处理
         for idx, item in enumerate(temp_delta_s):
-            # 进度条计算
-            if bar_flag == 1:
-                cnt = cnt + 1
-                if int(cnt % bar_cnt) == 0:
-                    bar = bar + 1
-                    self.bar_show_signal.emit(bar)
-                else:
-                    pass
+            self.barRun()
             # 主逻辑
             if item == 0:
                 yield 0
@@ -537,36 +437,20 @@ class FileProcess(threading.Thread, QtCore.QObject):
         first_find_pmv_flag = False
         last_atp_pmv = 0    # 初始化最近的一次ATP允许速度
         c_num_end = 0
-        cnt = 0
-        bar = 85
         # 进度条
-        bar_cnt = int(len(self.cycle_dic.keys()) / 10)
-        if bar_cnt == 0:
-            self.bar_show_signal.emit(95)  # 文本很短，直接赋值进度条
-            bar_flag = 0
-        else:
-            bar_flag = 1
+        self.bar.setBarStat(85, 10, len(self.cycle_dic.keys()))
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
             try:
                 for ctrl_item in self.cycle_dic.keys():
                     # 进度条计算
-                    if bar_flag == 1:
-                        cnt = cnt + 1
-                        if int(cnt % bar_cnt) == 0:
-                            bar = bar + 1
-                            self.bar_show_signal.emit(bar)
-                        else: 
-                            pass
+                    self.barRun()
                     # ATP允许速度计算
                     if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
                         c = self.cycle_dic[ctrl_item].cycle_num  # 获取周期号
                         # 如果有数据包
                         if self.cycle_dic[c].msg_atp2ato.sp2_obj.updateflag:
                             last_atp_pmv =self.cycle_dic[c].msg_atp2ato.sp2_obj.v_permitted
-                        elif 1001 in self.cycle_dic[ctrl_item].cycle_sp_dict.keys():
-                            last_atp_pmv = int(self.cycle_dic[ctrl_item].cycle_sp_dict[1001][7])    
-                            first_find_pmv_flag = True # 添加C2ATO特殊处理
                         else:
                             # 上来就控车时就没有允许速度，首次获取，当周期无SP2
                             if not self.cycle_dic[c].msg_atp2ato.sp2_obj.updateflag or first_find_pmv_flag:
@@ -581,13 +465,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                                             if self.cycle_dic[c].msg_atp2ato.sp2_obj.updateflag:
                                                 last_atp_pmv = self.cycle_dic[c].msg_atp2ato.sp2_obj.v_permitted  # 非首次投入ATO周期，无SP2包
                                                 print('ato cycle no sp2, find before aom!')
-                                                break
-                                            else:
-                                                pass
-                                            if 1001 in self.cycle_dic[c].cycle_sp_dict.keys():
-                                                last_atp_pmv = int(self.cycle_dic[c].cycle_sp_dict[1001][7].strip())  # 非首次投入ATO周期，无SP2包
-                                                print('ato cycle no sp2, find before aom!')
-                                                first_find_pmv_flag = True
                                                 break
                                             else:
                                                 pass
@@ -608,17 +485,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
     # <核心函数>
     # 建立ATO控制信息和周期的关系字典
-    def create_ctrl_cycle_list(self):
+    def createCtrlCycleList(self):
         ret = 2  # 用于标记创建结果,2=无周期无结果，1=有周期无控车，0=有周期有控车
-        cnt = 0
-        bar = 70
-        bar_flag = 0
-        bar_cnt = int(len(self.cycle_dic.keys()) / 10)
-        if bar_cnt == 0:
-            self.bar_show_signal.emit(80)
-            bar_flag = 0
-        else:
-            bar_flag = 1
+        self.bar.setBarStat(70, 10, len(self.cycle_dic.keys()))
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
             for ctrl_item in self.cycle_dic.keys():
@@ -627,13 +496,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 else:
                     pass
                 # 对外显示进度
-                if bar_flag == 1:
-                    cnt = cnt + 1
-                    if int(cnt % bar_cnt) == 0:
-                        bar = bar + 1
-                        self.bar_show_signal.emit(bar)
-                    else:
-                        pass
+                self.barRun()
             ret = 1  # 有周期，不一定有控车
         else:
             ret = 2
@@ -696,58 +559,14 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 ret = 1
         return ret
 
-    # 解析MVB数据
-    # 返回解析结果 0=无，1=更新
-   
-    # 找出当前行所在的周期，针对单次搜索
-    # 输入： 行索引
-    # 返回： 该行所在周期[起始索引，终点索引，周期号]
-    def find_cycle_border(self, index):
-        begin_idx = index
-        end_idx = index
-        cycle_start = -1
-        cycle_end = -2
-        cycle_num = -1
-        # 文件开始位置
-        while begin_idx > 0:
-            if '---CORE_TARK CY_B' in self.lines[begin_idx]:
-                try:
-                    raw_start = self.lines[begin_idx].split(',')  # 分隔系统时间和周期号,如果打印残缺就会合并周期
-                    cycle_start = int(raw_start[1].split('----')[0])
-                    break
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                begin_idx = begin_idx - 1
-        # 文件结束位置
-        while end_idx < len(self.lines) - 1:
-            if '---CORE_TARK CY_E' in self.lines[end_idx]:  # 分隔周期结束的时间和周期号
-                try:
-                    raw_end = self.lines[end_idx].split(',')
-                    cycle_end = int(raw_end[1].split('---')[0])
-                    break
-                except Exception as err:
-                    self.Log(err, __name__, sys._getframe().f_lineno)
-            else:
-                end_idx = end_idx + 1
-        # 边界是否只包含一个周期
-        if cycle_end != -2 and cycle_start != -1:
-            # 周期号一致
-            if cycle_start == cycle_end:  # 搜索成功周期
-                cycle_num = cycle_start
-            else:
-                if abs(cycle_end - index) < abs(index - cycle_start):  # 更接近end周期号
-                    cycle_num = cycle_end
-                else:
-                    cycle_num = cycle_start
-        elif cycle_end == -2 and cycle_start != -1:  # 记录末尾，搜到头，没有搜索到结尾
-            end_idx = -1
-        elif cycle_end != -2 and cycle_start == -1:  # 记录开始，搜到尾，没有搜到头
-            begin_idx = -1
+ 
+    # 进度条处理函数
+    def barRun(self):
+        percent = self.bar.barMovingCompute()
+        if percent:
+            self.bar_show_signal.emit(percent)
         else:
-            begin_idx = -1  # 头尾都找不到，空记录
-            end_idx = -1
-        return begin_idx, end_idx, cycle_num
+            pass
 
     # 打印函数
     def Log(self, msg=str, fun=str, lino=int):
@@ -760,5 +579,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
 if __name__ == "__main__":
     x = InerRunningPlanInfo()
-    fd  = FileProcess("08_M_L-Serial-COM8-1126174824-序列4-姚家窝铺-新民北.log")
-    fd.readkeyword("08_M_L-Serial-COM8-1126174824-序列4-姚家窝铺-新民北.log")
+    path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
+    fd  = FileProcess(path)
+    fd.readkeyword(path)
+    print("end read!")

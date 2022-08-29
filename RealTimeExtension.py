@@ -1,21 +1,17 @@
 import copy
 import os
 import queue
-import re
 import threading
 import time
-
 import numpy as np
 from PyQt5 import QtCore
-
-from FileProcess import FileProcess
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse
 from MsgParse import Atp2atoParse
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
 from ConfigInfo import ConfigFile
 
-exit_flag = 0
-queueLock = threading.Lock()
+_sentinel = object()                                 # Object that signals shutdown
+thLock = threading.Lock()
 workQueue = queue.Queue(10000)
 real_curve_buff = 50                                 # 每次绘图话添加的点数
 real_curve_all_buff = 50000                          # 每次绘画总点数
@@ -24,35 +20,34 @@ paintList = np.zeros([5, real_curve_all_buff],dtype=int)       # 初始化1000�
 
 class SerialRead(threading.Thread, QtCore.QObject):
 
-    def __init__(self, name, serialport):
+    def __init__(self, name, serialHandle):
         threading.Thread.__init__(self)
         self.name = name
-        self.ser = serialport
+        self.handle = serialHandle
+        self.runningFlag = False
         super(QtCore.QObject, self).__init__()
 
     # 串口成功打开才启动此线程
     def run(self):
-        # 读取文件，测试时打开
-        with open('M_L-Serial-COM6-1126143651-序列1-北票-朝阳.log') as f:
-            while not exit_flag:
-                # 有数据就读取
-                try:
-                    #下面两行测试时打开
-                    line = f.readline().rstrip()
-                    time.sleep(0.001)
-                    # line = self.ser.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
-                except UnicodeDecodeError as err:
-                    print("serial read err")
-                    print(err)
-                # 若队列未满，则继续加入
-                if not workQueue.full():
-                    try:
-                        workQueue.put(line)   # 必须读到数据
-                    except Exception as err:
-                        print(err)
-                else:
-                    print("recv queue full!")
-
+        while self.runningFlag:
+            # 有数据就读取
+            try:
+                line = self.handle.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
+            except UnicodeDecodeError as err:
+                print("serial read unicode error! :"+line)
+            # 若队列未满，则继续加入:
+            if not workQueue.full():
+                thLock.acquire()
+                workQueue.put(copy.deepcopy(line), block=False, timeout=0.1)   # 必须读到数据
+                thLock.release()
+            else:
+                time.sleep(0.1)
+        # 发送停止信号
+        workQueue.put(_sentinel)
+    
+    # 允许线程
+    def setThreadEnabled(self, en=bool):
+        self.runningFlag = en
 
 class RealPaintWrite(threading.Thread, QtCore.QObject):
 
@@ -67,15 +62,10 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         super(QtCore.QObject, self).__init__()
         self.filepath = filepath  # 记录文件路径
         self.logFile = filepath + 'ATO记录中' + str(int(time.time())) + '.txt'  # 纪录写入文件
-        self.logBuff = []
+        self.logBuff = ''
         self.filenamefmt = filenamefmt  # 文件格式化命名
         self.portname = portname
         self.cfg = ConfigFile()
-        pat_cycle_start = self.cfg.reg_config.pat_cycle_start # 周期终点匹配
-        pat_cycle_end = self.cfg.reg_config.pat_cycle_end
-        self.pat_list = FileProcess.create_all_pattern()
-        self.pat_list.insert(0, pat_cycle_start)
-        self.pat_list.insert(1, pat_cycle_end)
         # 周期开始时间
         self.cycle_os_time_start = 0
         self.cycle_os_time_end = 0
@@ -107,13 +97,6 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.sc_ctrl = []
         self.stoppoint = []
         self.time_statictics = ()
-        # io 信息
-        self.io_in_real = ()
-        self.io_out_real = []
-        # 测速测距
-        self.sdu_ato = ()
-        self.sdu_atp = ()
-        self.state_machine = 0  # 测速测距检查使用的状态机用于匹配ATP/ATO速度
 
     def newCyclePreProcess(self):
         # 创建周期后应重置ATP/ATO解析模块解析结果
@@ -132,18 +115,19 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     # 串口成功打开才启动该线程
     def run(self):
         # 打开文件等待写入logFile
-        with open(self.logFile, 'w') as f:
-            while not exit_flag:
+        with open(self.logFile, 'w', encoding='utf-8') as f:
+            while True:
                 if not workQueue.empty():
-                    try:
-                        line = workQueue.get_nowait()
-                    except Exception as err:
-                        print(err)
-                    # 防止数据处理过程中被刷新
-                    #queueLock.acquire()
-                    #self.fileWrite(line, f) # 测试时关闭
-                    self.lineProcessPaint(line)
-                    #queueLock.release()
+                    thLock.acquire()
+                    line = workQueue.get(block=False, timeout=0.1)
+                    # 收到信号进行停止
+                    if line is _sentinel:
+                        break
+                    else:
+                        # 防止数据处理过程中被刷新
+                        self.fileWrite(line, f) # 测试时关闭
+                        self.lineProcessPaint(line)
+                    thLock.release()
                 else:
                     time.sleep(0.1)
             # 清空缓存
@@ -156,15 +140,16 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     # 按行写入文件
     def fileWrite(self, line, f):
         try:
-            f.write(line+'\n')   # 重新添加回车写入
+            f.write(line+'\n')
         except Exception as err:
             print('write info err' + str(time.time()))
             print(err)
 
     # 立即写入用于关断时候
     def fileFlush(self, f):
+        # 目前预留不使用文件缓存
         for item in self.logBuff:
-            f.write(item)  # 由于记录中本身有回车，去掉\r\n
+            f.write(item)
         f.flush()
         print("file exit flush!")
 
@@ -259,8 +244,9 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 发射信号
         if update_flag == True:
             # 生成信号结果
-            result = (self.cycleNumStr, self.timeContentStr, self.fsm, self.sc_ctrl, self.stoppoint,
-                    self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.time_statictics)
+            result = (self.cycle_os_time_start, self.cycleNumStr, self.timeContentStr, 
+            self.fsm, self.sc_ctrl, self.stoppoint,
+            self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.time_statictics)
             self.patShowSignal.emit(copy.deepcopy(result))
         # 返回用于画图
         return update_flag
@@ -315,11 +301,13 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         updateflag = False
         # 前提条件
         if 'MVB[' in line:
-            updateflag = True
-            [a2tCtrl, a2tStat, t2aStat ] = self.mvbParser.parseProtocol(line)
+            match = self.cfg.reg_config.pat_mvb.findall(line)
+            if match:
+                [a2tCtrl, a2tStat, t2aStat ] = self.mvbParser.parseProtocol(match[0])
+                updateflag = True
 
-            if self.mvbParser.ato2tcms_ctrl_obj.updateflag and \
-                self.mvbParser.ato2tcms_state_obj.updateflag and \
+            if self.mvbParser.ato2tcms_ctrl_obj.updateflag or \
+                self.mvbParser.ato2tcms_state_obj.updateflag or \
                 self.mvbParser.tcms2ato_state_obj.updateflag:
 
                 self.a2tCtrlObj = copy.deepcopy(a2tCtrl)

@@ -24,6 +24,8 @@ class TransRecord(QtCore.QObject):
         self.dic_msg = {}
         self.dic_mvb = {}
         self.dic_sdu = {}
+        self.dic_atp2ato_msg = {}
+        self.dic_ato2atp_msg = {}
         self.dic_atp2ato_pkt = {}
         self.dic_ato2atp_pkt = {}
         self.dic_rp = {}
@@ -127,13 +129,23 @@ class TransRecord(QtCore.QObject):
                     self.dic_mvb['ato2tcms_ctrl'] = head_ato_ctrl + '0' + ato_ctrl
             elif nid == 2:
                 ato_state = hex(item.fast_get_segment_by_index(item.curBitsIndex, l_pkt - 21)).upper()[2:]
-                if len(ato_ctrl) % 2 == 0:
+                if len(ato_state) % 2 == 0:
                     self.dic_mvb['ato2tcms_state'] = head_ato_state + ato_state
                 else:
                     self.dic_mvb['ato2tcms_state'] = head_ato_state + '0'+ato_state
             elif nid == 3:
                 item.fast_get_segment_by_index(item.curBitsIndex, 8)
                 l_msg = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+                # 获取原始数据
+                item.curBitsIndex -= 16
+                msg_content = hex(item.fast_get_segment_by_index(item.curBitsIndex, l_pkt - 21)).upper()[2:]
+                if len(msg_content) % 2 == 0:
+                    self.dic_atp2ato_msg['atp2ato_msg'] = ('[P->O][%d]'%l_msg) + msg_content
+                else:
+                    self.dic_atp2ato_msg['atp2ato_msg'] = ('[P->O][%d]'%l_msg) + '0' + msg_content
+                # 获取后重置索引
+                item.curBitsIndex = item.curBitsIndex - (l_pkt - 21) + 16
+                item.curBytesIndex = int((item.curBitsIndex-1)/8)
                 # 记录bit数
                 bit_idx = item.curBitsIndex
                 byte_idx = item.curBytesIndex
@@ -307,6 +319,16 @@ class TransRecord(QtCore.QObject):
             elif nid == 4:
                 item.fast_get_segment_by_index(item.curBitsIndex, 8)
                 l_msg = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+                # 获取原始数据
+                item.curBitsIndex -= 16
+                msg_content = hex(item.fast_get_segment_by_index(item.curBitsIndex, l_pkt - 21)).upper()[2:]
+                if len(msg_content) % 2 == 0:
+                    self.dic_ato2atp_msg['ato2atp_msg'] = ('[O->P][%d]'%l_msg) + msg_content
+                else:
+                    self.dic_ato2atp_msg['ato2atp_msg'] = ('[O->P][%d]'%l_msg) + '0' + msg_content
+                # 获取后重置索引
+                item.curBitsIndex = item.curBitsIndex - (l_pkt - 21) + 16
+                item.curBytesIndex = int((item.curBitsIndex-1)/8)
                 # 记录bit数
                 bit_idx = item.curBitsIndex
                 byte_idx = item.curBytesIndex
@@ -505,6 +527,14 @@ class TransRecord(QtCore.QObject):
                                 fw.write('---CORE_TARK CY_B %s,%s---\n' % (t_ato, n_cycle))
                                 fw.write('time:%s-%s-%s %s:%s:%s,system:M\n' % (dt.tm_year, dt.tm_mon, dt.tm_mday, dt.tm_hour,
                                                                               dt.tm_min, dt.tm_sec))
+                                # MVB 数据
+                                if self.dic_mvb['tcms2ato']:
+                                    fw.write(self.dic_mvb['tcms2ato']+'\n')
+                                
+                                # atpato通信数据
+                                if self.dic_atp2ato_msg['atp2ato_msg']:
+                                    fw.write(self.dic_atp2ato_msg['atp2ato_msg']+'\n')
+                                
                                 # 速传信息
                                 if self.dic_sdu['atp_v'] and self.dic_sdu['atp_s']:
                                     fw.write('v&p_atp:%d,%d\n' % (self.dic_sdu['atp_v'], self.dic_sdu['atp_s']))
@@ -578,14 +608,15 @@ class TransRecord(QtCore.QObject):
                                             % (sc[0], sc[1], sc[2], sc[3], sc[4], sc[5], sc[6], sc[7], sc[8], sc[9],
                                                 sc[10], sc[11], sc[12], sc[13], self.g_stop_use, self.g_ato_stop_err, sc[14],
                                                self.g_q_platform))
-                                # MVB 数据
-                                if self.dic_mvb['tcms2ato']:
-                                    fw.write(self.dic_mvb['tcms2ato']+'\n')
+                                # MVB发送数据
                                 if self.dic_mvb['ato2tcms_state']:
                                     fw.write(self.dic_mvb['ato2tcms_state']+'\n')
                                 if self.dic_mvb['ato2tcms_ctrl']:
                                     fw.write(self.dic_mvb['ato2tcms_ctrl']+'\n')
-
+                                
+                                # ato2atp通信数据
+                                if self.dic_ato2atp_msg['ato2atp_msg']:
+                                    fw.write(self.dic_ato2atp_msg['ato2atp_msg']+'\n')
                                 fw.write('---CORE_TARK CY_E %s,%s---\n' % (t_ato, n_cycle))  # 显示周期尾
                         elif ret_sig == -2:     # 当解析出启机记录时
                             trans_part = trans_part+1
