@@ -15,14 +15,14 @@
 
 """
 
-import re
+
 import sys
 import threading
 import time
-import copy
+import pickle
 import numpy as np
-from PyQt5.QtWidgets import QProgressBar
 from PyQt5 import QtCore
+import cProfile
 from ConfigInfo import ConfigFile
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, ProgressBarDisplay
 from MsgParse import Atp2atoParse, Atp2atoProto
@@ -274,24 +274,33 @@ class FileProcess(threading.Thread, QtCore.QObject):
             #  目前未知原因，为了适应该情况，每次读取单行计算后，将文件字节偏移量加+1来保持与tell()一致
             index = index + 1                                     # 计算当前行号，用于重启行号反馈
             # 如果有启机过程立即判断
-            if '################' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
+            if '###' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
                 restart_idx = index
                 restart_flag = 1
             # 进度条
             self.barRun()
             # 搜索周期
-            s_r = self.cfg.reg_config.pat_cycle_start.findall(line)
-            e_r = self.cfg.reg_config.pat_cycle_end.findall(line)
+            if '---CORE' in line:
+                # 检查周期头
+                s_r = self.cfg.reg_config.pat_cycle_start.findall(line)
+                if s_r:
+                    e_r = None
+                else:
+                    e_r = self.cfg.reg_config.pat_cycle_end.findall(line)
+                    if e_r:
+                        s_r = None
+            else:
+                e_r = None
+                s_r = None
             # 检查是否周期头
             if s_r:
-                s_r_list = list(s_r[0])                # 获取匹配的元组，转为列表
                 # 检查状态机
                 if content_search_state == 0 or content_search_state == 1:  # 未知或搜头状态下搜到周期头
                     c = CycleLog()
                     self.cycleCreateProcess()
                     c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
-                    c.ostime_start = int(s_r_list[0])  # 格式0是系统时间
-                    c.cycle_num = int(s_r_list[1])     # 格式1是周期号
+                    c.ostime_start = int(s_r[0][0])  # 格式0是系统时间
+                    c.cycle_num = int(s_r[0][1])     # 格式1是周期号
                     content_search_state = 2           # 开始周期尾继续搜寻内容！
                 else:                                  # 搜索周期尾时搜到周期头，结束上一周期
                     c.file_end_offset = cur_line_head_offset   # 残尾周期的结束偏移
@@ -306,11 +315,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     c = CycleLog()
                     self.cycleCreateProcess()
                     c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
-                    c.ostime_start = int(s_r_list[0])  # 格式0是系统时间
-                    c.cycle_num = int(s_r_list[1])     # 格式1是周期号
+                    c.ostime_start = int(s_r[0][0])  # 格式0是系统时间
+                    c.cycle_num = int(s_r[0][1])     # 格式1是周期号
                     content_search_state = 2           # 开始周期尾继续搜寻内容
             elif e_r:
-                e_r_list = list(e_r[0])                # 获取匹配的元组，转为列表
                 # 头部残缺情况，直接生成周期
                 if content_search_state == 0 or content_search_state ==1:
                     c = CycleLog()
@@ -318,13 +326,13 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     c.file_begin_offset = last_cycle_end_offset  # 获取上次或初始化的周期结束的文件偏移量
                     c.file_end_offset = cur_line_tail_offset     # 获取尾部文件偏移量
                     c.ostime_start = 0                           # 格式0是系统时间，0为特殊值，未知
-                    c.cycle_num = int(e_r_list[1])               # 格式1是周期号
+                    c.cycle_num = int(e_r[0][1])               # 格式1是周期号
                     c.cycle_property = 3                         # 设置该周期属性，头部缺失
                     content_search_state = 1                     # 开始下一次周期头搜索工作
                 else:                                            # 搜索周期尾时找到，状态机是2
-                    if int(e_r_list[1]) == c.cycle_num:          # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
+                    if int(e_r[0][1]) == c.cycle_num:          # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
                         c.file_end_offset = cur_line_tail_offset           # 获取周期结束偏移量
-                        c.ostime_end = int(e_r_list[0])          # 找到完整周期
+                        c.ostime_end = int(e_r[0][0])          # 找到完整周期
                         c.cycle_property = 1                     # 完整周期
                         content_search_state = 1                 # 置状态机为未知，重新搜索
                         # 添加周期到字典
@@ -340,7 +348,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 # 只有搜索尾部时解析，搜索头部属于周期间不处理
                 if content_search_state == 2:
                     ret = 1                                       # 有周期!!!
-                    if not self.match_log_packet_contect(c, line):
+                    if not self.match_log_packet_content(c, line):
                         # 每一行只能有一种结果，当无数据包，才继续
                         self.match_log_basic_content(c, line)
                 else:
@@ -382,29 +390,29 @@ class FileProcess(threading.Thread, QtCore.QObject):
     # <输入> c    已经确定周期边界的周期对象，待填充内容
     # <输入> pat_list 模板列表
     # <输出> ret  解析1=成功，0=失败
-    def match_log_packet_contect(self, c=CycleLog, line=str):
+    def match_log_packet_content(self, c=CycleLog, line=str):
         ret = 1
         # 数据包识别,提高效率
         if '[P->O]' in line:
             match = self.cfg.reg_config.pat_p2o.findall(line)
             if match:
                 msg_line = match[0]
-                c.msg_atp2ato = copy.deepcopy(self.atp2atoParser.msgParse(msg_line))
+                c.msg_atp2ato = pickle.loads(pickle.dumps(self.atp2atoParser.msgParse(msg_line)))
         elif '[O->P]' in line:
             match = self.cfg.reg_config.pat_o2p.findall(line)
             if match:
                 msg_line = match[0]
-                c.msg_atp2ato =  copy.deepcopy(self.atp2atoParser.msgParse(msg_line))
+                c.msg_atp2ato =  pickle.loads(pickle.dumps(self.atp2atoParser.msgParse(msg_line)))
         elif 'MVB[' in line:
             match = self.cfg.reg_config.pat_mvb.findall(line)
             if match:
-                [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = copy.deepcopy(self.mvbParser.parseProtocol(match[0]))
+                [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = pickle.loads(pickle.dumps(self.mvbParser.parseProtocol(match[0])))
         elif 'v&p' in line:
-            c.sduInfo =  copy.deepcopy(self.sduParser.sduInfoStringParse(line, c.ostime_start))
+            c.sduInfo =  pickle.loads(pickle.dumps(self.sduParser.sduInfoStringParse(line, c.ostime_start)))
         elif '[RP' in line:
-            c.rpInfo = copy.deepcopy(self.rpParser.rpStringParse(line,c.ostime_start))
+            c.rpInfo = pickle.loads(pickle.dumps(self.rpParser.rpStringParse(line,c.ostime_start)))
         elif '[DOOR]' in line or '[MSG]' in line:
-            c.ioInfo = copy.deepcopy(self.ioParser.ioStringParse(line))
+            c.ioInfo = pickle.loads(pickle.dumps(self.ioParser.ioStringParse(line)))
         else:
             ret = 0
         return ret
@@ -579,7 +587,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
 
 if __name__ == "__main__":
     x = InerRunningPlanInfo()
-    path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
+    #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
+    path = r"F:\04-ATO Debug Data\300T+ATO\M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log"
     fd  = FileProcess(path)
-    fd.readkeyword(path)
+    cProfile.run('fd.readkeyword(path)')
     print("end read!")

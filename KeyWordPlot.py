@@ -2,6 +2,7 @@
 
 # encoding: utf-8
 
+from pyexpat.errors import XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF
 import matplotlib
 import matplotlib.figure as matfig
 from PyQt5 import QtCore, QtWidgets
@@ -26,7 +27,7 @@ class SnaptoCursor(QtCore.QObject):
     move_signal = QtCore.pyqtSignal(int)        # 带一个参数的信号
     sim_move_singal = QtCore.pyqtSignal(int)    # 模拟手动挪动光标
 
-    def __init__(self, sp, ax, x, y):
+    def __init__(self, sp, ax, x, y, spAux, axAux, xAux, yAux):
         super(SnaptoCursor, self).__init__()
         self.fmpl = sp
         self.ax = ax
@@ -36,10 +37,21 @@ class SnaptoCursor(QtCore.QObject):
         self.ly = self.ax.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
         self.x = x
         self.y = y
+        # 辅助光标 
+        self.fmplAux = spAux
+        self.axAux = axAux
+        self.axAux.set_xlim(xAux[0], xAux[len(x)-1])  # 默认与不带光标统一的显示范围
+        self.lxAux = self.axAux.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
+        self.lyAux = self.axAux.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
+        self.xAux = x
+        self.yAux = y
         # use for record key words
         self.data_x = 0
         self.data_y = 0
         self.nearest_index = 0
+        # 辅助光标点
+        self.data_xAux = 0
+        self.data_yAux = 0
     # text location in axes coords
 
     def get_cursor_data(self):
@@ -54,7 +66,7 @@ class SnaptoCursor(QtCore.QObject):
             return
         # 下面是当前鼠标坐标
         x, y = event.xdata, event.ydata
-        indx = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1)
+        indx = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1) # 共用X轴索引
         # update record data and index for return
         self.data_x = x
         self.data_y = y
@@ -62,13 +74,17 @@ class SnaptoCursor(QtCore.QObject):
         # nearest data 这是数据
         x = self.x[indx]
         y = self.y[indx]
+        yAux = self.yAux[indx]
         # update the line positions
         if cursor_track_flag == 1:          # 看标志追踪
             y = self.y[indx]
             self.lx.set_ydata(y)
             self.ly.set_xdata(x)
+            self.lxAux.set_ydata(yAux)
+            self.lyAux.set_xdata(x)  # 共用X轴索引
             #print('x=%1.2f, y=%1.2f' % (x, y))
             self.fmpl.draw()
+            self.fmplAux.draw()
             # 发射信号
             self.move_signal.emit(indx)  # 发射信号索引
         else:
@@ -84,15 +100,19 @@ class SnaptoCursor(QtCore.QObject):
         # nearest data 这是数据
         x = self.x[indx]
         y = self.y[indx]
+        yAux = self.yAux[indx]
         # update the line positions
         self.lx.set_ydata(y)
         self.ly.set_xdata(x)
+        self.lxAux.set_ydata(yAux)
+        self.lyAux.set_xdata(x)  # 共用X轴索引
         print('x=%1.2f, y=%1.2f' % (x, y))
         self.fmpl.draw()
+        self.fmplAux.draw()
         # 发射信号
         self.sim_move_singal.emit(indx)  # 发射信号索引
 
-    def reset_cursor_plot(self):
+    def resetCursorPlot(self):
         global cursor_track_flag
         cursor_track_flag = 1
 
@@ -114,15 +134,17 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
                                      # 的FigureCanvas，这是连接pyqt5与matplotlib的关键
     lock_signal = QtCore.pyqtSignal(int)  # 这个参数用于提醒锁定光标
 
-    def __init__(self, parent=None, width=20, height=10, dpi=100):
+    def __init__(self, parent=None, width=20, height=10, dpi=100, sharedAxes=None):
         self.fig = matfig.Figure(figsize=(width, height), dpi=100, frameon=False)  # 创建一个Figure，注意：该Figure为
                                                                                 # matplotlib下的figure，不是matplotlib
                                                                                 # pyplot下面的figure
         self.fig.subplots_adjust(top=0.952, bottom=0.095, left=0.064, right=0.954, hspace=0.17, wspace=0.25)
-        self.mainAxes = self.fig.add_subplot(111)
+        if sharedAxes:
+            self.mainAxes = self.fig.add_subplot(111, sharex=sharedAxes)
+        else:
+            self.mainAxes = self.fig.add_subplot(111)
         super().__init__(self.fig)    # 初始化父类函数,这是Python3的风格，且super不带参数
         self.setParent(parent)
-        self.line_list = {}                     # 键值对存储曲线
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.twinAxes = self.mainAxes.twinx()
@@ -172,6 +194,14 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         else:
             self.mainAxes.plot(ob.cycle, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
 
+    # 绘制ATP命令速度曲线（含义改变但名称保留）
+    # cmd : 1=周期速度曲线 0=位置速度曲线
+    def plotLogRamp(self, ob=FileProcess, cmd=int):
+        if cmd == 0:
+            self.mainAxes.plot(ob.s, ob.ramp, color='red', label="当前坡度", linewidth=1)
+        else:
+            self.mainAxes.plot(ob.cycle, ob.ramp, color='red', label="当前坡度", linewidth=1)
+
     # 对于ATP允许速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
@@ -191,14 +221,14 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             self.twinAxes.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
 
     # 绘制速度坐标轴相关信息
-    def plotCord1(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
+    def plotMainSpeedCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
         # paint the speed ruler
         self.mainAxes.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
-                           label = '45km/h,80km/h,350km/h', linewidth=1)  # 45km/h   #  0 being the far left of the plot,
+                           label = '45km/h,80km/h,350km/h', linewidth=0.8)  # 45km/h   #  0 being the far left of the plot,
         self.mainAxes.axhline(y=9722, xmin=0, xmax=1, color='darkblue', ls='dashed',    # 1 the far right of the plot
-                           linewidth=1)  # 350km/h
+                           linewidth=0.8)  # 350km/h
         self.mainAxes.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
-                           linewidth=1)  # 80km/h
+                           linewidth=0.8)  # 80km/h
         # 该条曲线纯粹是为了首次绘图自动范围包括负数
         self.mainAxes.axhline(y=-500, xmin=0, xmax=1, color='darkblue', ls='dashed', linewidth=0)
 
@@ -237,13 +267,18 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             self.mainAxes.set_ylabel('列车速度cm/s', fontdict={'fontsize': 10})
             self.mainAxes.set_title(ob.filename + " " + "速度-周期曲线")
         # 公共纵坐标部分,暂时屏蔽
-        #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 10))], minor=False)
-        #self.axes1.set_yticks([int((v * 250) / 9) for v in list(range(0, 410, 1))], minor=True)
-        #self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 10))], fontdict={'fontsize': 10}, minor=False)
-        # self.axes1.set_yticklabels([str(v) for v in list(range(0, 410, 1))], fontdict={'fontsize': 8}, minor=True)
-        #self.axes1.set_ylim(-200, ob.atp_permit_v.max() + 200)
-        self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.040, right=0.969, hspace=0.17, wspace=0.25)
-        #self.fig.tight_layout()
+        self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.060, right=0.969, hspace=0.17, wspace=0.25)
+
+    # 绘制坡度坐标轴信息
+    def plotMainRampCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
+        self.mainAxes.axhline(y=0, xmin=0, xmax=1, color='black', ls='--', label = '平坡', linewidth=0.8) 
+
+        if self.mainAxes.get_lines():
+            self.mainAxes.legend(loc='upper left')
+        if self.twinAxes.get_lines():
+            self.twinAxes.legend(loc='upper right')
+        self.mainAxes.set_ylabel('坡度值‰', fontdict={'fontsize': 10})
+        self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.060, right=0.969, hspace=0.17, wspace=0.25)
 
     # 绘制加速度相关信息
     def plotlog_sa(self, ob=FileProcess, cmd=int):
@@ -264,7 +299,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         self.mainAxes.set_ylabel('线路坡度')
 
     # 绘制对称坐标相关信息
-    def plot_cord2(self, ob=FileProcess, cmd=int):
+    def plotTwinLevelCord(self, ob=FileProcess, cmd=int):
         if cmd == 0:
             self.mainAxes.set_xlim(ob.s[0], ob.s[len(ob.s) - 1])
             self.mainAxes.set_xlabel('列车位置cm',fontdict={'fontsize': 10})
