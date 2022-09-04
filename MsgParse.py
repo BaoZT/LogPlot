@@ -7,9 +7,10 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-28 21:59:44
+LastEditTime: 2022-08-31 22:24:16
 '''
 
+from statistics import mean
 from PyQt5 import  QtWidgets,QtGui
 from ProtocolParser.CommonParse import BytesStream
 
@@ -41,8 +42,8 @@ Atp2atpFieldDic={
         'l_traint':ProtoField("安全车长",0,b_endian,15,None,None),
         'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,None,None),
         'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,None),
-        'm_mode_c2':ProtoField("ATP模式",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
-        'm_mode_c3':ProtoField("ATP模式",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
+        'm_mode_c2':ProtoField("ATP模式C2等级",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
+        'm_mode_c3':ProtoField("ATP模式C3等级",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
         'm_level':ProtoField("ATP等级",0,b_endian,3,None,{1:"CTCS-2",3:"CTCS-3",4:"CTCS-4"}),
         'nid_stm':ProtoField("本国系统等级",0,b_endian,8,None,None),
         'btm_antenna_position':ProtoField("BTM 天线位置",0,b_endian,8,"10cm",None),
@@ -59,6 +60,7 @@ Atp2atpFieldDic={
         'd_trackcond':ProtoField("到特殊轨道区段长度的距离",0xFFFFFFFF,b_endian,32,"cm",None),
         'l_door_distance':ProtoField("第一对客室门距车头的距离",0,b_endian,16,"cm",None),
         'l_sdu_wheel_size_1':ProtoField("ATP速传1对应轮径值",0,b_endian,16,"mm",None),
+        'l_sdu_wheel_size_2':ProtoField("ATP速传2对应轮径值",0,b_endian,16,"mm",None),
         'l_text':ProtoField("文本长度",0,b_endian,8,None,None),
         'l_trackcond':ProtoField("特殊轨道区段的长度",0xFFFFFFFF,b_endian,32,"cm",None),
         'l_train':ProtoField("列车长度",0,b_endian,12,"m",None),
@@ -104,8 +106,8 @@ Atp2atpFieldDic={
         'q_atopermit':ProtoField("ATO通信允许",0,b_endian,2,None,{0:"备用",1:"软允许",2:"无软允许"}),
         'q_ato_hardpermit':ProtoField("ATO硬通信允许",0,b_endian,2,None,{0:"备用",1:"硬允许",2:"无硬允许"}),
         'q_dispaly':ProtoField("显示/删除属性",0,b_endian,1,None,{0:"删除",1:"显示"}),
-        'q_door':ProtoField("站台是否设置站台门",0,b_endian,2,None,{1:"有站台门",2:"无站台门"}),
-        'q_door_cmd_dir':ProtoField("开关门命令验证方向",0,b_endian,2,None,{0:"反向",1:"正向"}),
+        'q_door':ProtoField("站台是否设置站台门",0,b_endian,2,None,{1:"有站台门",2:"无站台门",0:"无效=0"}),
+        'q_door_cmd_dir':ProtoField("开关门命令验证方向",0,b_endian,2,None,{0:"反向",1:"正向",2:"无效=2",3:"无效=3"}),
         'q_leftdoorpermit':ProtoField("左门允许命令",0,b_endian,2,None,{1:"左门允许",2:"不允许"}),
         'q_platform':ProtoField("站台位置",0,b_endian,2,None,{0:"左侧",1:"右侧",2:"双侧",3:"无站台"}),
         'q_rightdoorpermit':ProtoField("右门允许命令",0,b_endian,2,None,{1:"右门允许",2:"不允许"}),
@@ -142,24 +144,7 @@ Atp2atpFieldDic={
 }
 
 class DisplayMsgield(object):
-    @staticmethod
-    def disAtpMode(keyName=str,atpLevel=int, atpMode=int,lbl=QtWidgets.QLabel):
-        if keyName == "m_mode":
-            # CTCS-2等级
-            if 1 == atpLevel:
-                if atpMode in Atp2atpFieldDic["m_mode_c2"].meaning.keys():
-                    lbl.setText(Atp2atpFieldDic["m_mode_c2"].meaning[atpMode])
-                else:
-                    lbl.setText("异常值:%d"%atpMode)
-            # CTCS-3等级
-            elif 3 == atpLevel:
-                if atpMode in Atp2atpFieldDic["m_mode_c3"].meaning.keys():
-                    lbl.setText(Atp2atpFieldDic["m_mode_c3"].meaning[atpMode])
-                else:
-                    lbl.setText("异常值:%d"%atpMode)
-            else:
-                lbl.setStyleSheet("background-color: rgb(255, 0, 0);")
-                lbl.setText('异常模式:%d' % atpMode)
+   
     @staticmethod
     def disTsmStat(value, lbl=QtWidgets.QLabel):
         if value == 0x7FFFFFFF or value != 0xFFFFFFFF:
@@ -239,10 +224,46 @@ class DisplayMsgield(object):
         else:
             print("[ERR]:DisplayMsgield disNameOfLable error key name!")
 
+    @staticmethod # 解析工具的 名称、数值、解释 3列显示
+    def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem, fieldDic='dict', nomBrush=QtGui.QBrush):
+        for keyName in obj.__slots__:
+            if keyName in fieldDic.keys() :
+                twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
+                value = obj.__getattribute__(keyName)
+                twi.setText(1,fieldDic[keyName].name)
+                twi.setText(2,str(fieldDic[keyName].width)+'bits')
+                twi.setText(3,str(value))
+                # 上色
+                for i in range(1, twi.columnCount()+1):
+                    twi.setBackground(i, nomBrush)
+                # 如果有字段定义
+                if fieldDic[keyName].meaning:
+                    # 检查是否有含义
+                    if value in fieldDic[keyName].meaning.keys():
+                        twi.setText(4,fieldDic[keyName].meaning[value])
+                    elif keyName == 'd_tsm': # 含义和特殊值并存
+                        if fieldDic[keyName].unit:
+                            twi.setText(4, str(value)+'('+fieldDic[keyName].unit+')')
+                    else:
+                        brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
+                        for i in range(1,twi.columnCount()+1):
+                            twi.setBackground(i, brush)
+                        twi.setText(4,'异常值%s' % value)
+                else:
+                    # 直接处理显示
+                    if fieldDic[keyName].unit:
+                        twi.setText(4, str(value)+'('+fieldDic[keyName].unit+')')
+            elif keyName == 'updateflag':
+                pass
+            else:
+                print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
+        root.setExpanded(True)
+
+
 class sp0(object):
     __slots__ = ["updateflag","nid_sub_packet","l_packet","q_scale","nid_lrbg","d_lrbg",
     "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
-    "q_length","l_traint","v_train","q_dirtrain","m_mode","m_level","nid_stm"]
+    "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3","m_level","nid_stm"]
     def __init__(self) -> None:
         self.updateflag    = False
         self.nid_sub_packet= 0
@@ -258,14 +279,15 @@ class sp0(object):
         self.l_traint      = 0
         self.v_train       = 0
         self.q_dirtrain    = 0
-        self.m_mode        = 0
+        self.m_mode_c2     = 0
+        self.m_mode_c3     = 0
         self.m_level       = 0
         self.nid_stm       = 0
 
 class sp1(object):
     __slots__ = ["updateflag","nid_sub_packet","l_packet","q_scale","nid_lrbg","nid_prvbg","d_lrbg",
     "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
-    "q_length","l_traint","v_train","q_dirtrain","m_mode",
+    "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3",
     "m_level","nid_stm"]
     def __init__(self) -> None:
         self.updateflag    = False
@@ -283,13 +305,14 @@ class sp1(object):
         self.l_traint      = 0
         self.v_train       = 0
         self.q_dirtrain    = 0
-        self.m_mode        = 0
+        self.m_mode_c2     = 0
+        self.m_mode_c3     = 0
         self.m_level       = 0
         self.nid_stm       = 0
 
 class sp2(object):
     __slots__ = ["updateflag","nid_sub_packet","q_atopermit","q_ato_hardpermit","q_leftdoorpermit","q_rightdoorpermit","q_door_cmd_dir",
-    "q_tb","v_target","d_target","m_level","m_mode","o_train_pos","v_permitted","d_ma","m_ms_cmd","d_neu_sec",
+    "q_tb","v_target","d_target","m_level","m_mode_c2","m_mode_c3","o_train_pos","v_permitted","d_ma","m_ms_cmd","d_neu_sec",
     "m_low_frequency","q_stopstatus","m_atp_stop_error","d_station_mid_pos","d_jz_sig_pos","d_cz_sig_pos",
     "d_tsm","m_cab_state","m_position","m_tco_state","reserve"]
     def __init__(self) -> None:
@@ -304,7 +327,8 @@ class sp2(object):
         self.v_target          = 0
         self.d_target          = 0
         self.m_level           = 0
-        self.m_mode            = 0
+        self.m_mode_c2         = 0
+        self.m_mode_c3         = 0
         self.o_train_pos       = 0
         self.v_permitted       = 0
         self.d_ma              = 0
@@ -414,9 +438,10 @@ class sp9(object):
         self.sp_track_list     = None
 
 class sp10(object):
-    __slots__ = ["updateflag", "q_headtail", "q_tb_status", "q_tb_relay", "m_tb_display"]
+    __slots__ = ["updateflag", "nid_sub_packet","q_headtail", "q_tb_status", "q_tb_relay", "m_tb_display"]
     def __init__(self) -> None:
         self.updateflag        = False
+        self.nid_sub_packet    = 10
         self.q_headtail        = 0
         self.q_tb_status       = 0
         self.q_tb_relay        = 0
@@ -477,16 +502,17 @@ class sp134(object):
         self.x_text            = None
 
 class sp135(object):
-    __slots__ = ["updateflag", "q_ato_tb_status", "q_tb_ob_btn", "q_tb_stn_btn","nid_operational"]
+    __slots__ = ["updateflag", "nid_sub_packet","q_ato_tb_status", "q_tb_ob_btn", "q_tb_stn_btn","nid_operational"]
     def __init__(self) -> None:
         self.updateflag        = False
+        self.nid_sub_packet    = 135
         self.q_ato_tb_status   = 0
         self.q_tb_ob_btn       = 0
         self.q_tb_stn_btn      = 0
         self.nid_operational   = 0
 
 class Atp2atoProto(object):
-    __slots__ = ["nid_packet","t_msg_atp","n_sequence","l_msg","sp0_obj","sp1_obj","sp2_obj","sp3_obj",
+    __slots__ = ["nid_packet","t_msg_atp","crc_code","n_sequence","l_msg","sp0_obj","sp1_obj","sp2_obj","sp3_obj",
     "sp4_obj","sp5_obj","sp6_obj","sp7_obj","sp8_obj","sp9_obj","sp10_obj","sp130_obj","sp131_obj",
     "sp132_obj","sp133_obj","sp134_obj","sp135_obj","l_packet","nid_msg"]
 
@@ -494,6 +520,7 @@ class Atp2atoProto(object):
         self.nid_packet = 0     # packet id
         self.l_packet   = 0
         self.t_msg_atp  = 0     # atp timestamp
+        self.crc_code   = 0     # crc
         self.n_sequence = 0     # msg seq
         self.l_msg      = 0     # msg length
         self.nid_msg    = 0
@@ -606,7 +633,7 @@ class Atp2atoParse(object):
             self.msg_obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
             # 校验消息
             if self.msg_obj.l_msg <= (len(line)/2): # FIXME: 此处由于打印多一个字符导致
-                self.allPktsParse(item,self.msg_obj.l_msg, self.msg_obj.l_packet)
+                self.msg_obj.crc_code = self.allPktsParse(item,self.msg_obj.l_msg, self.msg_obj.l_packet)
             else:
                 print("err atp2ato msg:"+line)
         else:
@@ -633,14 +660,16 @@ class Atp2atoParse(object):
             obj.l_traint = item.fast_get_segment_by_index(item.curBitsIndex, 15)
             obj.v_train = item.fast_get_segment_by_index(item.curBitsIndex, 7)
             obj.q_dirtrain = item.fast_get_segment_by_index(item.curBitsIndex, 2)
-            obj.m_mode = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c3 = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c2 = obj.m_mode_c3
             obj.m_level =  item.fast_get_segment_by_index(item.curBitsIndex, 3)
             if obj.m_level == 1:
                 obj.nid_stm = item.fast_get_segment_by_index(item.curBitsIndex, 8)
         else:
             obj.v_train = item.fast_get_segment_by_index(item.curBitsIndex, 7)
             obj.q_dirtrain = item.fast_get_segment_by_index(item.curBitsIndex, 2)
-            obj.m_mode = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c3 = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c2 = obj.m_mode_c3
             obj.m_level = item.fast_get_segment_by_index(item.curBitsIndex, 3)
             if obj.m_level == 1:
                 obj.nid_stm = item.fast_get_segment_by_index(item.curBitsIndex, 8) 
@@ -666,14 +695,16 @@ class Atp2atoParse(object):
             obj.l_traint = item.fast_get_segment_by_index(item.curBitsIndex, 15)
             obj.v_train = item.fast_get_segment_by_index(item.curBitsIndex, 7)
             obj.q_dirtrain = item.fast_get_segment_by_index(item.curBitsIndex, 2)
-            obj.m_mode = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c3 = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c2 = obj.m_mode_c3
             obj.m_level = item.fast_get_segment_by_index(item.curBitsIndex, 3)
             if obj.m_level == 1:
                 obj.nid_stm = item.fast_get_segment_by_index(item.curBitsIndex, 8)
         else:
             obj.v_train = item.fast_get_segment_by_index(item.curBitsIndex, 7)
             obj.q_dirtrain = item.fast_get_segment_by_index(item.curBitsIndex, 2)
-            obj.m_mode = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c3 = item.fast_get_segment_by_index(item.curBitsIndex, 4)
+            obj.m_mode_c2 = obj.m_mode_c3
             obj.m_level = item.fast_get_segment_by_index(item.curBitsIndex, 3)
             if obj.m_level == 1:
                 obj.nid_stm = item.fast_get_segment_by_index(item.curBitsIndex, 8)
@@ -693,7 +724,12 @@ class Atp2atoParse(object):
         obj.v_target = item.fast_get_segment_by_index(item.curBitsIndex, 16)
         obj.d_target = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         obj.m_level = item.fast_get_segment_by_index(item.curBitsIndex, 3)  # M_LEVEL
-        obj.m_mode = item.fast_get_segment_by_index(item.curBitsIndex, 4)  # M_MODE
+        if obj.m_level == 1:
+            obj.m_mode_c2 = item.fast_get_segment_by_index(item.curBitsIndex, 4)  # M_MODE
+        elif obj.m_level == 3:
+            obj.m_mode_c3 = item.fast_get_segment_by_index(item.curBitsIndex, 4)  # M_MODE
+        else:
+            pass
         obj.o_train_pos = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         obj.v_permitted = item.fast_get_segment_by_index(item.curBitsIndex, 16)
         obj.d_ma = item.fast_get_segment_by_index(item.curBitsIndex, 16)
@@ -891,6 +927,7 @@ class Atp2atoParse(object):
 
     # 数据包解析
     def allPktsParse(self, item=BytesStream,l_msg=int,l_packet=int):
+        crc_code = 0 # 返回非0说明解析成功
         # 初始化bit数
         bit_idx = 0
         byte_idx = 0
@@ -920,6 +957,7 @@ class Atp2atoParse(object):
                 else:
                     print('msg parse fatal err！ l_msg %d, real %d' % (l_msg, item.curBytesIndex - byte_idx + 2))
 
+        return crc_code
 
 class Ctcs45(object):
     

@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-29 12:03:03
+LastEditTime: 2022-09-04 21:42:06
 '''
 
 from ast import Pass, Return
@@ -114,6 +114,31 @@ AtoInerDic={
 
 }
 
+StateMachineDic={
+    1 :'STOPPED 停车',
+    2 :'UNUSED 未投入',
+    3 :'START 发车',
+    4 :'START2 发车2',
+    5 :'NORMAL 普通',
+    10:'COAST 巡航', 
+    15:'UNCONFORM 待确认状态', 
+    20:'TARGET_GET 更新目标点', 
+    21:'TARGET_GET 目标点制动', 
+    22:'TARGET1 目标制动1',
+    22:'TARGET2 目标制动2',
+    23:'T2B_COAST 转换惰行', 
+    25:'TARGET_V_BEFORE 提前将速度控制完毕', 
+    26:'TARGET_V_BEYOND 滞后将速度控制完毕', 
+    27:'TARGET_KEEP 维持目标', 
+    28:'TARGET_END 目标结束', 
+    30:'STOP_GET 更新停车点', 
+    31:'STOP_IN 停车点减速', 
+    32:'STOP_ASTOP 空气制动', 
+    33:'STOP_FINAL 一把扎', 
+    34:'STOP_END 即将结束', 
+    35:'LAST'
+
+}
 class BtmInfoDisplay(object):
     # 作为类属性全局的
     btmCycleList = []
@@ -321,7 +346,7 @@ class InerRunningPlanInfo(object):
     'rpPlanLegalFlg', 'rpFinalStnFlg','rpPlanTimeout','rpTrainStnState','rpPlanValid','rpStartTrain',
     'rpValidNum', 'rpItem0','rpItem1','rpItem2','updateflag'] 
     def __init__(self) -> None:
-        self.rpCurTrack      = 0
+        self.rpCurTrack        = 0
         self.remainArrivalTime = 0
         self.remainDepartTime  = 0
         self.rpUpdateSysTime   = 0
@@ -382,8 +407,8 @@ class InerRunningPlanParse(object):
 
     # 完整计划解析方法
     def rpStringParse(self,line=str,osTime=str):
-        # RP1解析
         match = self.cfg.reg_config.pat_rp1.findall(line)
+        # RP1解析
         if match:
             self.rpInfo.rpCurTrack = int(match[0][0]) #计划模块当前股道号
             self.rpInfo.rpStartTrain = int(match[0][1]) #发车标志
@@ -829,9 +854,18 @@ class AtoKeyInfoDisplay(object):
 
     @staticmethod
     def ctrlStopErrorDisplay(atoError=int, atpError=int, tb=QtWidgets.QTableWidget):
-        item = QtWidgets.QTableWidgetItem(str(atpError)+'cm')
+        if atpError == 32768 or atpError == -32768:
+            strAtpError = '无效'
+        else:
+            strAtpError = str(atpError)+'cm'
+        
+        if atoError == 32768 or atoError == -32768:
+            strAtoError = '无效'
+        else:
+            strAtoError = str(atoError)+'cm'
+        item = QtWidgets.QTableWidgetItem(strAtpError)
         tb.setItem(4, 0, item)
-        item = QtWidgets.QTableWidgetItem(str(atoError)+'cm')
+        item = QtWidgets.QTableWidgetItem(strAtoError)
         tb.setItem(5, 0, item)
 
     @staticmethod
@@ -865,31 +899,59 @@ class AtoKeyInfoDisplay(object):
     
     @staticmethod
     def ctrlAtoSpeedDisplay(atoSpeed=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(atoSpeed)+'cm/s')
+        content = str(atoSpeed)+'cm/s'+' | ' +AtoKeyInfoDisplay.getStrKmh(atoSpeed)+'km/h'
+        led.setText(content)
 
     @staticmethod
     def ctrlAtoPosDisplay(atoPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(atoPos)+'cm/s')
+        led.setText(str(atoPos)+'cm')
 
     @staticmethod
     def ctrlStateMachineDisplay(machine=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(machine))
+        if machine in  StateMachineDic.keys():
+            led.setText(str(machine)+' | '+StateMachineDic[machine])
+        else:
+            led.setText(str(machine))
 
     @staticmethod
     def ctrlEstimateLevelDisplay(esLvl=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(esLvl))  
+        if esLvl > 0:
+            content = str(esLvl) +' | '+'牵引'+('%.1f%%'%(esLvl*5)) # 按照20级的百分比 (*100/20)
+        elif esLvl < 0:
+            content = str(esLvl) +' | '+'制动'+('%.1f%%'%(esLvl*5))
+        else:
+            content = str(esLvl) +' | '+'惰行'+('%.1f%%'%(esLvl*5))
+        led.setText(content)  
 
     @staticmethod
     def ctrlLevelDisplay(lvl=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(lvl))  
+        if lvl > 0:
+            content = str(lvl) +' | '+'牵引'+('%.1f%%'%(lvl*5))
+        elif lvl < 0:
+            content = str(lvl) +' | '+'制动'+('%.1f%%'%(lvl*5))
+        else:
+            content = str(lvl) +' | '+'惰行'+('%.1f%%'%(lvl*5))
+        led.setText(content)  
     
     @staticmethod
     def ctrlRampDisplay(ramp=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(ramp)) 
+        if ramp > 0:
+            content = str(ramp)+' | '+'上坡'
+        elif ramp < 0:
+            content = str(ramp)+' | '+'下坡'
+        else:
+            content = str(ramp)+' | '+'平坡'
+        led.setText('千分之'+content) 
 
     @staticmethod
     def ctrlEstimateRampDisplay(esRamp=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(esRamp)) 
+        if esRamp > 0:
+            content = str(esRamp)+' | '+'上坡'
+        elif esRamp < 0:
+            content = str(esRamp)+' | '+'下坡'
+        else:
+            content = str(esRamp)+' | '+'平坡'
+        led.setText('千分之'+content) 
 
     @staticmethod
     def ctrlTargetPosDisplay(tPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
@@ -897,7 +959,8 @@ class AtoKeyInfoDisplay(object):
     
     @staticmethod
     def ctrlTargetSpeedDisplay(tspeed=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(tspeed)+'cm/s') 
+        content = str(tspeed)+'cm/s'+' | ' +AtoKeyInfoDisplay.getStrKmh(tspeed)+'km/h'
+        led.setText(content) 
     
     @staticmethod
     def ctrlTargetDisDisplay(tPos=int, curPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
@@ -908,7 +971,11 @@ class AtoKeyInfoDisplay(object):
         if skip == 1:
             lbl.setText('前方站通过')
         else:
-            lbl.setText('前方站到发') 
+            lbl.setText('前方站到发')
+    
+    @staticmethod
+    def getStrKmh(cms=int):
+        return ('%.2f'%(cms*9/250))
 
 class ProgressBarDisplay(object):
     """
