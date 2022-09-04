@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-04 21:42:06
+LastEditTime: 2022-09-04 22:38:45
 '''
 
 from ast import Pass, Return
@@ -407,8 +407,8 @@ class InerRunningPlanParse(object):
 
     # 完整计划解析方法
     def rpStringParse(self,line=str,osTime=str):
-        match = self.cfg.reg_config.pat_rp1.findall(line)
         # RP1解析
+        match = self.cfg.reg_config.pat_rp1.findall(line)
         if match:
             self.rpInfo.rpCurTrack = int(match[0][0]) #计划模块当前股道号
             self.rpInfo.rpStartTrain = int(match[0][1]) #发车标志

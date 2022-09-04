@@ -13,7 +13,7 @@
 import matplotlib
 
 from CycleInfo import Ui_MainWindow as CycleWin
-from MsgParse import Atp2atoParse, Atp2atoProto
+from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atpFieldDic, DisplayMsgield
 from ProtoParserWin import Ui_MainWindow as ParserWin
 from MeasureWin import Ui_MainWindow as MeasureWin
 from C3atoRecordTranslator import Ui_Dialog as C3ATOTransferWin
@@ -277,7 +277,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, ParserWin):
             root.setText(0, "TCMS状态信息")
             DisplayMVBField.disNameOfTreeWidget(t2aStat,root, MVBFieldDic)     
 
-
+# ATP协议解析器
 class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
     def __init__(self):
         super().__init__()
@@ -293,8 +293,8 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
     def parseAtp2atoProto(self):
         inputLine = self.textEdit.toPlainText()
         try:
-            mvbLine = re.sub('\s+', '', inputLine)
-            self.msg = self.parser.msgParse(mvbLine)
+            streamLine = re.sub('\s+', '', inputLine)
+            self.msg = self.parser.msgParse(streamLine)
             self.showParserRst(self.msg)
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
@@ -304,32 +304,81 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
     def showParserRst(self, msg=Atp2atoProto):
         self.treeWidget.clear()
         root = QtWidgets.QTreeWidgetItem(self.treeWidget)
+        # 添加消息头
+        self.addMsgheader(msg, root)
+        # 添加数据包
+        pktList=[msg.sp0_obj, msg.sp1_obj, msg.sp2_obj, msg.sp3_obj, msg.sp4_obj, msg.sp5_obj,
+        msg.sp6_obj, msg.sp7_obj, msg.sp8_obj, msg.sp9_obj, msg.sp10_obj, msg.sp130_obj, 
+        msg.sp131_obj, msg.sp132_obj, msg.sp133_obj, msg.sp134_obj, msg.sp135_obj]
+        for pkt in pktList:
+            self.addSubpacket(pkt, self.treeWidget)
+        # 添加消息尾
+        self.addMsgTail(msg, root)
+        root.setExpanded(True)
+
+    def addMsgheader(self, msg=Atp2atoProto, root=QtWidgets.QTreeWidgetItem):
         if msg.nid_packet == 250:
             root.setText(0, "ATP->ATO通信消息")
         else:
             root.setText(0, "ATO->ATO通信消息")
         msgTree = QtWidgets.QTreeWidgetItem(root)
         msgTree.setText(1,"消息号")
-        msgTree.setText(2, str(msg.nid_msg))
-        msgTree.setText(3, "ATP-ATO通信消息固定ID=45")
+        msgTree.setText(2, '8bits')
+        msgTree.setText(3, str(msg.nid_msg))
+        msgTree.setText(4, "ATP-ATO通信消息固定ID=45")
 
         msgTree = QtWidgets.QTreeWidgetItem(root)
         msgTree.setText(1,"消息长度")
-        msgTree.setText(3, "全部消息长度,单位字节")
-        msgTree.setText(2, str(msg.l_msg))
+        msgTree.setText(2, '8bits')
+        msgTree.setText(3, str(msg.l_msg))
+        msgTree.setText(4, "全部消息长度,单位字节")
 
         msgTree = QtWidgets.QTreeWidgetItem(root)
         msgTree.setText(1,"信息包号")
-        msgTree.setText(2, str(msg.nid_packet))
-        msgTree.setText(3, "标识ATP-ATO通信方向")
+        msgTree.setText(2, '8bits')
+        msgTree.setText(3, str(msg.nid_packet))
+        msgTree.setText(4, "标识ATP-ATO通信方向")
         
         msgTree = QtWidgets.QTreeWidgetItem(root)
         msgTree.setText(1,"信息包长度")
-        msgTree.setText(2, str(msg.l_packet))
-        msgTree.setText(3, "信息包长度（包含所有子信息包）,单位比特")
+        msgTree.setText(2, '13bits')
+        msgTree.setText(3, str(msg.l_packet))
+        msgTree.setText(4, "信息包长度（包含所有子信息包）,单位比特")
 
-        root2 = QtWidgets.QTreeWidgetItem(self.treeWidget)
-        root2.setText(0, "SP2")
+    def addMsgTail(self, msg=Atp2atoProto, root=QtWidgets.QTreeWidgetItem):
+        if msg and root:
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"消息序号")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.n_sequence))
+            msgTree.setText(4, "ATP消息序号")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"消息时间戳")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.t_msg_atp))
+            msgTree.setText(4, "ATP时间坐标系系统时间,单位ms")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"消息CRC码")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.crc_code))
+            msgTree.setText(4, "循环冗余校验码")
+
+
+    def addSubpacket(self, pkt=None, root=QtWidgets.QTreeWidgetItem):
+        contentBrush = QtGui.QBrush(QtGui.QColor(82, 179, 217))
+        headerBrush = QtGui.QBrush(QtGui.QColor(197, 239, 247))
+        if pkt and root:
+            if pkt.updateflag:
+                rootSub = QtWidgets.QTreeWidgetItem(root)
+                rootSub.setText(0, '信息包'+str(pkt.nid_sub_packet))
+                for i in range(rootSub.columnCount()+1):
+                    rootSub.setBackground(i, headerBrush)
+                DisplayMsgield.disNameOfTreeWidget(pkt,rootSub, Atp2atpFieldDic, contentBrush)
+                rootSub.setExpanded(True)
+            else:
+                pass
 
 # UTC时间解析器
 class UTCTransferDlg(QtWidgets.QDialog):
@@ -649,7 +698,7 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.ax1 = self.sp.ax.twinx()
         self.ax1.plot(self.log.cycle, self.log.v_ato, color='red', marker='.', markersize=0.5)
         self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.unifyCycleList, self.atoCtrlCmdList)  # 初始化一个光标
-        self.tb_cursor.reset_cursor_plot()
+        self.tb_cursor.resetCursorPlot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
         self.tb_cursor.move_signal.connect(self.cursorPlot)
         self.sp.ax.set_xlim(self.unifyCycleList[0], self.unifyCycleList[len(self.unifyCycleList) - 1])  # 默认与不带光标统一的显示范围
