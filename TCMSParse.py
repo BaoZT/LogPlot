@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-28 22:27:48
+LastEditTime: 2022-09-04 21:40:08
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -118,33 +118,42 @@ class DisplayMVBField(object):
     @staticmethod # 解析工具的 名称、数值、解释 3列显示
     def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem, fieldDic='dict'):
         for keyName in obj.__slots__:
-            twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
-            value = obj.__getattribute__(keyName)
-            root.setExpanded(True)
-            if keyName in fieldDic.keys():
+            if keyName in fieldDic.keys() :
+                twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
+                value = obj.__getattribute__(keyName)
                 twi.setText(1,fieldDic[keyName].name)
-                twi.setText(2,"0x"+("%02x"%value).upper())
+                twi.setText(2,str(fieldDic[keyName].width))
+                twi.setText(3,"0x"+("%02x"%value).upper())
                 # 如果有字段定义
                 if fieldDic[keyName].meaning:
                     # 检查是否有含义
                     if value in fieldDic[keyName].meaning.keys():
                         twi.setText(3,fieldDic[keyName].meaning[value])
+                    elif keyName == 'd_tsm': # 含义和特殊值并存
+                        if fieldDic[keyName].unit:
+                            twi.setText(4, str(value)+fieldDic[keyName].unit)
                     else:
                         brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
                         twi.setBackground(1, brush)
                         twi.setBackground(2, brush)
                         twi.setBackground(3, brush)
-                        twi.setText(3,'异常值%s' % value)
+                        twi.setBackground(4, brush)
+                        twi.setText(4,'异常值%s' % value)
                 else:
                     # 针对组合含义特殊解析
                     if keyName == "no_permit_ato_state":
-                        twi.setText(3,DisplayMVBField.disTcmsNoPmState(value))
+                        twi.setText(4,DisplayMVBField.disTcmsNoPmState(value))
                     else:
                         # 直接处理显示
-                        twi.setText(3,str(value))
+                        if fieldDic[keyName].unit:
+                            twi.setText(4, str(value)+fieldDic[keyName].unit)
+            elif keyName == 'updateflag':
+                pass
+            elif keyName == 'm_mode':
+                pass
             else:
                 print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
-
+        root.setExpanded(True)
 
 class Ato2TcmsCtrl(object):
     __slots__ = ["frame_header_send","frame_seq","frame_port","ato_heartbeat","ato_valid",
@@ -248,11 +257,12 @@ class MVBParse(object):
         # 抽取十六进制字符串
         mvb_line = ''.join(mvb_line.strip().split(' '))
         # 验证
-        try:
-            strByteLen = len(mvb_line)/2
-            # 获取MVB端口,至少16字节数据
-            if (len(mvb_line)%2 == 0) and strByteLen > 4:
-                port = int(mvb_line[6:8] + mvb_line[4:6], 16)
+        
+        strByteLen = len(mvb_line)/2
+        # 获取MVB端口,至少16字节数据
+        if (len(mvb_line)%2 == 0) and strByteLen > 4:
+            port = int(mvb_line[6:8] + mvb_line[4:6], 16)
+            try:
                 mvbData = BytesStream(mvb_line)
                 # 查询端口解析并核对包长
                 if strByteLen >= 20 and port == self.cfg.mvb_config.ato2tcms_ctrl_port:
@@ -264,10 +274,10 @@ class MVBParse(object):
                     self.parseTcms2AtoState(mvbData, self.tcms2ato_state_obj)
                 else:
                     print("[MVB]err mvb line:"+mvb_line)
-            else:
-                pass
-        except Exception as err:
-            print("err mvb line"+mvb_line)
+            except Exception as err:
+                print("err mvb line"+mvb_line)
+        else:
+            pass
             
         return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
 
