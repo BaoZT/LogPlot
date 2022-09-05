@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-29 17:27:28
+LastEditTime: 2022-09-04 17:29:48
 '''
 
 import os
@@ -74,9 +74,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.sp.mpl_toolbar = NavigationToolbar(self.sp, self.mainOfflineWidget)  # 传入FigureCanvas类或子类实例，和父窗体
         l.addWidget(self.sp)
         lAux = QtWidgets.QVBoxLayout(self.auxOfflineWidget)
-        self.spAux = CurveFigureCanvas(self.auxOfflineWidget)
+        self.spAux = CurveFigureCanvas(self.auxOfflineWidget, sharedAxes=self.sp.mainAxes)
         lAux.addWidget(self.spAux)
-        self.c_vato = None
+        self.cursorVato = None
         self.bubble_status = 0  # 控车悬浮气泡状态，0=停靠，1=跟随
         self.tag_latest_pos_idx = 0  # 悬窗最近一次索引，用于状态改变或曲线改变时立即刷新使用，最近一次
         self.ctrlMeasureStatus = 0  # 控车曲线测量状态，0=初始态，1=测量起始态，2=进行中 ,3=测量终止态
@@ -170,9 +170,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
 
     def initUI(self):
-        # 初始化比例
-        self.splitter_main_right.setStretchFactor(0, 1)
-        self.splitter_main_botom.setStretchFactor(0, 1)
+        # 初始化
         self.Exit.setStatusTip('Ctrl+Q')
         self.Exit.setStatusTip('Exit app')
         self.fileOpen.setStatusTip('Ctrl+O')
@@ -187,7 +185,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBlevel.stateChanged.connect(self.updateUpCure)
         self.CBcmdv.stateChanged.connect(self.updateUpCure)
         self.CBacc.stateChanged.connect(self.updateDownCurve)
-        self.CBramp.stateChanged.connect(self.updateDownCurve)
+        self.CBramp.stateChanged.connect(self.updateUpCure)
         self.CBatppmtv.stateChanged.connect(self.updateUpCure)
 
         self.CBvato.stateChanged.connect(self.realtimeLineChoose)
@@ -243,7 +241,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBatpcmdv.setChecked(True)
         self.CBlevel.setChecked(True)
         self.CBcmdv.setChecked(True)
-        self.CBvato.setChecked(True)
         # 解绑
         if self.curInterface == 1:
             self.CBvato.stateChanged.disconnect(self.updateUpCure)
@@ -251,7 +248,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.CBlevel.stateChanged.disconnect(self.updateUpCure)
             self.CBcmdv.stateChanged.disconnect(self.updateUpCure)
             self.CBacc.stateChanged.disconnect(self.updateDownCurve)
-            self.CBramp.stateChanged.disconnect(self.updateDownCurve)
+            self.CBramp.stateChanged.disconnect(self.updateUpCure)
             self.CBatppmtv.stateChanged.disconnect(self.updateUpCure)
 
         # 如有转换重置右边列表
@@ -277,7 +274,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBlevel.stateChanged.connect(self.updateUpCure)
         self.CBcmdv.stateChanged.connect(self.updateUpCure)
         self.CBacc.stateChanged.connect(self.updateDownCurve)
-        self.CBramp.stateChanged.connect(self.updateDownCurve)
+        self.CBramp.stateChanged.connect(self.updateUpCure)
         self.CBatppmtv.stateChanged.connect(self.updateUpCure)
         self.curInterface = 1
 
@@ -483,7 +480,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             DisplayMsgield.disNameOfLable("reserve", msg_obj.sp2_obj.reserve, self.lbl_atp_brake,2,1)
             DisplayMsgield.disNameOfLable("q_tb", msg_obj.sp2_obj.q_tb, self.lbl_tb)
             DisplayMsgield.disNameOfLable("m_level", msg_obj.sp2_obj.m_level, self.lbl_atp_level)
-            DisplayMsgield.disAtpMode("m_mode",msg_obj.sp2_obj.m_level,msg_obj.sp2_obj.m_mode,self.lbl_atp_mode)
+            if msg_obj.sp2_obj.m_level == 1:
+                DisplayMsgield.disNameOfLable("m_mode_c2",msg_obj.sp2_obj.m_mode_c2,self.lbl_atp_mode)
+            elif msg_obj.sp2_obj.m_level == 3:
+                DisplayMsgield.disNameOfLable("m_mode_c3",msg_obj.sp2_obj.m_mode_c3,self.lbl_atp_mode)
             DisplayMsgield.disNameOfLable("m_cab_state", msg_obj.sp2_obj.m_cab_state, self.lbl_cabin,1,2)
             DisplayMsgield.disNameOfLineEdit("m_position",msg_obj.sp2_obj.m_position, self.led_atp_milestone)
             DisplayMsgield.disNameOfLineEdit("d_station_mid_pos",msg_obj.sp2_obj.d_station_mid_pos, self.led_stn_center_dis)
@@ -854,6 +854,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.clearAxis()
                 self.winInitAfterLoad()  # 记录加载成功且有控车时，初始化显示一些内容
                 self.CBvato.setChecked(True)
+                self.CBramp.setChecked(True)
                 self.Log('Set View mode and choose Vato', __name__, sys._getframe().f_lineno)
             elif is_ato_control == 1:
                 self.islogLoad = 2  # 记录加载但是ATO没有控车
@@ -929,8 +930,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 界面初始化后，加载显示IO信息，参考应答器显示
     def setIoContentAfterLoad(self):
         # 搜索IO信息
-        #self.tb_ato_IN.clear()
-        #self.tb_ato_OUT.clear()
         for idx in self.log.cycle_dic.keys():
             cycleObj = self.log.cycle_dic[idx]
             if cycleObj and (cycleObj.ioInfo.updateflagIn or cycleObj.ioInfo.updateflagOut):
@@ -965,7 +964,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                 self.sp.set_track_status()
 
                         # 再更新光标
-                        self.c_vato.sim_mouse_move(int(info[0]), int(info[1]))  # 其中前两者位置和速度为移动目标
+                        self.cursorVato.sim_mouse_move(int(info[0]), int(info[1]))  # 其中前两者位置和速度为移动目标
                     elif self.curveCordType == 1:
                         # 先更新坐标轴范围
                         xy_lim = self.sp.update_cord_with_cursor((int(cur_cycle), int(info[1])),
@@ -980,7 +979,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             if track_flag == 0:
                                 self.sp.set_track_status()
                         # 再更新光标
-                        self.c_vato.sim_mouse_move(int(cur_cycle), int(info[1]))  # 绘制速度周期曲线时查询为周期，速度
+                        self.cursorVato.sim_mouse_move(int(cur_cycle), int(info[1]))  # 绘制速度周期曲线时查询为周期，速度
                 else:
                     # 因为移动光标意味着重发信号，单纯移动光标有歧义，若发送信号有可能造成大量新防护问题，这里暂不修改。
                     self.showMessage('Err:光标不更新，该周期控车信息丢失')
@@ -1041,14 +1040,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 事件处理函数，更新光标进入图像标志，in=1
     def cursorInFigEventProcess(self, event):
         self.isCursorInFram = 1
-        self.c_vato.move_signal.connect(self.setCtrlTableAllContentByIndex)  # 进入图后绑定光标触发
+        self.cursorVato.move_signal.connect(self.setCtrlTableAllContentByIndex)  # 进入图后绑定光标触发
         self.Log('connect ' + 'enter figure', __name__, sys._getframe().f_lineno)
 
     # 事件处理函数，更新光标进入图像标志,out=2
     def cursorOutFigEventProcess(self, event):
         self.isCursorInFram = 2
         try:
-            self.c_vato.move_signal.disconnect(self.setCtrlTableAllContentByIndex)  # 离开图后解除光标触发
+            self.cursorVato.move_signal.disconnect(self.setCtrlTableAllContentByIndex)  # 离开图后解除光标触发
         except Exception as err:
             self.Log(err, __name__, sys._getframe().f_lineno)
         self.Log('disconnect ' + 'leave figure', __name__, sys._getframe().f_lineno)
@@ -1069,7 +1068,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             x_monitor = self.sp.mainAxes.get_xlim()
             y_monitor = self.sp.mainAxes.get_ylim()
             if self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
-                    or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
+                    or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked() or self.CBramp.isChecked():
                 self.clearAxis()
                 self.Log("Mode Change recreate the paint", __name__, sys._getframe().f_lineno)
                 # 清除光标重新创建
@@ -1079,7 +1078,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.Log("Update ctrl text ", __name__, sys._getframe().f_lineno)
                     if self.isCursorCreated == 1:
                         self.isCursorCreated = 0
-                        del self.c_vato
+                        del self.cursorVato
                     self.tagCursorCreate()
                     self.Log("Update Curve recreate curve and tag cursor ", __name__, sys._getframe().f_lineno)
                 # 处理ATO速度
@@ -1107,49 +1106,27 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.sp.plotLogLevel(self.log, self.curveCordType)
                 else:
                     self.CBlevel.setChecked(False)
-            elif self.CBacc.isChecked() or self.CBramp.isChecked():
-                self.updateDownCurve()  # 当没有选择下图时更新上图
+                # 处理级位
+                if self.CBramp.isChecked():
+                    self.spAux.plotLogRamp(self.log, self.curveCordType)
+                else:
+                    self.CBramp.setChecked(False)
             else:
                 self.clearAxis()
-            self.sp.plotCord1(self.log, self.curveCordType, x_monitor, y_monitor)
+            self.sp.plotMainSpeedCord(self.log, self.curveCordType, x_monitor, y_monitor)
+            self.spAux.plotMainRampCord(self.log, self.curveCordType)
             self.sp.draw()
+            self.spAux.draw()
         else:
             pass
 
     # 绘制加速度和坡度曲线
     def updateDownCurve(self):
-        if self.islogLoad == 1:
-            if self.curWinMode == 0:  # 只有浏览模式才可以
-                if self.CBacc.isChecked() or self.CBramp.isChecked():
-                    self.clearAxis()
-                    # 加速度处理
-                    if self.CBacc.isChecked():
-                        self.sp.plotlog_sa(self.log, self.curveCordType)
-                    else:
-                        self.CBacc.setChecked(False)
-                    # 坡度处理
-                    if self.CBramp.isChecked():
-                        self.sp.plotlog_ramp(self.log, self.curveCordType)
-                    else:
-                        self.CBramp.setChecked(False)
-                elif self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
-                        or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked():
-                    # 图形切换时，先重置轴范围再画图
-                    self.sp.plotCord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
-                    self.updateUpCure()  # 当没有选择下图时更新上图
-                else:
-                    self.clearAxis()
-                self.sp.plot_cord2(self.log, self.curveCordType)  # 绘制坐标系II
-                self.sp.draw()
-            else:
-                pass
-        else:
-            pass
+        pass
 
     # 绘制离线模式下事件选择点
     def updateEventPointType(self):
         event_dict = {}
-
         # 记录显示应答器事件
         if self.actionBTM.isChecked():
             event_dict['BTM'] = 1
@@ -1180,10 +1157,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 清除图像和轴相关内容，画板清屏
     def clearAxis(self):
         try:
-            self.sp.mainAxes.clear()
-            self.sp.twinAxes.clear()
+            if self.islogLoad == 1:
+                self.sp.mainAxes.clear()
+                self.sp.twinAxes.clear()
+                self.spAux.mainAxes.clear()
+                self.spAux.twinAxes.clear()
         except Exception as err:
-            self.textEdit.append('Clear all figure!\n')
+            print(err)
 
     # 封装用于在文本框显示字符串
     def showMessage(self, s):
@@ -1204,12 +1184,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if self.islogLoad == 1:
                 self.updateUpCure()
                 # 重置坐标轴范围,恢复浏览模式必须重置范围
-                self.sp.plotCord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
+                self.sp.plotMainSpeedCord(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
+                self.spAux.plotMainRampCord(self.log, self.curveCordType)
             self.tagCursorCreate()
         else:
             pass
             # 其他情况目前无需重置坐标系
         self.sp.draw()
+        self.spAux.draw()
         # 更改图标
         if self.curWinMode == 1:  # 标记模式
             self.sp.setCursor(QtCore.Qt.PointingHandCursor)  # 如果对象直接self.那么在图像上光标就不变，面向对象操作
@@ -1219,14 +1201,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 曲线类型转换函数，修改全局模式变量
     def cmdChange(self):
-
         if self.islogLoad == 1:
             sender = self.sender()
             if sender.text() == '位置速度曲线':
                 if self.curveCordType == 1:
                     self.curveCordType = 0  # 曲线类型改变，如果有光标则删除，并重置标志
                     if self.isCursorCreated == 1:
-                        del self.c_vato
+                        del self.cursorVato
                         self.isCursorCreated = 0
                     else:
                         pass
@@ -1238,7 +1219,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if self.curveCordType == 0:
                     self.curveCordType = 1  # 曲线类型改变
                     if self.isCursorCreated == 1:
-                        del self.c_vato
+                        del self.cursorVato
                         self.isCursorCreated = 0
                     else:
                         pass
@@ -1247,8 +1228,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     pass
             # 重置坐标轴范围
-            self.sp.plotCord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
+            self.sp.plotMainSpeedCord(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
+            self.spAux.plotMainRampCord(self.log, self.curveCordType)
             self.sp.draw()
+            self.spAux.draw()
             self.statusbar.showMessage(self.file + " " + "曲线类型：" + sender.text())
         else:
             pass
@@ -1258,54 +1241,56 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 标注模式
         if self.curWinMode == 1 and 0 == self.isCursorCreated:
             if self.curveCordType == 0:
-                self.c_vato = SnaptoCursor(self.sp, self.sp.mainAxes, self.log.s, self.log.v_ato)  # 初始化一个光标
+                self.cursorVato = SnaptoCursor(self.sp, self.sp.mainAxes, self.log.s, self.log.v_ato, 
+                                               self.spAux, self.spAux.mainAxes, self.log.s, self.log.v_ato)  # 初始化一个光标
             else:
-                self.c_vato = SnaptoCursor(self.sp, self.sp.mainAxes, self.log.cycle, self.log.v_ato)  # 初始化一个光标
-            self.c_vato.reset_cursor_plot()
+                self.cursorVato = SnaptoCursor(self.sp, self.sp.mainAxes, self.log.cycle, self.log.v_ato,
+                                               self.spAux, self.spAux.mainAxes, self.log.cycle, self.log.v_ato)  # 初始化一个光标
+            self.cursorVato.resetCursorPlot()
             self.Log("Link Signal to Tag Cursor", __name__, sys._getframe().f_lineno)
-            self.cid1 = self.sp.mpl_connect('motion_notify_event', self.c_vato.mouse_move)
+            self.cid1 = self.sp.mpl_connect('motion_notify_event', self.cursorVato.mouse_move)
             self.cid2 = self.sp.mpl_connect('figure_enter_event', self.cursorInFigEventProcess)
             self.cid3 = self.sp.mpl_connect('figure_leave_event', self.cursorOutFigEventProcess)
-            self.c_vato.move_signal.connect(self.setCtrlTableAllContentByIndex)  # 连接图表更新的槽函数
-            self.c_vato.sim_move_singal.connect(self.setCtrlTableAllContentByIndex)
-            self.c_vato.move_signal.connect(self.set_tree_content)  # 连接信号槽函数
-            self.c_vato.sim_move_singal.connect(self.set_tree_content)  # 连接信号槽函数
-            self.c_vato.move_signal.connect(self.setCtrlBubbleByIndex)
-            self.c_vato.sim_move_singal.connect(self.setCtrlBubbleByIndex)
-            self.c_vato.move_signal.connect(self.setTrainContentByIndex)
-            self.c_vato.sim_move_singal.connect(self.setTrainContentByIndex)
-            self.c_vato.move_signal.connect(self.setPlanContentByIndex)
-            self.c_vato.sim_move_singal.connect(self.setPlanContentByIndex)
-            self.c_vato.sim_move_singal.connect(self.setAtpContentByIndex)
-            self.c_vato.move_signal.connect(self.setAtpContentByIndex)
-            self.c_vato.move_signal.connect(self.setSduContentByIndex)
-            self.c_vato.sim_move_singal.connect(self.setSduContentByIndex)
-            self.c_vato.move_signal.connect(self.setAtoStatusLabelByIndex)  # 标签
-            self.c_vato.sim_move_singal.connect(self.setAtoStatusLabelByIndex)
+            self.cursorVato.move_signal.connect(self.setCtrlTableAllContentByIndex)  # 连接图表更新的槽函数
+            self.cursorVato.sim_move_singal.connect(self.setCtrlTableAllContentByIndex)
+            self.cursorVato.move_signal.connect(self.set_tree_content)  # 连接信号槽函数
+            self.cursorVato.sim_move_singal.connect(self.set_tree_content)  # 连接信号槽函数
+            self.cursorVato.move_signal.connect(self.setCtrlBubbleByIndex)
+            self.cursorVato.sim_move_singal.connect(self.setCtrlBubbleByIndex)
+            self.cursorVato.move_signal.connect(self.setTrainContentByIndex)
+            self.cursorVato.sim_move_singal.connect(self.setTrainContentByIndex)
+            self.cursorVato.move_signal.connect(self.setPlanContentByIndex)
+            self.cursorVato.sim_move_singal.connect(self.setPlanContentByIndex)
+            self.cursorVato.sim_move_singal.connect(self.setAtpContentByIndex)
+            self.cursorVato.move_signal.connect(self.setAtpContentByIndex)
+            self.cursorVato.move_signal.connect(self.setSduContentByIndex)
+            self.cursorVato.sim_move_singal.connect(self.setSduContentByIndex)
+            self.cursorVato.move_signal.connect(self.setAtoStatusLabelByIndex)  # 标签
+            self.cursorVato.sim_move_singal.connect(self.setAtoStatusLabelByIndex)
             self.isCursorCreated = 1
             self.Log("Mode changed Create tag cursor ", __name__, sys._getframe().f_lineno)
         elif self.curWinMode == 0 and 1 == self.isCursorCreated:
             self.sp.mpl_disconnect(self.cid1)
             self.sp.mpl_disconnect(self.cid2)
             self.sp.mpl_disconnect(self.cid3)
-            self.c_vato.move_signal.disconnect(self.setCtrlTableAllContentByIndex)
-            self.c_vato.sim_move_singal.disconnect(self.setCtrlTableAllContentByIndex)
-            self.c_vato.move_signal.disconnect(self.set_tree_content)  # 连接信号槽函数
-            self.c_vato.sim_move_singal.disconnect(self.set_tree_content)  # 连接信号槽函数
-            self.c_vato.move_signal.disconnect(self.setCtrlBubbleByIndex)
-            self.c_vato.sim_move_singal.disconnect(self.setCtrlBubbleByIndex)
-            self.c_vato.move_signal.disconnect(self.setTrainContentByIndex)
-            self.c_vato.sim_move_singal.disconnect(self.setTrainContentByIndex)
-            self.c_vato.move_signal.disconnect(self.setPlanContentByIndex)
-            self.c_vato.sim_move_singal.disconnect(self.setPlanContentByIndex)
-            self.c_vato.move_signal.disconnect(self.setAtpContentByIndex)
-            self.c_vato.sim_move_singal.disconnect(self.setAtpContentByIndex)
-            self.c_vato.move_signal.disconnect(self.setAtoStatusLabelByIndex)
-            self.c_vato.sim_move_singal.disconnect(self.setAtoStatusLabelByIndex)
-            self.c_vato.move_signal.disconnect(self.setSduContentByIndex)  # 标签
-            self.c_vato.sim_move_singal.disconnect(self.setSduContentByIndex)
+            self.cursorVato.move_signal.disconnect(self.setCtrlTableAllContentByIndex)
+            self.cursorVato.sim_move_singal.disconnect(self.setCtrlTableAllContentByIndex)
+            self.cursorVato.move_signal.disconnect(self.set_tree_content)  # 连接信号槽函数
+            self.cursorVato.sim_move_singal.disconnect(self.set_tree_content)  # 连接信号槽函数
+            self.cursorVato.move_signal.disconnect(self.setCtrlBubbleByIndex)
+            self.cursorVato.sim_move_singal.disconnect(self.setCtrlBubbleByIndex)
+            self.cursorVato.move_signal.disconnect(self.setTrainContentByIndex)
+            self.cursorVato.sim_move_singal.disconnect(self.setTrainContentByIndex)
+            self.cursorVato.move_signal.disconnect(self.setPlanContentByIndex)
+            self.cursorVato.sim_move_singal.disconnect(self.setPlanContentByIndex)
+            self.cursorVato.move_signal.disconnect(self.setAtpContentByIndex)
+            self.cursorVato.sim_move_singal.disconnect(self.setAtpContentByIndex)
+            self.cursorVato.move_signal.disconnect(self.setAtoStatusLabelByIndex)
+            self.cursorVato.sim_move_singal.disconnect(self.setAtoStatusLabelByIndex)
+            self.cursorVato.move_signal.disconnect(self.setSduContentByIndex)  # 标签
+            self.cursorVato.sim_move_singal.disconnect(self.setSduContentByIndex)
             self.isCursorCreated = 0
-            del self.c_vato
+            del self.cursorVato
             self.Log("Mode changed clear tag cursor ", __name__, sys._getframe().f_lineno)
         else:
             pass
@@ -1323,9 +1308,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.clearAxis()
         self.resetAllCheckbox()
         self.CBvato.setChecked(True)
+        self.CBramp.setChecked(True)
         self.resetTextEdit()
         if self.islogLoad == 1:
-            self.sp.plotCord1(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
+            #self.sp.plotMainSpeedCord(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
             self.updateUpCure()
         else:
             pass
@@ -1338,6 +1324,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.islogLoad = 0
             self.actionRealtime.setEnabled(True)
             self.sp.draw()
+            self.spAux.draw()
         else:
             pass
 
@@ -1522,9 +1509,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.atoFsmInfoShow(cycleItem.fsm, cycleItem.control, cycleItem.msg_atp2ato, cycleItem.t2a_stat)
         # 根据分相和主断路器设置光标
         if cycleItem.t2a_stat.main_circuit_breaker == 0x00 or cycleItem.msg_atp2ato.sp2_obj.m_ms_cmd == 1:
-            self.c_vato.boldRedEnabled(True)
+            self.cursorVato.boldRedEnabled(True)
         else:
-            self.c_vato.boldRedEnabled(False)
+            self.cursorVato.boldRedEnabled(False)
 
     # 重置主界面所有的选择框
     def resetAllCheckbox(self):
@@ -1560,6 +1547,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.cfg.readConfigFile() # 更新mvb索引端口信息
                 self.Log("Clear axes", __name__, sys._getframe().f_lineno)
                 self.sp.mainAxes.clear()
+                self.spAux.mainAxes.clear()
                 self.textEdit.clear()
                 self.Log('Init File log', __name__, sys._getframe().f_lineno)
                 # 开始处理

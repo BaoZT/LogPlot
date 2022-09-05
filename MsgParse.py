@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-31 22:24:16
+LastEditTime: 2022-09-05 15:04:16
 '''
 
 from statistics import mean
@@ -142,122 +142,6 @@ Atp2atpFieldDic={
         0x07:"自动换端进行中", 0x08:"自动换端条件具备"})
 
 }
-
-class DisplayMsgield(object):
-   
-    @staticmethod
-    def disTsmStat(value, lbl=QtWidgets.QLabel):
-        if value == 0x7FFFFFFF or value != 0xFFFFFFFF:
-            lbl.setText("恒速区")
-            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
-        else:
-            lbl.setText("减速区")
-            lbl.setStyleSheet("background-color: rgb(255, 255, 0);")
-    
-    @staticmethod
-    def disAtpDoorPmt(ldp=int,rdp=int,lbl=QtWidgets.QLabel):
-        if ldp == 1 and rdp == 1:
-            lbl.setText("双侧门允许")
-            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
-        elif ldp == 1 and rdp == 2:
-            lbl.setText("左门允许")
-            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
-        elif ldp == 2 and rdp == 1:
-            lbl.setText("右门允许")
-            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
-        else:
-            lbl.setText("无门允许")
-            lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
-
-    @staticmethod
-    def disNameOfLineEdit(keyName=str, value=int, led=QtWidgets.QLineEdit):
-        if keyName in Atp2atpFieldDic.keys():
-            # 如果有含义的话
-            if Atp2atpFieldDic[keyName].meaning:
-                # 检查是否有含义
-                if value in Atp2atpFieldDic[keyName].meaning.keys():
-                    led.setText(Atp2atpFieldDic[keyName].meaning[value])
-                # 检查是否有单位
-                elif Atp2atpFieldDic[keyName].unit:
-                    led.setText(str(value)+' '+Atp2atpFieldDic[keyName].unit)
-                else:
-                    led.setStyleSheet("background-color: rgb(255, 0, 0);")
-                    led.setText('异常%d' % value)
-            else:
-                # 直接处理显示
-                if keyName == "m_position":
-                    if not value == 0xFFFFFFFF:
-                        led.setText('K' + str(int(value/ 1000)) + '+' + str(value % 1000))
-                    else:
-                        led.setText(str(0))
-                elif keyName == "nid_operational":
-                    led.setText(hex(value))
-                else:
-                    if Atp2atpFieldDic[keyName].unit:
-                        led.setText(str(value)+Atp2atpFieldDic[keyName].unit)
-                    else:
-                        led.setText(str(value))
-        else:
-            print("[ERR]:DisplayMsgield disNameOfLineEdit error key name!")
-
-    @staticmethod
-    def disNameOfLable(keyName=str, value=int, lbl=QtWidgets.QLabel,keyGoodVal=-1, keyBadval=-1):
-        if keyName in Atp2atpFieldDic.keys():
-            # 如果有字段定义
-            if Atp2atpFieldDic[keyName].meaning:
-                # 检查是否有含义
-                if value in Atp2atpFieldDic[keyName].meaning.keys():
-                    lbl.setText(Atp2atpFieldDic[keyName].meaning[value])
-                    # 提供关键显示功能
-                    if value == keyGoodVal:
-                        lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
-                    elif value == keyBadval:
-                        lbl.setStyleSheet("background-color: rgb(255, 0, 0);")
-                    else:
-                        lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
-                else:
-                    lbl.setStyleSheet("background-color: rgb(255, 0, 0);")
-                    lbl.setText('异常%d' % value)
-            else:
-                # 直接处理显示
-                lbl.setText(keyName+str(value))
-        else:
-            print("[ERR]:DisplayMsgield disNameOfLable error key name!")
-
-    @staticmethod # 解析工具的 名称、数值、解释 3列显示
-    def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem, fieldDic='dict', nomBrush=QtGui.QBrush):
-        for keyName in obj.__slots__:
-            if keyName in fieldDic.keys() :
-                twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
-                value = obj.__getattribute__(keyName)
-                twi.setText(1,fieldDic[keyName].name)
-                twi.setText(2,str(fieldDic[keyName].width)+'bits')
-                twi.setText(3,str(value))
-                # 上色
-                for i in range(1, twi.columnCount()+1):
-                    twi.setBackground(i, nomBrush)
-                # 如果有字段定义
-                if fieldDic[keyName].meaning:
-                    # 检查是否有含义
-                    if value in fieldDic[keyName].meaning.keys():
-                        twi.setText(4,fieldDic[keyName].meaning[value])
-                    elif keyName == 'd_tsm': # 含义和特殊值并存
-                        if fieldDic[keyName].unit:
-                            twi.setText(4, str(value)+'('+fieldDic[keyName].unit+')')
-                    else:
-                        brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
-                        for i in range(1,twi.columnCount()+1):
-                            twi.setBackground(i, brush)
-                        twi.setText(4,'异常值%s' % value)
-                else:
-                    # 直接处理显示
-                    if fieldDic[keyName].unit:
-                        twi.setText(4, str(value)+'('+fieldDic[keyName].unit+')')
-            elif keyName == 'updateflag':
-                pass
-            else:
-                print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
-        root.setExpanded(True)
 
 
 class sp0(object):
@@ -959,19 +843,161 @@ class Atp2atoParse(object):
 
         return crc_code
 
-class Ctcs45(object):
-    
-    def __init__(self) -> None:
-        pass
-
 
 class Ato2tsrsProto(object):
     
+    def __init__(self) -> None:
+        """
+        车到地消息M129/M136/M146/M150/M154/M155/M156/M157/M159
+        """
+        self.msgHeader = A2tMsgHeader()
+        # M146使用确认的时间戳
+        self.t_train_ack = None
+        # M136/157位置报告
+        self.p0  = None
+        self.p1  = None
+        # M136/M157错误报告
+        self.p4  = None
+        # M129列车数据
+        self.p11 = None
+        # M136携带用户数据包
+        self.c44 = None
+        self.c46 = None
+        self.c48 = None
+        self.c50 = None
+
+class A2tMsgHeader(object):
+    __slots__ = ['nid_msg', 'l_msg', 't_train', 'nid_engine']
     def __init__(self) -> None:
         self.nid_msg    = 0     # msg id
         self.l_msg      = 0     # msg length
         self.t_train    = 0     # train stamp
         self.nid_engine = 0     # ob ctcs id
+
+class P4(object):
+    """
+    6.5.3	信息包4:错误报告
+    """
+    __slots__ = ["updateflag","nid_packet","l_packet","m_error"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.nid_packet = 4
+        self.l_packet   = 0
+        self.m_error    = 0
+
+class P11(object):
+    """
+    6.5.4	信息包11:列车数据
+    """
+    __slots__ = ["updateflag", "nid_packet","nid_operational","nc_train","l_train","v_maxtrain",
+    "m_loadinggauge","m_axleload","m_airtight","n_iter","n_iter_stm","nid_stm0"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.nid_packet = 11
+        self.nid_operational = 0
+        self.nc_train   = 0
+        self.l_train    = 0
+        self.v_maxtrain = 0
+        self.m_loadinggauge = 0
+        self.m_axleload = 0
+        self.m_airtight = 0
+        self.n_iter     = 0
+        self.n_iter_stm = 0
+        self.nid_stm0   = 0
+
+class P44Header(object):
+    """
+    6.5.5	信息包44:用户数据包
+    """
+    __slots__ = ["updateflag", "nid_packet", "l_packet"]
+    def __init__(self) -> None:
+        self.nid_packet = 44
+        self.l_packet   = 0
+
+class C44(object):
+    """
+    6.5.6	信息包CTCS-44:开关门命令
+    """
+    __slots__ = ["updateflag", "p44_header","nid_xuser", "l_packet", "m_sequencenum","m_traintype",
+    "nid_track","q_dir","q_tb","m_ldoorcmd","m_rdoorcmd"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44Header()
+        self.nid_xuser  = 44
+        self.l_packet   = 0
+        self.m_sequencenum = 0
+        self.m_traintype= 0
+        self.nid_track  = 0
+        self.q_dir      = 0
+        self.q_tb       = 0
+        self.m_ldoorcmd = 0
+        self.m_rdoorcmd = 0
+
+class C45(object):
+    """
+    6.5.7	信息包CTCS-45:ATO运行计划报告
+    """
+    __slots__ = ["updateflag","p44_header","nid_xuser", "l_packet", "nid_depaturetrack","m_departtime",
+    "nid_arrivaltrack","m_arrivaltime","m_task","m_skip"]    
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44Header()
+        self.nid_xuser  = 45
+        self.l_packet   = 0
+        self.nid_depaturetrack = 0
+        self.m_departtime = 0
+        self.nid_arrivaltrack = 0
+        self.m_arrivaltime= 0
+        self.m_task = 0
+        self.m_skip = 0
+
+class C46(object):
+    """
+    6.5.8	信息包CTCS-46:车载状态
+    """
+    __slots__ = ["updateflag","p44_header","nid_xuser", "l_packet", "nid_engine","nid_operational",
+    "nid_driver", "m_level", "m_mode", "q_stopstatus", "m_ato_mode", "m_ato_control_strategy"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44Header()
+        self.nid_xuser = 46
+        self.l_packet  = 0
+        self.nid_engine= 0
+        self.nid_operational = 0
+        self.nid_driver= 0
+        self.m_level   = 0
+        self.m_mode    = 0
+        self.q_stopstatus = 0
+        self.m_ato_mode= 0
+        self.m_ato_control_strategy = 0
+
+class C48(object):
+    """
+    6.5.9	信息包CTCS-48:ATO折返状态反馈
+    """
+    __slots__ = ["updateflag","nid_xuser","p44_header","l_packet", "m_tbplan", "nid_tbdeparttrack",
+    "m_tbstatus"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44Header()
+        self.nid_xuser = 48
+        self.l_packet  = 0
+        self.m_tbplan  = 0
+        self.nid_tbdeparttrack = 0
+        self.m_tbstatus= 0
+
+class C50(object):
+    """
+    6.5.10	信息包CTCS-50:轨旁无人折返按钮指示灯控制命令
+    """
+    __slots__ = ["updateflag","nid_xuser","p44_header","l_packet", "m_tblamp", "nid_track"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44Header()
+        self.nid_xuser = 0
+        self.l_packet  = 0
+        self.m_tblamp  = 0
+        self.nid_track = 0
 
 class Tsrs2atoProto(object):
 
@@ -987,3 +1013,171 @@ class Tsrs2atoParse(object):
     
     def __init__(self) -> None:
         pass
+
+
+class DisplayMsgield(object):
+   
+    @staticmethod
+    def disTsmStat(value, lbl=QtWidgets.QLabel):
+        if value == 0x7FFFFFFF or value != 0xFFFFFFFF:
+            lbl.setText("恒速区")
+            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
+        else:
+            lbl.setText("减速区")
+            lbl.setStyleSheet("background-color: rgb(255, 255, 0);")
+    
+    @staticmethod
+    def disAtpDoorPmt(ldp=int,rdp=int,lbl=QtWidgets.QLabel):
+        if ldp == 1 and rdp == 1:
+            lbl.setText("双侧门允许")
+            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
+        elif ldp == 1 and rdp == 2:
+            lbl.setText("左门允许")
+            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
+        elif ldp == 2 and rdp == 1:
+            lbl.setText("右门允许")
+            lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
+        else:
+            lbl.setText("无门允许")
+            lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
+
+    @staticmethod
+    def disNameOfLineEdit(keyName=str, value=int, led=QtWidgets.QLineEdit):
+        if keyName in Atp2atpFieldDic.keys():
+            # 如果有含义的话
+            if Atp2atpFieldDic[keyName].meaning:
+                # 检查是否有含义
+                if value in Atp2atpFieldDic[keyName].meaning.keys():
+                    led.setText(Atp2atpFieldDic[keyName].meaning[value])
+                # 检查是否有单位
+                elif Atp2atpFieldDic[keyName].unit:
+                    led.setText(str(value)+' '+Atp2atpFieldDic[keyName].unit)
+                else:
+                    led.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    led.setText('异常%d' % value)
+            else:
+                # 直接处理显示
+                if keyName == "m_position":
+                    if not value == 0xFFFFFFFF:
+                        led.setText('K' + str(int(value/ 1000)) + '+' + str(value % 1000))
+                    else:
+                        led.setText(str(0))
+                elif keyName == "nid_operational":
+                    led.setText(hex(value))
+                else:
+                    if Atp2atpFieldDic[keyName].unit:
+                        led.setText(str(value)+Atp2atpFieldDic[keyName].unit)
+                    else:
+                        led.setText(str(value))
+        else:
+            print("[ERR]:DisplayMsgield disNameOfLineEdit error key name!")
+
+    @staticmethod
+    def disNameOfLable(keyName=str, value=int, lbl=QtWidgets.QLabel,keyGoodVal=-1, keyBadval=-1):
+        if keyName in Atp2atpFieldDic.keys():
+            # 如果有字段定义
+            if Atp2atpFieldDic[keyName].meaning:
+                # 检查是否有含义
+                if value in Atp2atpFieldDic[keyName].meaning.keys():
+                    lbl.setText(Atp2atpFieldDic[keyName].meaning[value])
+                    # 提供关键显示功能
+                    if value == keyGoodVal:
+                        lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
+                    elif value == keyBadval:
+                        lbl.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    else:
+                        lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
+                else:
+                    lbl.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    lbl.setText('异常%d' % value)
+            else:
+                # 直接处理显示
+                lbl.setText(keyName+str(value))
+        else:
+            print("[ERR]:DisplayMsgield disNameOfLable error key name!")
+
+    @staticmethod # 解析工具的 名称、数值、解释 3列显示
+    def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem, fieldDic='dict', nomBrush=QtGui.QBrush):
+        for keyName in obj.__slots__:
+            if keyName in fieldDic.keys() :
+                twi = QtWidgets.QTreeWidgetItem(root)  # 以该数据包作为父节点
+                value = obj.__getattribute__(keyName)
+                twi.setText(1,keyName)
+                twi.setText(2,str(fieldDic[keyName].width)+'bits')
+                twi.setText(3,str(value))
+                intro = fieldDic[keyName].name+':' # 字段含义说明
+                # 上色
+                for i in range(1, twi.columnCount()+1):
+                    twi.setBackground(i, nomBrush)
+                # 如果有字段定义
+                if fieldDic[keyName].meaning:
+                    # 检查是否有含义
+                    if value in fieldDic[keyName].meaning.keys():
+                        twi.setText(4,intro+fieldDic[keyName].meaning[value])
+                    elif keyName == 'd_tsm': # 含义和特殊值并存
+                        if fieldDic[keyName].unit:
+                            twi.setText(4, intro+str(value)+'('+fieldDic[keyName].unit+')')
+                    else:
+                        brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
+                        for i in range(1,twi.columnCount()+1):
+                            twi.setBackground(i, brush)
+                        twi.setText(4,intro+'异常值%s' % value)
+                else:
+                    # 直接处理显示
+                    if fieldDic[keyName].unit:
+                        twi.setText(4,intro+str(value)+'('+fieldDic[keyName].unit+')')
+            elif keyName == 'updateflag':
+                pass
+            else:
+                print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
+        root.setExpanded(True)
+
+    @staticmethod
+    def disNameOfMsgShell(msg=Atp2atoProto, root=QtWidgets.QTreeWidgetItem):
+        if msg and root:
+            # 消息头
+            if msg.nid_packet == 250:
+                root.setText(0, "ATP->ATO通信消息")
+            else:
+                root.setText(0, "ATO->ATP通信消息")
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"msg_id")
+            msgTree.setText(2, '8bits')
+            msgTree.setText(3, str(msg.nid_msg))
+            msgTree.setText(4, "消息号:ATP-ATO通信消息固定ID=45")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"l_msg")
+            msgTree.setText(2, '8bits')
+            msgTree.setText(3, str(msg.l_msg))
+            msgTree.setText(4, "消息长度:全部长度,单位字节")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"nid_packet")
+            msgTree.setText(2, '8bits')
+            msgTree.setText(3, str(msg.nid_packet))
+            msgTree.setText(4, "信息包号:标识ATP-ATO通信方向")
+            
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"l_packet")
+            msgTree.setText(2, '13bits')
+            msgTree.setText(3, str(msg.l_packet))
+            msgTree.setText(4, "信息包长度:包含所有子信息包,单位比特")
+            # 消息结尾
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"n_sequence")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.n_sequence))
+            msgTree.setText(4, "消息序号:ATP消息序号")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"t_atp")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.t_msg_atp))
+            msgTree.setText(4, "消息时间戳:ATP时间坐标系系统时间,单位ms")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"crc_code")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, hex(msg.crc_code))
+            msgTree.setText(4, "消息CRC码:循环冗余校验码")
