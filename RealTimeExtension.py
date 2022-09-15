@@ -1,4 +1,4 @@
-import copy
+import pickle
 import os
 import queue
 import threading
@@ -6,7 +6,7 @@ import time
 import numpy as np
 from PyQt5 import QtCore
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse
-from MsgParse import Atp2atoParse
+from MsgParse import Ato2tsrsParse, Atp2atoParse, Tsrs2atoParse
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
 from ConfigInfo import ConfigFile
 
@@ -38,7 +38,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
             # 若队列未满，则继续加入:
             if not workQueue.full():
                 thLock.acquire()
-                workQueue.put(copy.deepcopy(line), block=False, timeout=0.1)   # 必须读到数据
+                workQueue.put(pickle.loads(pickle.dumps(line)), block=False, timeout=0.1)   # 必须读到数据
                 thLock.release()
             else:
                 time.sleep(0.1)
@@ -76,6 +76,8 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.rpParser = InerRunningPlanParse()
         self.mvbParser = MVBParse()
         self.atp2atoParser = Atp2atoParse()
+        self.ato2tsrsParser = Ato2tsrsParse()
+        self.tsrs2atoParser = Tsrs2atoParse()
         # 解析结果
         self.a2tCtrlObj  = None
         self.a2tStatObj  = None
@@ -111,6 +113,9 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.sduInfoParser.reset()
         # 重置IO信息
         self.ioInfoParser.reset()
+        # 重置ATO-TSRS消息
+        self.ato2tsrsParser.resetMsg()
+        self.tsrs2atoParser.resetMsg()
 
     # 串口成功打开才启动该线程
     def run(self):
@@ -236,18 +241,27 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                                 if match:
                                     self.atp2atoParser.msgParse(match[0])
                                 else:
-                                    match = self.cfg.reg_config.pat_stoppoint.findall(line)
+                                    match = self.cfg.reg_config.pat_a2t.findall(line)
                                     if match:
-                                        self.stoppoint = match[0]
+                                        self.ato2tsrsParser.msgParse(match[0])
                                     else:
-                                        pass
+                                        match = self.cfg.reg_config.pat_t2a.findall(line)
+                                        if match:
+                                            self.tsrs2atoParser.msgParse(match[0])
+                                        else:
+                                            match = self.cfg.reg_config.pat_stoppoint.findall(line)
+                                            if match:
+                                                self.stoppoint = match[0]
+                                            else:
+                                                pass
         # 发射信号
         if update_flag == True:
             # 生成信号结果
             result = (self.cycle_os_time_start, self.cycleNumStr, self.timeContentStr, 
             self.fsm, self.sc_ctrl, self.stoppoint,
-            self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.time_statictics)
-            self.patShowSignal.emit(copy.deepcopy(result))
+            self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.time_statictics,
+            self.ato2tsrsParser.msg_obj, self.tsrs2atoParser.msg_obj)
+            self.patShowSignal.emit(pickle.loads(pickle.dumps(result)))
         # 返回用于画图
         return update_flag
 
@@ -277,7 +291,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             updateflag = self.sduInfoParser.sduInfo.updateflag
         # 收集到sdu_ato和sdu_atp
         if updateflag:
-            self.ioInfoObj = copy.deepcopy(self.sduInfoParser.sduInfo)
+            self.ioInfoObj = pickle.loads(pickle.dumps(self.sduInfoParser.sduInfo))
             self.sduShowSignal.emit(self.ioInfoObj)
         else:
             pass
@@ -289,7 +303,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.ioInfoParser.ioStringParse(line)
         # 发送信号
         if self.ioInfoParser.ioInfo.updateflagIn == True or self.ioInfoParser.ioInfo.updateflagOut:
-            self.ioInfoObj =  copy.deepcopy(self.ioInfoParser.ioInfo)
+            self.ioInfoObj =  pickle.loads(pickle.dumps(self.ioInfoParser.ioInfo))
             self.ioShowSignal.emit(self.cycleNumStr, self.timeContentStr, self.ioInfoObj)
             updateflag = True
         else:
@@ -305,15 +319,15 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             if match:
                 [a2tCtrl, a2tStat, t2aStat ] = self.mvbParser.parseProtocol(match[0])
                 updateflag = True
+                # 当匹配成功时拷贝
+                if self.mvbParser.ato2tcms_ctrl_obj.updateflag or \
+                    self.mvbParser.ato2tcms_state_obj.updateflag or \
+                    self.mvbParser.tcms2ato_state_obj.updateflag:
 
-            if self.mvbParser.ato2tcms_ctrl_obj.updateflag or \
-                self.mvbParser.ato2tcms_state_obj.updateflag or \
-                self.mvbParser.tcms2ato_state_obj.updateflag:
-
-                self.a2tCtrlObj = copy.deepcopy(a2tCtrl)
-                self.a2tStatObj = copy.deepcopy(a2tStat)
-                self.t2aStatObj = copy.deepcopy(t2aStat)
-                self.mvbShowSignal.emit(self.a2tCtrlObj,self.a2tStatObj, self.t2aStatObj)
+                    self.a2tCtrlObj = pickle.loads(pickle.dumps(a2tCtrl))
+                    self.a2tStatObj = pickle.loads(pickle.dumps(a2tStat))
+                    self.t2aStatObj = pickle.loads(pickle.dumps(t2aStat))
+                    self.mvbShowSignal.emit(self.a2tCtrlObj,self.a2tStatObj, self.t2aStatObj)
         return updateflag
 
     # 提取计划内容
@@ -325,7 +339,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             updateflag = self.rpParser.rpInfo.updateflag
         # 发送信号
         if updateflag:
-            self.rpInfoObj = copy.deepcopy(self.rpParser.rpInfo)
+            self.rpInfoObj = pickle.loads(pickle.dumps(self.rpParser.rpInfo))
             self.planShowSignal.emit(self.rpInfoObj, osTime)
         else:
             pass
