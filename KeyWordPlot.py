@@ -2,7 +2,7 @@
 
 # encoding: utf-8
 
-from pyexpat.errors import XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF
+
 import matplotlib
 import matplotlib.figure as matfig
 from PyQt5 import QtCore, QtWidgets
@@ -27,7 +27,7 @@ class SnaptoCursor(QtCore.QObject):
     move_signal = QtCore.pyqtSignal(int)        # 带一个参数的信号
     sim_move_singal = QtCore.pyqtSignal(int)    # 模拟手动挪动光标
 
-    def __init__(self, sp, ax, x, y, spAux, axAux, xAux, yAux):
+    def __init__(self, sp, ax, x, y, spAux=None, axAux=None, xAux=None, yAux=None):
         super(SnaptoCursor, self).__init__()
         self.fmpl = sp
         self.ax = ax
@@ -37,22 +37,24 @@ class SnaptoCursor(QtCore.QObject):
         self.ly = self.ax.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
         self.x = x
         self.y = y
-        # 辅助光标 
-        self.fmplAux = spAux
-        self.axAux = axAux
-        self.axAux.set_xlim(xAux[0], xAux[len(x)-1])  # 默认与不带光标统一的显示范围
-        self.lxAux = self.axAux.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
-        self.lyAux = self.axAux.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
-        self.xAux = x
-        self.yAux = y
         # use for record key words
         self.data_x = 0
         self.data_y = 0
         self.nearest_index = 0
-        # 辅助光标点
-        self.data_xAux = 0
-        self.data_yAux = 0
-    # text location in axes coords
+        # 辅助光标 
+        if spAux and axAux: 
+            self.fmplAux = spAux
+            self.axAux = axAux
+            self.axAux.set_xlim(xAux[0], xAux[len(x)-1])  # 默认与不带光标统一的显示范围
+            self.lxAux = self.axAux.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
+            self.lyAux = self.axAux.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
+            self.xAux = x
+            self.yAux = y
+            # 辅助光标点
+            self.data_xAux = 0
+            self.data_yAux = 0
+        else:
+            self.yAux = np.array([])
 
     def get_cursor_data(self):
         return self.data_x,self.data_y
@@ -74,17 +76,22 @@ class SnaptoCursor(QtCore.QObject):
         # nearest data 这是数据
         x = self.x[indx]
         y = self.y[indx]
-        yAux = self.yAux[indx]
+        # 辅助光标
+        if self.yAux.any():
+            yAux = self.yAux[indx]
+        else:
+            yAux = None
         # update the line positions
         if cursor_track_flag == 1:          # 看标志追踪
             y = self.y[indx]
             self.lx.set_ydata(y)
             self.ly.set_xdata(x)
-            self.lxAux.set_ydata(yAux)
-            self.lyAux.set_xdata(x)  # 共用X轴索引
-            #print('x=%1.2f, y=%1.2f' % (x, y))
             self.fmpl.draw()
-            self.fmplAux.draw()
+            # 辅助光标
+            if yAux:
+                self.lxAux.set_ydata(yAux)
+                self.lyAux.set_xdata(x)  # 共用X轴索引
+                self.fmplAux.draw()
             # 发射信号
             self.move_signal.emit(indx)  # 发射信号索引
         else:
@@ -100,15 +107,21 @@ class SnaptoCursor(QtCore.QObject):
         # nearest data 这是数据
         x = self.x[indx]
         y = self.y[indx]
-        yAux = self.yAux[indx]
+        # 辅助光标
+        if self.yAux.any():
+            yAux = self.yAux[indx]
+        else:
+            yAux = None
         # update the line positions
         self.lx.set_ydata(y)
         self.ly.set_xdata(x)
-        self.lxAux.set_ydata(yAux)
-        self.lyAux.set_xdata(x)  # 共用X轴索引
         print('x=%1.2f, y=%1.2f' % (x, y))
         self.fmpl.draw()
-        self.fmplAux.draw()
+        # 辅助光标
+        if yAux:
+            self.lxAux.set_ydata(yAux)
+            self.lyAux.set_xdata(x)  # 共用X轴索引
+            self.fmplAux.draw()
         # 发射信号
         self.sim_move_singal.emit(indx)  # 发射信号索引
 
@@ -148,6 +161,9 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.twinAxes = self.mainAxes.twinx()
+        # 气泡绘制
+        self.bubbleCtrl = None
+        self.bubbleCrosser = None
         # 事件绘制字典,存储每个需要绘制的列表，列表是tuple类型
         self.event_plot_dic = {}
         self.event_plot_flag = 0                 # 事件绘制标志
@@ -224,11 +240,11 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
     def plotMainSpeedCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
         # paint the speed ruler
         self.mainAxes.axhline(y=1250, xmin=0, xmax=1, color='darkblue', ls='--',        # xmin and xmax Should be between 0 and 1,
-                           label = '45km/h,80km/h,350km/h', linewidth=0.8)  # 45km/h   #  0 being the far left of the plot,
+                           label = '45km/h,80km/h,350km/h', linewidth=0.4)  # 45km/h   #  0 being the far left of the plot,
         self.mainAxes.axhline(y=9722, xmin=0, xmax=1, color='darkblue', ls='dashed',    # 1 the far right of the plot
-                           linewidth=0.8)  # 350km/h
+                           linewidth=0.4)  # 350km/h
         self.mainAxes.axhline(y=2222, xmin=0, xmax=1, color='darkblue', ls='dashed',
-                           linewidth=0.8)  # 80km/h
+                           linewidth=0.4)  # 80km/h
         # 该条曲线纯粹是为了首次绘图自动范围包括负数
         self.mainAxes.axhline(y=-500, xmin=0, xmax=1, color='darkblue', ls='dashed', linewidth=0)
 
@@ -271,7 +287,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
 
     # 绘制坡度坐标轴信息
     def plotMainRampCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
-        self.mainAxes.axhline(y=0, xmin=0, xmax=1, color='black', ls='--', label = '平坡', linewidth=0.8) 
+        self.mainAxes.axhline(y=0, xmin=0, xmax=1, color='black', ls='--', label = '平坡', linewidth=0.4) 
 
         if self.mainAxes.get_lines():
             self.mainAxes.legend(loc='upper left')
@@ -280,23 +296,15 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         self.mainAxes.set_ylabel('坡度值‰', fontdict={'fontsize': 10})
         self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.060, right=0.969, hspace=0.17, wspace=0.25)
 
-    # 绘制加速度相关信息
-    def plotlog_sa(self, ob=FileProcess, cmd=int):
+    # 绘制级位曲线
+    # cmd : 1=周期速度曲线 0=位置速度曲线
+    def plotLogState(self, ob=FileProcess, cmd=int):
         # V-A 曲线
         if cmd == 0:
-            p3 = self.mainAxes.plot(ob.s, ob.a, markersize='0.8',color='darkkhaki', label='加速度')
+            p3 = self.twinAxes.plot(ob.s, ob.statmachine, markersize='0.8',color='darkkhaki', label='状态机')
         else:
-            p3 = self.mainAxes.plot(ob.cycle, ob.a, markersize='0.8', color='darkkhaki', label='加速度')
-        self.mainAxes.set_ylabel('列车加速度')
-
-    # 绘制坡度相关信息
-    def plotlog_ramp(self, ob=FileProcess, cmd=int):
-        #  S-RAMP 曲线
-        if cmd == 0:
-            self.mainAxes.plot(ob.s, ob.ramp, 'c-', markersize=0.5 ,label='坡度数据', linewidth=0.5)
-        else:
-            self.mainAxes.plot(ob.cycle, ob.ramp, 'c-', label='坡度数据', linewidth=0.5)
-        self.mainAxes.set_ylabel('线路坡度')
+            p3 = self.twinAxes.plot(ob.cycle, ob.statmachine, markersize='0.8', color='darkkhaki', label='状态机')
+        self.twinAxes.set_ylabel('状态机')
 
     # 绘制对称坐标相关信息
     def plotTwinLevelCord(self, ob=FileProcess, cmd=int):
@@ -382,82 +390,85 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         '''
 
         self.mainAxes.texts.clear()    # 删除坐标轴文本信息
+        # 越界防护
+        if pos_idx < len(ob.s):
+            # 根据曲线类型获取文本气泡坐标
+            bubble_x = 0
+            bubble_y = 0
+            # 只在ATO速度曲线坐标上显示， cmd : 1=周期速度曲线 0=位置速度曲线
+            if cmd == 0:
+                bubble_x = ob.s[pos_idx]
+                bubble_y = ob.v_ato[pos_idx]
+            elif cmd == 1:
+                bubble_x = ob.cycle[pos_idx]
+                bubble_y = ob.v_ato[pos_idx]
 
-        # 根据曲线类型获取文本气泡坐标
-        bubble_x = 0
-        bubble_y = 0
-        # 只在ATO速度曲线坐标上显示， cmd : 1=周期速度曲线 0=位置速度曲线
-        if cmd == 0:
-            bubble_x = ob.s[pos_idx]
-            bubble_y = ob.v_ato[pos_idx]
-        elif cmd == 1:
-            bubble_x = ob.cycle[pos_idx]
-            bubble_y = ob.v_ato[pos_idx]
+            # 文本框内容字符串生成
+            atppmt_ato_err = ob.atp_permit_v[pos_idx] - ob.v_ato[pos_idx]
+            atocmd_ato_err = ob.cmdv[pos_idx] - ob.v_ato[pos_idx]
+            atpcmd_ato_err = ob.ceilv[pos_idx] - ob.v_ato[pos_idx]
+            stoppos_curpos_err = ob.stoppos[pos_idx] - ob.s[pos_idx]
+            targetpos_curpos_err = ob.targetpos[pos_idx] - ob.s[pos_idx]
+            ramp = ob.ramp[pos_idx]
+            adj_ramp = ob.adjramp[pos_idx]
 
-        # 文本框内容字符串生成
-        atppmt_ato_err = ob.atp_permit_v[pos_idx] - ob.v_ato[pos_idx]
-        atocmd_ato_err = ob.cmdv[pos_idx] - ob.v_ato[pos_idx]
-        atpcmd_ato_err = ob.ceilv[pos_idx] - ob.v_ato[pos_idx]
-        stoppos_curpos_err = ob.stoppos[pos_idx] - ob.s[pos_idx]
-        targetpos_curpos_err = ob.targetpos[pos_idx] - ob.s[pos_idx]
-        ramp = ob.ramp[pos_idx]
-        adj_ramp = ob.adjramp[pos_idx]
+            if pos_idx > 0:
+                delta_v = ob.v_ato[pos_idx] - ob.v_ato[pos_idx - 1]
+            else:
+                delta_v = ob.v_ato[pos_idx]
 
-        if pos_idx > 0:
-            delta_v = ob.v_ato[pos_idx] - ob.v_ato[pos_idx - 1]
-        else:
-            delta_v = ob.v_ato[pos_idx]
+            # 设置报警色
+            if atpcmd_ato_err > 0:
+                paint_color = 'deepskyblue'
+            else:
+                paint_color = 'red'
 
-        # 设置报警色
-        if atpcmd_ato_err > 0:
-            paint_color = 'deepskyblue'
-        else:
-            paint_color = 'red'
+            str_atppmt_ato_err = '距ATP允许速度:%d cm/s\n'%atppmt_ato_err
+            str_atocmd_ato_err = '距ATO命令速度:%d cm/s\n'%atocmd_ato_err
+            str_atpcmd_ato_err = '距ATP命令速度:%d cm/s\n'%atpcmd_ato_err
+            str_stoppos_curpos_err = '距停车点:%d cm\n'%stoppos_curpos_err
+            str_targetpos_curpos_err = '距目标点:%d cm\n'%targetpos_curpos_err
+            str_ramp = '车头实际坡度:%d ‰\n'%ramp
+            str_adj_ramp = '等效坡度:%d ‰\n' % adj_ramp
+            str_delta_v = '相邻速度差:%d cm/s'%delta_v
 
-        str_atppmt_ato_err = '距ATP允许速度:%d cm/s\n'%atppmt_ato_err
-        str_atocmd_ato_err = '距ATO命令速度:%d cm/s\n'%atocmd_ato_err
-        str_atpcmd_ato_err = '距ATP命令速度:%d cm/s\n'%atpcmd_ato_err
-        str_stoppos_curpos_err = '距停车点:%d cm\n'%stoppos_curpos_err
-        str_targetpos_curpos_err = '距目标点:%d cm\n'%targetpos_curpos_err
-        str_ramp = '车头实际坡度:%d ‰\n'%ramp
-        str_adj_ramp = '等效坡度:%d ‰\n' % adj_ramp
-        str_delta_v = '相邻速度差:%d cm/s'%delta_v
+            str_show = str_atppmt_ato_err + str_atocmd_ato_err + str_atpcmd_ato_err \
+                    + str_stoppos_curpos_err + str_targetpos_curpos_err \
+                    + str_ramp + str_adj_ramp \
+                    + str_delta_v
 
-        str_show = str_atppmt_ato_err + str_atocmd_ato_err + str_atpcmd_ato_err \
-                   + str_stoppos_curpos_err + str_targetpos_curpos_err \
-                   + str_ramp + str_adj_ramp \
-                   + str_delta_v
+            str_spd_sig = ob.cycle_dic[ob.cycle[pos_idx]].time+'\n'\
+                        + '列车速度：%dcm/s'%ob.v_ato[pos_idx]+'\n'\
+                        + '列车时速：%.2fkm/h'%((ob.v_ato[pos_idx]*9)/250)
 
-        str_spd_sig = ob.cycle_dic[ob.cycle[pos_idx]].time+'\n'\
-                      + '列车速度：%dcm/s'%ob.v_ato[pos_idx]+'\n'\
-                      + '列车时速：%.2fkm/h'%((ob.v_ato[pos_idx]*9)/250)
+            # 获取当前坐标轴范围，用以计算文本框的偏移比例
+            cord_lim_x = self.mainAxes.get_xlim()
+            cord_lim_y = self.mainAxes.get_ylim()
 
-        # 获取当前坐标轴范围，用以计算文本框的偏移比例
-        cord_lim_x = self.mainAxes.get_xlim()
-        cord_lim_y = self.mainAxes.get_ylim()
+            x_delta = abs(cord_lim_x[1] - cord_lim_x[0])/100
+            y_delta = abs(cord_lim_y[1] - cord_lim_y[0])/90
 
-        x_delta = abs(cord_lim_x[1] - cord_lim_x[0])/60
-        y_delta = abs(cord_lim_y[1] - cord_lim_y[0])/48
+            #设置气泡显示，右下角
+            bubble_x = bubble_x + x_delta  # 固定的右移动
+            bubble_y = bubble_y + 6*y_delta  # 固定的上移动
+            #右上角设置速度时间tag
+            sig_x = bubble_x + x_delta  # 固定的右移动
+            sig_y = bubble_y + y_delta  # 固定的下移动
 
-        #设置气泡显示，右下角
-        bubble_x = bubble_x + x_delta  # 固定的右移动
-        bubble_y = bubble_y + 6*y_delta  # 固定的上移动
-        #右上角设置速度时间tag
-        sig_x = bubble_x + x_delta  # 固定的右移动
-        sig_y = bubble_y + y_delta  # 固定的下移动
+            # 文本悬浮窗绘制位置类型，参考主框架定义 1=跟随模式，0=停靠右上角
+            props_bubble = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
+            props_sig = dict(facecolor=paint_color, edgecolor='none', alpha=0.02)
 
-        # 文本悬浮窗绘制位置类型，参考主框架定义 1=跟随模式，0=停靠右上角
-        props_bubble = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
-        props_sig = dict(facecolor=paint_color, edgecolor='none', alpha=0.05)
+            # 设置显示速度信息
+            self.mainAxes.text(sig_x, sig_y, str_spd_sig, fontsize=10, verticalalignment='top', bbox=props_sig)
 
-        # 设置显示速度信息
-        self.mainAxes.text(sig_x, sig_y, str_spd_sig, fontsize=12, verticalalignment='top', bbox=props_sig)
-
-        if 1 == text_pos_type:
-            self.mainAxes.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
-        elif 0 == text_pos_type:
-            self.mainAxes.text(0.78, 0.95, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
-                            bbox=props_bubble)
+            if 1 == text_pos_type:
+                self.mainAxes.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
+            elif 0 == text_pos_type:
+                self.mainAxes.text(0.78, 0.95, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
+                                bbox=props_bubble)
+            else:
+                pass
         else:
             pass
 
