@@ -13,7 +13,7 @@
 import matplotlib
 
 from CycleInfo import Ui_MainWindow as CycleWin
-from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atpFieldDic, DisplayMsgield
+from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atoFieldDic, DisplayMsgield
 from ProtoParserWin import Ui_MainWindow as ParserWin
 from MeasureWin import Ui_MainWindow as MeasureWin
 from C3atoRecordTranslator import Ui_Dialog as C3ATOTransferWin
@@ -294,6 +294,7 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         inputLine = self.textEdit.toPlainText()
         try:
             streamLine = re.sub('\s+', '', inputLine)
+            self.parser.resetMsg(self.msg)
             self.msg = self.parser.msgParse(streamLine)
             self.showParserRst(self.msg)
         except Exception as err:
@@ -323,7 +324,7 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
                 rootSub.setText(0, 'sub_packet-'+str(pkt.nid_sub_packet))
                 for i in range(rootSub.columnCount()+1):
                     rootSub.setBackground(i, headerBrush)
-                DisplayMsgield.disNameOfTreeWidget(pkt,rootSub, Atp2atpFieldDic, contentBrush)
+                DisplayMsgield.disNameOfTreeWidget(pkt,rootSub, Atp2atoFieldDic, contentBrush)
                 rootSub.setExpanded(True)
             else:
                 pass
