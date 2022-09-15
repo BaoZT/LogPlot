@@ -7,10 +7,10 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-05 15:04:16
+LastEditTime: 2022-09-15 13:43:11
 '''
 
-from statistics import mean
+
 from PyQt5 import  QtWidgets,QtGui
 from ProtocolParser.CommonParse import BytesStream
 
@@ -27,7 +27,7 @@ class ProtoField(object):
         self.unit = u
         self.meaning = m
 
-Atp2atpFieldDic={
+Atp2atoFieldDic={
         'nid_packet':ProtoField("信息包号",0,b_endian,8,None,None),
         'nid_sub_packet':ProtoField("子包信息包号",0,b_endian,8,None,None),
         'l_packet':ProtoField("信息包位数",0,b_endian,13,None,None),
@@ -65,7 +65,7 @@ Atp2atpFieldDic={
         'l_trackcond':ProtoField("特殊轨道区段的长度",0xFFFFFFFF,b_endian,32,"cm",None),
         'l_train':ProtoField("列车长度",0,b_endian,12,"m",None),
         'm_atoerror':ProtoField("ATO故障码",0,b_endian,16,None,None),
-        'm_atomode':ProtoField("ATO模式",0,b_endian,4,None,{0:"ATO故障",1:"AOS模式",2:"AOR模式",3:"AOM模式",4:"AOF模式"}),
+        'm_atomode':ProtoField("ATO模式",0,b_endian,4,None,{0:"ATO故障",1:"ATO待机",2:"ATO准备",3:"ATO投入",4:"ATO故障"}),
         'm_ato_control_strategy':ProtoField("ATO 当前在用控车策略",0,b_endian,4,None,{1:"默认策略",2:"快行策略",3:"慢行策略",4:"计划控车"}),
         'm_ato_plan':ProtoField("计划状态",0,b_endian,2,None,{0:"不显示",1:"计划有效",2:"计划无效"}),
         'm_ato_skip':ProtoField("计划通过",0,b_endian,2,None,{0:"不显示",1:"前方通过"}),
@@ -79,7 +79,7 @@ Atp2atpFieldDic={
         'm_doorstatus':ProtoField("车门状态",0,b_endian,2,None,{0:"异常",1:"车门开",2:"车门关"}),
         'm_gprs_radio':ProtoField("电台注册状态",0,b_endian,2,None,{0:"无电台",1:"电台正常"}),
         'm_gprs_session':ProtoField("与TSRS连接状态",0,b_endian,2,None,{0:"不显示",1:"TSRS未连接",2:"TSRS连接中",3:"TSRS连接"}),
-        'm_low_frequency':ProtoField("轨道电路低频信息",0,b_endian,8,None,{0x01:"无码",0x00:"H码",0x02:"HU",0x10:"HB码",0x2A:"L4码",0x2B:"L5码",
+        'm_low_frequency':ProtoField("轨道电路低频信息",0,b_endian,8,None,{0x01:"无码",0x00:"H码",0x02:"HU码",0x10:"HB码",0x2A:"L4码",0x2B:"L5码",
         0x25:"U2S码",0x23:"UUS码",0x22:"UU码",0x21:"U码",0x24:"U2码",0x26:"LU码",0x28:"L2码",0x27:"L码",0x29:"L3码"}),
         'm_ms_cmd':ProtoField("ATP断主断命令",0,b_endian,2,None,{1:"ATP断主断",2:"ATP合主断"}),
         'm_position':ProtoField("公里标",0xFFFFFFFF,b_endian,32,"m",None),
@@ -129,7 +129,7 @@ Atp2atpFieldDic={
         'v_permitted':ProtoField("ATP允许速度",32768,b_endian,16,"cm/s",None),
         'v_target':ProtoField("目标速度",0,b_endian,16,"cm/s",None),
         'x_text':ProtoField("文本",0,b_endian,8,None,None),
-        'q_ato_tb_status':ProtoField("ATO允许换端折返状态", 0, b_endian, 8, None, {0x00:"无折返允许", 0x5A:"允许换端", 0xA5:"允许折返"}),
+        'q_ato_tb_status':ProtoField("ATO允许换端折返状态", 0, b_endian, 8, None, {0x00:"折返无效", 0x5A:"换端计划", 0xA5:"折返计划"}),
         'q_tb_ob_btn':ProtoField('驾驶台换端按钮',0,b_endian,4, None, {0:"未按下", 1:"按下", 15:"状态异常"}),
         'q_tb_stn_btn':ProtoField('轨旁换端按钮',0,b_endian,4, None, {0:"未按下", 1:"按下", 15:"状态异常"}),
         'q_headtail':ProtoField('首尾端状态',0,b_endian,4, None, {0:"非折返换端", 1:"首端", 2:"尾端"}),
@@ -143,8 +143,33 @@ Atp2atpFieldDic={
 
 }
 
+Tsrs2atoFieldDic={
+        'm_tbplan':ProtoField("折返计划",0,b_endian,2,None,{0:"计划无效", 1:"无人折返", 2:"自动换端"}),
+        'm_task':ProtoField("是否办客",0,b_endian,8,None,{1:"办客", 2:"不办客"}),
+        'm_tbstatus':ProtoField("当前换端折返状态",0,b_endian,8,None,{0x00:"非自动折返状态",0x01:"原地自动折返状态",
+        0x03:"站后自动折返准备状态",0x04:"站后自动折返状态", 0x07:"站后自动折返成功", 0x08:"原地自动折返成功",
+        0x09:"站后自动折返失败", 0x0A:"原地自动折返失败", 0x0B:"站后自动换端成功", 0x0C:"站后自动换端失败",
+        0x0D:"原地自动折返准备状态"})
+}
 
-class sp0(object):
+TrainCircuitDic={"L码":"前方有3个及以上闭塞分区空闲",
+"LU码":"注意运行,距离目标距离2个闭塞分区",
+"U码":"减速运行,距离目标距离1分闭塞分区",
+"U2S码":"减速运行,预告UUS码",
+"U2码":"减速运行,预告UU码",
+"UUS码":"限速运行,道岔开通侧向,默认道岔速度80km/h",
+"UU码":"限速运行,道岔开通侧向,默认道岔速度45km/h",
+"HB码":"进站或接车进路开放引导信号或收到容许信号",
+"HU码":"前方停车目标,及时采取停车措施",
+"L5码":"前方有7个及以上闭塞分区空闲",
+"L4码":"前方有6个及以上闭塞分区空闲",
+"L3码":"前方有5个及以上闭塞分区空闲",
+"L2码":"前方有4个及以上闭塞分区空闲",
+"LU2码":"要求列车减速到规定的速度等级越过接近的地面信号机,预告U码",
+"H码":"要求立即采取紧急制动措施"
+}
+
+class P0(object):
     __slots__ = ["updateflag","nid_sub_packet","l_packet","q_scale","nid_lrbg","d_lrbg",
     "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
     "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3","m_level","nid_stm"]
@@ -168,7 +193,7 @@ class sp0(object):
         self.m_level       = 0
         self.nid_stm       = 0
 
-class sp1(object):
+class P1(object):
     __slots__ = ["updateflag","nid_sub_packet","l_packet","q_scale","nid_lrbg","nid_prvbg","d_lrbg",
     "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
     "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3",
@@ -194,7 +219,7 @@ class sp1(object):
         self.m_level       = 0
         self.nid_stm       = 0
 
-class sp2(object):
+class SP2(object):
     __slots__ = ["updateflag","nid_sub_packet","q_atopermit","q_ato_hardpermit","q_leftdoorpermit","q_rightdoorpermit","q_door_cmd_dir",
     "q_tb","v_target","d_target","m_level","m_mode_c2","m_mode_c3","o_train_pos","v_permitted","d_ma","m_ms_cmd","d_neu_sec",
     "m_low_frequency","q_stopstatus","m_atp_stop_error","d_station_mid_pos","d_jz_sig_pos","d_cz_sig_pos",
@@ -230,14 +255,14 @@ class sp2(object):
         self.m_tco_state       = 0
         self.reserve           = 0
 
-class sp3(object):
+class SP3(object):
     __slots__ = ["updateflag","nid_sub_packet","t_atp"]
     def __init__(self) -> None:
         self.updateflag        = False
         self.nid_sub_packet    = 3
         self.t_atp             = 0
 
-class sp4(object):
+class SP4(object):
     __slots__ = ["updateflag","nid_sub_packet","v_normal","d_normal"]
     def __init__(self) -> None:
         self.updateflag        = False
@@ -245,7 +270,7 @@ class sp4(object):
         self.v_normal          = 0
         self.d_normal          = 0
 
-class sp5(object):
+class SP5(object):
     __slots__ = ["updateflag","nid_sub_packet","n_units","nid_operational","nid_driver","btm_antenna_position",
     "l_door_distance","l_sdu_wheel_size_1","l_sdu_wheel_size_2","t_cutoff_traction","nid_engine",
     "v_ato_permitted"]
@@ -263,7 +288,7 @@ class sp5(object):
         self.nid_engine        = 0
         self.v_ato_permitted   = 0
 
-class sp6(object):
+class SP6(object):
     __slots__ = ["updateflag","nid_sub_packet","t_year","t_month","t_day","t_hour",
     "t_minutes","t_seconds"]
     def __init__(self) -> None:
@@ -276,7 +301,7 @@ class sp6(object):
         self.t_minutes         = 0
         self.t_seconds         = 0
 
-class sp7(object):
+class SP7(object):
     __slots__ = ["updateflag","nid_sub_packet","nid_bg","t_middle","d_pos_adj","nid_xuser",
     "q_scale","q_platform","q_door","n_g","d_stop"]
     def __init__(self) -> None:
@@ -292,7 +317,7 @@ class sp7(object):
         self.n_g               = 0
         self.d_stop            = 0
 
-class sp8(object):
+class SP8(object):
     __slots__ = ["updateflag","nid_sub_packet","q_tsrs","nid_c","nid_tsrs","nid_radio_h","nid_radio_l",
     "q_sleepsession","m_session_type"]
     def __init__(self) -> None:
@@ -306,14 +331,14 @@ class sp8(object):
         self.q_sleepsession    = 0
         self.m_session_type    = 0
 
-class sp9_sp_track(object):
+class SP9Track(object):
     __slots__ = ["d_trackcond","l_trackcond","m_trackcond"]
     def __init__(self) -> None:
         self.d_trackcond = 0xffffffff
         self.l_trackcond = 0xffffffff
         self.m_trackcond = 0
 
-class sp9(object):
+class SP9(object):
     __slots__ = ["updateflag","nid_sub_packet","n_iter","sp_track_list"]
     def __init__(self) -> None:
         self.updateflag        = False
@@ -321,7 +346,7 @@ class sp9(object):
         self.n_iter            = 0
         self.sp_track_list     = None
 
-class sp10(object):
+class SP10(object):
     __slots__ = ["updateflag", "nid_sub_packet","q_headtail", "q_tb_status", "q_tb_relay", "m_tb_display"]
     def __init__(self) -> None:
         self.updateflag        = False
@@ -331,7 +356,7 @@ class sp10(object):
         self.q_tb_relay        = 0
         self.m_tb_display      = 0
 
-class sp130(object):
+class SP130(object):
     __slots__ = ["updateflag","nid_sub_packet","m_atomode","m_doormode","m_doorstatus","m_atoerror",
     "m_ato_stop_error"]
     def __init__(self) -> None:
@@ -343,7 +368,7 @@ class sp130(object):
         self.m_atoerror        = 0
         self.m_ato_stop_error  = 0
 
-class sp131(object):
+class SP131(object):
     __slots__ = ["updateflag","nid_sub_packet","m_ato_tbs","m_ato_skip","m_ato_plan","m_ato_time",
     "m_tcms_com","m_gprs_radio","m_gprs_session","m_ato_control_strategy","paddings"]
     def __init__(self) -> None:
@@ -359,13 +384,13 @@ class sp131(object):
         self.m_ato_control_strategy  = 0
         self.paddings          = 0
 
-class sp132(object):
+class SP132(object):
     __slots__ = ["updateflag","nid_sub_packet"]
     def __init__(self) -> None:
         self.updateflag        = False
         self.nid_sub_packet    = 132
 
-class sp133(object):
+class SP133(object):
     __slots__ = ["updateflag","nid_sub_packet","nid_c","nid_tsrs","nid_radio_h","nid_radio_l"]
     def __init__(self) -> None:
         self.updateflag        = False
@@ -375,7 +400,7 @@ class sp133(object):
         self.nid_radio_h       = 0
         self.nid_radio_l       = 0
 
-class sp134(object):
+class SP134(object):
     __slots__ = ["updateflag","nid_sub_packet","nid_text","q_display","l_text","x_text"]
     def __init__(self) -> None:
         self.updateflag        = False
@@ -385,7 +410,7 @@ class sp134(object):
         self.l_text            = 0
         self.x_text            = None
 
-class sp135(object):
+class SP135(object):
     __slots__ = ["updateflag", "nid_sub_packet","q_ato_tb_status", "q_tb_ob_btn", "q_tb_stn_btn","nid_operational"]
     def __init__(self) -> None:
         self.updateflag        = False
@@ -408,23 +433,23 @@ class Atp2atoProto(object):
         self.n_sequence = 0     # msg seq
         self.l_msg      = 0     # msg length
         self.nid_msg    = 0
-        self.sp0_obj   = sp0()
-        self.sp1_obj   = sp1()
-        self.sp2_obj   = sp2()
-        self.sp3_obj   = sp3()
-        self.sp4_obj   = sp4()
-        self.sp5_obj   = sp5()
-        self.sp6_obj   = sp6()
-        self.sp7_obj   = sp7()
-        self.sp8_obj   = sp8()
-        self.sp9_obj   = sp9()
-        self.sp10_obj  = sp10()
-        self.sp130_obj = sp130()
-        self.sp131_obj = sp131()
-        self.sp132_obj = sp132()
-        self.sp133_obj = sp133()
-        self.sp134_obj = sp134()
-        self.sp135_obj = sp135()
+        self.sp0_obj   = P0()
+        self.sp1_obj   = P1()
+        self.sp2_obj   = SP2()
+        self.sp3_obj   = SP3()
+        self.sp4_obj   = SP4()
+        self.sp5_obj   = SP5()
+        self.sp6_obj   = SP6()
+        self.sp7_obj   = SP7()
+        self.sp8_obj   = SP8()
+        self.sp9_obj   = SP9()
+        self.sp10_obj  = SP10()
+        self.sp130_obj = SP130()
+        self.sp131_obj = SP131()
+        self.sp132_obj = SP132()
+        self.sp133_obj = SP133()
+        self.sp134_obj = SP134()
+        self.sp135_obj = SP135()
 
 class Atp2atoParse(object):
     __slots__ = ["msg_obj","pktParseFnDic","objParseDic"]
@@ -498,8 +523,8 @@ class Atp2atoParse(object):
         # 防护性编程外界保证数据仅可能有空格
         line = ''.join(line.split(' '))
         item = None
-        # 校验字节数至少29字节包含SP3/4
-        if (len(line)%2 == 0) and (len(line)/2>=29):
+        # 校验字节数
+        if (len(line)%2 == 0) and (len(line)/2>=23):
             try:
                 int(line, 16) # 校验防护
                 item = BytesStream(line)
@@ -509,7 +534,6 @@ class Atp2atoParse(object):
             pass
         # 尝试解析消息 
         if item:
-            # 首先重置所有包更新标志
             self.msg_obj.nid_msg = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             self.msg_obj.l_msg = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             # 以下为lpacket描述范围
@@ -525,7 +549,7 @@ class Atp2atoParse(object):
         return self.msg_obj
         
     @staticmethod
-    def sp0Parse(item, obj=sp0):
+    def sp0Parse(item, obj=P0):
         """
         except nid_xuser 8bit
         """
@@ -560,7 +584,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
     
     @staticmethod
-    def sp1Parse(item, obj=sp1):
+    def sp1Parse(item, obj=P1):
         """
         except nid_xuser 8bit
         """
@@ -595,7 +619,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp2Parse(item, obj=sp2):
+    def sp2Parse(item, obj=SP2):
         """
         except nid_xuser 8bit
         """
@@ -633,7 +657,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp3Parse(item, obj=sp3):
+    def sp3Parse(item, obj=SP3):
         """
         except nid_xuser 8bit
         """
@@ -641,7 +665,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp4Parse(item, obj=sp4):
+    def sp4Parse(item, obj=SP4):
         """
         except nid_xuser 8bit
         """
@@ -650,7 +674,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp5Parse(item, obj=sp5):
+    def sp5Parse(item, obj=SP5):
         """
         except nid_xuser 8bit
         """
@@ -667,7 +691,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp6Parse(item, obj=sp6):
+    def sp6Parse(item, obj=SP6):
         """
         except nid_xuser 8bit
         """
@@ -680,7 +704,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp7Parse(item, obj=sp7):
+    def sp7Parse(item, obj=SP7):
         """
         except nid_xuser 8bit
         """ 
@@ -698,7 +722,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp8Parse(item, obj=sp8):
+    def sp8Parse(item, obj=SP8):
         """
         except nid_xuser 8bit
         """ 
@@ -712,14 +736,14 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp9Parse(item, obj=sp9):
+    def sp9Parse(item, obj=SP9):
         """
         except nid_xuser 8bit
         """
         obj.n_iter = item.fast_get_segment_by_index(item.curBitsIndex, 5)
         obj.sp_track_list = list()
         for i in range(obj.n_iter):
-            tmp = sp9_sp_track()
+            tmp = SP9Track()
             tmp.d_trackcond =  item.fast_get_segment_by_index(item.curBitsIndex, 32)
             tmp.l_trackcond = item.fast_get_segment_by_index(item.curBitsIndex, 32)
             tmp.m_trackcond = item.fast_get_segment_by_index(item.curBitsIndex, 4)
@@ -727,7 +751,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp10Parse(item, obj=sp10):
+    def sp10Parse(item, obj=SP10):
         """
         sy ato specific packet
         """
@@ -738,7 +762,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp130Parse(item, obj=sp130):
+    def sp130Parse(item, obj=SP130):
         """
         except nid_xuser 8bit
         """
@@ -750,7 +774,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
     
     @staticmethod
-    def sp131Parse(item, obj=sp131):
+    def sp131Parse(item, obj=SP131):
         """
         except nid_xuser 8bit
         """
@@ -766,14 +790,14 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp132Parse(item, obj=sp132):
+    def sp132Parse(item, obj=SP132):
         """
         except nid_xuser 8bit, no content
         """
         obj.updateflag = True
     
     @staticmethod
-    def sp133Parse(item, obj=sp133):
+    def sp133Parse(item, obj=SP133):
         """
         except nid_xuser 8bi
         """
@@ -784,7 +808,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def sp134Parse(item, obj=sp134):
+    def sp134Parse(item, obj=SP134):
         """
         except nid_xuser 8bit
         """
@@ -799,7 +823,7 @@ class Atp2atoParse(object):
         obj.updateflag = True
     
     @staticmethod
-    def sp135Parse(item, obj=sp135):
+    def sp135Parse(item, obj=SP135):
         """
         sy ato specific packet
         """
@@ -845,7 +869,7 @@ class Atp2atoParse(object):
 
 
 class Ato2tsrsProto(object):
-    
+    __slots__ = ["msgHeader", "t_train_ack", "p0", "p1", "p4", "p11","c44", "c46", "c48", "c50"]
     def __init__(self) -> None:
         """
         车到地消息M129/M136/M146/M150/M154/M155/M156/M157/M159
@@ -867,12 +891,12 @@ class Ato2tsrsProto(object):
         self.c50 = None
 
 class A2tMsgHeader(object):
-    __slots__ = ['nid_msg', 'l_msg', 't_train', 'nid_engine']
+    __slots__ = ['nid_message', 'l_message', 't_train', 'nid_engine']
     def __init__(self) -> None:
-        self.nid_msg    = 0     # msg id
-        self.l_msg      = 0     # msg length
-        self.t_train    = 0     # train stamp
-        self.nid_engine = 0     # ob ctcs id
+        self.nid_message    = 0     # msg id
+        self.l_message      = 0     # msg length
+        self.t_train        = 0     # train stamp
+        self.nid_engine     = 0     # ob ctcs id
 
 class P4(object):
     """
@@ -905,7 +929,7 @@ class P11(object):
         self.n_iter_stm = 0
         self.nid_stm0   = 0
 
-class P44Header(object):
+class P44A2tHeader(object):
     """
     6.5.5	信息包44:用户数据包
     """
@@ -922,7 +946,7 @@ class C44(object):
     "nid_track","q_dir","q_tb","m_ldoorcmd","m_rdoorcmd"]
     def __init__(self) -> None:
         self.updateflag = False
-        self.p44_header = P44Header()
+        self.p44_header = P44A2tHeader()
         self.nid_xuser  = 44
         self.l_packet   = 0
         self.m_sequencenum = 0
@@ -941,7 +965,7 @@ class C45(object):
     "nid_arrivaltrack","m_arrivaltime","m_task","m_skip"]    
     def __init__(self) -> None:
         self.updateflag = False
-        self.p44_header = P44Header()
+        self.p44_header = P44A2tHeader()
         self.nid_xuser  = 45
         self.l_packet   = 0
         self.nid_depaturetrack = 0
@@ -959,7 +983,7 @@ class C46(object):
     "nid_driver", "m_level", "m_mode", "q_stopstatus", "m_ato_mode", "m_ato_control_strategy"]
     def __init__(self) -> None:
         self.updateflag = False
-        self.p44_header = P44Header()
+        self.p44_header = P44A2tHeader()
         self.nid_xuser = 46
         self.l_packet  = 0
         self.nid_engine= 0
@@ -976,14 +1000,17 @@ class C48(object):
     6.5.9	信息包CTCS-48:ATO折返状态反馈
     """
     __slots__ = ["updateflag","nid_xuser","p44_header","l_packet", "m_tbplan", "nid_tbdeparttrack",
-    "m_tbstatus"]
+    "nid_operational","nid_tbarrivaltrack","m_task","m_tbstatus"]
     def __init__(self) -> None:
         self.updateflag = False
-        self.p44_header = P44Header()
+        self.p44_header = P44A2tHeader()
         self.nid_xuser = 48
         self.l_packet  = 0
         self.m_tbplan  = 0
         self.nid_tbdeparttrack = 0
+        self.nid_operational = 0
+        self.nid_tbarrivaltrack = 0
+        self.m_task = 0
         self.m_tbstatus= 0
 
 class C50(object):
@@ -993,34 +1020,560 @@ class C50(object):
     __slots__ = ["updateflag","nid_xuser","p44_header","l_packet", "m_tblamp", "nid_track"]
     def __init__(self) -> None:
         self.updateflag = False
-        self.p44_header = P44Header()
+        self.p44_header = P44A2tHeader()
         self.nid_xuser = 0
         self.l_packet  = 0
         self.m_tblamp  = 0
         self.nid_track = 0
 
 class Tsrs2atoProto(object):
-
+    __slots__ = ["msgHeader", "t_train_ack", "version", "p3", "p21", "p27","p58", "c2", "c12", "c41",
+    "c42", "c47","c49"]
     def __init__(self) -> None:
-        self.nid_msg   = 0
-        self.l_msg     = 0
-        self.t_train   = 0     # train stamp
-        self.m_ack     = 0
-        self.nid_lrbg  = 0     
+        self.msgHeader = T2aMsgHeader()
+        # M8使用确认的时间戳
+        self.t_train_ack = None
+        # M32使用的系统版本
+        self.version     = None
+        # M24携带子包P3/P21/P27/P58
+        self.p3  = None
+        self.p21 = None
+        self.p27 = None
+        self.p58 = None
+        # M24携带的用户数据包
+        self.c2  = None
+        self.c12 = None
+        self.c41 = None
+        self.c42 = None
+        self.c47 = None
+        self.c49 = None
+
+class T2aMsgHeader(object):
+    __slots__=["nid_message", "l_message", "t_train", "m_ack", "nid_lrbg"]
+    def __init__(self) -> None:
+        self.nid_message = 0
+        self.l_message   = 0
+        self.t_train     = 0
+        self.m_ack       = 0
+        self.nid_lrbg    = 0
+
+class P3(object):
+    """
+    6.7.1	信息包3:配置参数
+    """
+    def __init__(self) -> None:
+        self.nid_packet = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.d_validnv  = 0
+        self.n_iter     = 0
+        self.nid_c      = list()
+        self.v_nvshunt  = 0
+        self.v_nvstff   = 0
+        self.v_nvonsight= 0
+        self.v_nvunfit  = 0
+        self.v_nvrel    = 0
+        self.d_nvroll   = 0
+        self.q_nvsrbktrg= 0
+        self.q_nvemrrls = 0
+        self.v_nvallowovtrp=0
+        self.v_nvsupovtrp=0
+        self.d_nvovtrp  = 0
+        self.t_nvovtrp  = 0
+        self.d_nvpotrp  = 0
+        self.m_nvcontact= 0
+        self.t_nvcontact= 0
+        self.m_nvderun  = 0
+        self.d_nvstff   = 0
+        self.q_nvdriver_adhes=0
+
+class P21(object):
+    """
+    6.7.2	信息包21:坡度曲线
+    """
+    def __init__(self) -> None:
+        self.nid_packet = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.d_gradient = 0
+        self.q_gdir     = 0
+        self.g_a        = 0
+        self.n_iter     = 0
+        self.d_gradient_list = list()
+        self.q_gdir_list     = list()
+        self.g_a_list        = list()
+
+class P27(object):
+    """
+    6.7.3	信息包27:静态速度曲线
+    """
+    def __init__(self) -> None:
+        self.nid_packet = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.d_static   = 0
+        self.v_static   = 0
+        self.q_front    = 0
+        self.n_iter_train = 0 # 列车种类
+        self.n_iter_static= 0 # 静态限速种类  
+        self.d_static_list   = list()
+        self.v_static_list   = list()
+        self.q_front_list    = list()
+        self.n_iter_sub_train = 0 #子列车种类
+
+class P58(object):
+    """
+    6.7.4	信息包58:位置报告参数
+    """
+    def __init__(self) -> None:
+        self.nid_packet = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.t_cycloc   = 0
+        self.d_cycloc   = 0
+        self.m_loc      = 0
+        self.n_iter     = 0
+
+class P72(object):
+    def __init__(self) -> None:
+        self.nid_packet = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.q_textclass= 0
+        self.q_textdisplay = 0
+        self.d_textdisplay = 0
+        self.m_modetextdisplay_begin = 0
+        self.m_leveltextdisplay_begin = 0
+        self.nid_stm_begin = 0
+        self.l_textdisplay = 0
+        self.t_textdisplay = 0
+        self.m_modetextdisplay_end = 0
+        self.m_leveltextdisplay_end = 0
+        self.nid_stm_end = 0
+        self.q_textconfirm = 0
+        self.l_text = 0
+        self.x_text = list()
+
+class P44T2aHeader(object):
+    """
+    6.5.5	信息包44:用户数据包
+    """
+    __slots__ = ["updateflag", "nid_packet", "q_dir", "l_packet"]
+    def __init__(self) -> None:
+        self.nid_packet = 44
+        self.q_dir      = 0
+        self.l_packet   = 0
+
+class C2(object):
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.l_tsrarea  = 0
+        self.d_tsr      = 0
+        self.l_tsr      = 0
+        self.q_front    = 0
+        self.v_tsr      = 0
+        self.n_iter     = 0
+        self.d_tsr_list = list()
+        self.l_tsr_list = list()
+        self.q_front_list=list()
+        self.v_tsr_list  =list()
+
+class C12(object):
+    __slots__=["updateflag", "p44_header", "nid_xuser", "q_dir", "l_packet", "q_tsrs", "nid_c",
+    "nid_tsrs", "nid_radio_h", "nid_radio_l","q_sleepsession"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_tsrs     = 0
+        self.nid_c      = 0
+        self.nid_tsrs   = 0
+        self.nid_radio_h  = 0
+        self.nid_radio_l  = 0
+        self.q_sleepsession = 0
+
+class C41(object):
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.m_waysidetime = 0
+        self.nid_departtrack=0
+        self.m_departtime   =0
+        self.nid_arrivaltrack=0
+        self.m_arrivaltime  =0
+        self.m_task     = 0
+        self.m_skip     = 0
+        self.n_iter     = 0
+        self.nid_departtrack_2=0
+        self.m_departtime_2   =0
+        self.nid_arrivaltrack_2=0
+        self.m_arrivaltime_2  =0
+        self.m_task_2     = 0
+        self.m_skip_2     = 0
+
+class C42(object):
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.q_scale    = 0
+        self.l_stationdistance = 0
+
+class C43(object):
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.m_sequencenum = 0
+        self.m_lpsdstatus = 0
+        self.m_rpsdstatus = 0
+
+class C47(object):
+    __slots__=["updateflag", "p44_header", "nid_xuser", "q_dir", "l_packet", "m_tbplan", "nid_tbdeparttrack",
+    "nid_operational", "nid_tbarrivaltrack","m_task"]
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.m_tbplan   = 0
+        self.nid_tbdeparttrack = 0
+        self.nid_operational = 0
+        self.nid_tbarrivaltrack = 0
+        self.m_task = 0
+
+class C49(object):
+    def __init__(self) -> None:
+        self.updateflag = False
+        self.p44_header = P44T2aHeader()
+        self.nid_xuser  = 0
+        self.q_dir      = 0
+        self.l_packet   = 0
+        self.m_tbbtnstatus = 0
+
 
 class Tsrs2atoParse(object):
-    __slots__ = ["msg_obj","pktParseFnDic","objParseDic"]
+    msg_obj = Tsrs2atoProto()
     
     def __init__(self) -> None:
         pass
+
+    def resetMsg(self):
+        Tsrs2atoParse.msg_obj = Tsrs2atoProto()
+
+    def msgParse(self, line=str):
+        # 去除换行回车
+        line = line.strip()
+        # 防护性编程外界保证数据仅可能有空格
+        line = ''.join(line.split(' '))
+        item = None
+        # 校验字节数至少9字节包含空M24
+        if (len(line)%2 == 0) and (len(line)/2>=9):
+            try:
+                int(line, 16) # 校验防护
+                item = BytesStream(line)
+            except Exception as err:
+                print("Bytes string err!"+line)
+        else:
+            pass
+        # 尝试解析消息 
+        if item:
+            self.msg_obj.msgHeader.nid_message = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            self.msg_obj.msgHeader.l_message = item.fast_get_segment_by_index(item.curBitsIndex, 10)
+            # 校验消息
+            if self.msg_obj.msgHeader.l_message <= (len(line)/2): 
+                self.allPktsParse(item, self.msg_obj.msgHeader.nid_message, self.msg_obj.msgHeader.l_message)
+            else:
+                print("err Tsrs2ato msg:"+line)
+        else:
+            pass
+        return self.msg_obj
+
+    # 数据包解析
+    def allPktsParse(self, item=BytesStream,nid_msg=int, l_msg=int):
+        # 继续解析消息头
+        self.msg_obj.msgHeader.t_train = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        self.msg_obj.msgHeader.m_ack = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        self.msg_obj.msgHeader.nid_lrbg = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        # 解析消息内容
+        if nid_msg == 8:
+            self.msg_obj.t_train_ack = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        elif nid_msg == 24:
+            Tsrs2atoParse.msg24PktsParse(item, self.msg_obj.msgHeader.l_message)
+        elif nid_msg == 32:
+            self.msg_obj.version = item.fast_get_segment_by_index(item.curBitsIndex, 7)
+        elif nid_msg == 39:
+            pass
+        elif nid_msg == 41:
+            pass
+
+    # M24子包解析函数
+    @staticmethod
+    def msg24PktsParse(item=BytesStream, l_msg=int):
+        # 当剩余bit还够一个包头时
+        while item.curBitsIndex < (l_msg*8 - 23):
+            nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            if nid_packet == 3:
+                Tsrs2atoParse.packetJump(item)
+            elif nid_packet == 21:
+                Tsrs2atoParse.packetJump(item)
+            elif nid_packet == 27:
+                Tsrs2atoParse.packetJump(item)            
+            elif nid_packet == 58:
+                Tsrs2atoParse.packetJump(item) 
+            elif nid_packet == 72:
+                Tsrs2atoParse.packetJump(item) 
+            elif nid_packet == 44:
+                objP44Header = P44T2aHeader()
+                Tsrs2atoParse.p44T2aHeaderParse(item, objP44Header)
+                nid_xuser = item.get_segment_by_index(item.curBitsIndex, 9)
+                # 根据ID选择子包
+                if nid_xuser == 2:
+                    Tsrs2atoParse.ctcsPacketJump(item)
+                elif nid_xuser == 12:
+                    Tsrs2atoParse.msg_obj.c12 = C12()
+                    Tsrs2atoParse.c12Parse(item, Tsrs2atoParse.msg_obj.c12,objP44Header)
+                elif nid_xuser == 41:
+                    Tsrs2atoParse.ctcsPacketJump(item)
+                elif nid_xuser == 42:
+                    Tsrs2atoParse.ctcsPacketJump(item)
+                elif nid_xuser == 43:
+                    Tsrs2atoParse.ctcsPacketJump(item)
+                elif nid_xuser == 47:
+                    Tsrs2atoParse.msg_obj.c47 = C47()
+                    Tsrs2atoParse.c47Parse(item, Tsrs2atoParse.msg_obj.c47 ,objP44Header)
+                elif nid_xuser == 49:
+                    Tsrs2atoParse.ctcsPacketJump(item)                                               
+            else:
+                pass
+
+    @staticmethod
+    def packetJump(item=BytesStream):
+        """
+        跳包只修改了比特会导致与换算的字节不一致,当不使用字节时无影响
+        """
+        q_dir = item.get_segment_by_index(item.curBitsIndex, 2)
+        l_packet = item.get_segment_by_index(item.curBitsIndex, 13)
+        item.curBitsIndex = item.curBitsIndex + l_packet - 8 - 2- 13
+
+    @staticmethod
+    def ctcsPacketJump(item=BytesStream):
+        """
+        跳包只修改了比特会导致与换算的字节不一致,当不使用字节时无影响
+        """
+        l_packet = item.get_segment_by_index(item.curBitsIndex, 13)
+        item.curBitsIndex = item.curBitsIndex + l_packet -9 -13
+
+    @staticmethod
+    def p44T2aHeaderParse(item=BytesStream, obj=P44T2aHeader):
+        """
+        except nid_packet 8bit
+        """
+        obj.q_dir      = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet   = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        return obj
+    
+    @staticmethod
+    def c47Parse(item, obj=C47, p44Header=P44T2aHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        obj.p44_header.q_dir    = p44Header.q_dir
+        # 子包 9bit nid_xuser已经解析
+        obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.m_tbplan = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.nid_tbdeparttrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.nid_operational = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_tbarrivaltrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_task = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.updateflag = True
+
+    @staticmethod
+    def c12Parse(item, obj=C12, p44Header=P44T2aHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        obj.p44_header.q_dir    = p44Header.q_dir
+        # 子包 9bit nid_xuser已经解析
+        obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.q_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.nid_c = item.fast_get_segment_by_index(item.curBitsIndex, 10)
+        obj.nid_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 14)
+        obj.nid_radio_h = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_radio_l = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.q_sleepsession = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.updateflag = True
+
+
+class Ato2tsrsParse(object):
+    msg_obj = Ato2tsrsProto()
+
+    def __init__(self) -> None:
+        pass
+
+    def resetMsg(self):
+        Ato2tsrsParse.msg_obj = Ato2tsrsProto()
+
+    def msgParse(self, line=str):
+        # 去除换行回车
+        line = line.strip()
+        # 防护性编程外界保证数据仅可能有空格
+        line = ''.join(line.split(' '))
+        item = None
+        # 校验字节数至少9字节
+        if (len(line)%2 == 0) and (len(line)/2>=9):
+            try:
+                int(line, 16) # 校验防护
+                item = BytesStream(line)
+            except Exception as err:
+                print("Bytes string err!"+line)
+        else:
+            pass
+        # 尝试解析消息 
+        if item:
+            self.msg_obj.msgHeader.nid_message = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            self.msg_obj.msgHeader.l_message = item.fast_get_segment_by_index(item.curBitsIndex, 10)
+            # 校验消息
+            if self.msg_obj.msgHeader.l_message <= (len(line)/2): 
+                self.allPktsParse(item,self.msg_obj.msgHeader.nid_message,self.msg_obj.msgHeader.l_message)
+            else:
+                print("err Ato2tsrs msg:"+line)
+        else:
+            pass
+        return self.msg_obj
+
+    # 数据包解析
+    def allPktsParse(self,item=BytesStream,nid_msg=int, l_msg=int):
+        # 继续解析消息头
+        self.msg_obj.msgHeader.t_train = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        self.msg_obj.msgHeader.nid_engine = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        # 解析消息内容
+        if nid_msg == 129:
+            pass
+        elif nid_msg == 136:
+            Ato2tsrsParse.msg136PktsParse(item, self.msg_obj.msgHeader.l_message)
+        elif nid_msg == 146:
+            pass
+        elif nid_msg == 150:
+            pass
+        elif nid_msg == 154:
+            pass
+        elif nid_msg == 155:
+            pass
+        elif nid_msg == 156:
+            pass
+        elif nid_msg == 157:
+            pass
+        elif nid_msg == 159:
+            pass
+
+    # M136子包解析函数
+    @staticmethod
+    def msg136PktsParse(item=BytesStream, l_msg=int):
+        # 当剩余bit还够一个包头时
+        while item.curBitsIndex < (l_msg*8 - 21):
+            nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            if nid_packet == 0:
+                Ato2tsrsParse.packetJump(item)
+            elif nid_packet == 1:
+                Ato2tsrsParse.packetJump(item)
+            elif nid_packet == 4:
+                Ato2tsrsParse.packetJump(item)           
+            elif nid_packet == 44:
+                objP44Header = P44A2tHeader()
+                Ato2tsrsParse.p44A2tHeaderParse(item, objP44Header)
+                nid_xuser = item.get_segment_by_index(item.curBitsIndex, 9)
+                # 根据ID选择子包
+                if nid_xuser == 44:
+                    Ato2tsrsParse.ctcsPacketJump(item)
+                elif nid_xuser == 45:
+                    Ato2tsrsParse.ctcsPacketJump(item)
+                elif nid_xuser == 46:
+                    Ato2tsrsParse.ctcsPacketJump(item)
+                elif nid_xuser == 48:
+                    Ato2tsrsParse.msg_obj.c48 = C48()
+                    Ato2tsrsParse.c48Parse(item, Ato2tsrsParse.msg_obj.c48, objP44Header)
+                elif nid_xuser == 50:
+                    Ato2tsrsParse.ctcsPacketJump(item)                                               
+            else:
+                pass
+
+    @staticmethod
+    def packetJump(item=BytesStream):
+        """
+        跳包只修改了比特会导致与换算的字节不一致,当不使用字节时无影响
+        """
+        l_packet = item.get_segment_by_index(item.curBitsIndex, 13)
+        item.curBitsIndex = item.curBitsIndex + l_packet -8 -13
+
+    @staticmethod
+    def ctcsPacketJump(item=BytesStream):
+        """
+        跳包只修改了比特会导致与换算的字节不一致,当不使用字节时无影响
+        """
+        l_packet = item.get_segment_by_index(item.curBitsIndex, 13)
+        item.curBitsIndex = item.curBitsIndex + l_packet -9 -13
+
+    @staticmethod
+    def p44A2tHeaderParse(item=BytesStream, obj=P44A2tHeader):
+        """
+        except nid_packet 8bit
+        """
+        obj.l_packet   = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        return obj
+
+    @staticmethod
+    def c48Parse(item, obj=C48, p44Header=P44A2tHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        # 子包 9bit nid_xuser已经解析
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.m_tbplan = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.nid_tbdeparttrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.nid_operational = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_tbarrivaltrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_task = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_tbstatus = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+        obj.updateflag = True
 
 
 class DisplayMsgield(object):
    
     @staticmethod
-    def disTsmStat(value, lbl=QtWidgets.QLabel):
+    def disTsmStat(value, lbl=QtWidgets.QLabel, details=False):
+        # TSM无穷远 或 TSM区无效时
         if value == 0x7FFFFFFF or value != 0xFFFFFFFF:
-            lbl.setText("恒速区")
+            # 当可以计算时显示数值
+            if details and value != 0x7FFFFFFF:
+                lbl.setText("距减速区:%dm"%value)
+            else:
+                lbl.setText("恒速区")
             lbl.setStyleSheet("background-color: rgb(0, 255, 127);")
         else:
             lbl.setText("减速区")
@@ -1042,16 +1595,27 @@ class DisplayMsgield(object):
             lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
 
     @staticmethod
+    def disFxInfo(fxDis=int, lbl=QtWidgets.QLabel):
+        expressStr = '分相区信息:'
+        if fxDis != 0xFFFF:
+            expressStr += ('前方分相区%dm'%fxDis)
+            lbl.setStyleSheet('background-color: rgb(255, 107, 107);')
+        else:
+            expressStr += '前方无分相区'
+            lbl.setStyleSheet('background-color: rgb(247, 255, 247);')
+        lbl.setText(expressStr)
+
+    @staticmethod
     def disNameOfLineEdit(keyName=str, value=int, led=QtWidgets.QLineEdit):
-        if keyName in Atp2atpFieldDic.keys():
+        if keyName in Atp2atoFieldDic.keys():
             # 如果有含义的话
-            if Atp2atpFieldDic[keyName].meaning:
+            if Atp2atoFieldDic[keyName].meaning:
                 # 检查是否有含义
-                if value in Atp2atpFieldDic[keyName].meaning.keys():
-                    led.setText(Atp2atpFieldDic[keyName].meaning[value])
+                if value in Atp2atoFieldDic[keyName].meaning.keys():
+                    led.setText(Atp2atoFieldDic[keyName].meaning[value])
                 # 检查是否有单位
-                elif Atp2atpFieldDic[keyName].unit:
-                    led.setText(str(value)+' '+Atp2atpFieldDic[keyName].unit)
+                elif Atp2atoFieldDic[keyName].unit:
+                    led.setText(str(value)+' '+Atp2atoFieldDic[keyName].unit)
                 else:
                     led.setStyleSheet("background-color: rgb(255, 0, 0);")
                     led.setText('异常%d' % value)
@@ -1064,9 +1628,12 @@ class DisplayMsgield(object):
                         led.setText(str(0))
                 elif keyName == "nid_operational":
                     led.setText(hex(value))
+                elif keyName == "nid_radio_h":
+                    ipStr = str((value>>24))+'.'+str((value>>16)&0xff)+'.'+str((value>>8)&0xff)+'.'+str(value&0xff)
+                    led.setText(ipStr)
                 else:
-                    if Atp2atpFieldDic[keyName].unit:
-                        led.setText(str(value)+Atp2atpFieldDic[keyName].unit)
+                    if Atp2atoFieldDic[keyName].unit:
+                        led.setText(str(value)+Atp2atoFieldDic[keyName].unit)
                     else:
                         led.setText(str(value))
         else:
@@ -1074,12 +1641,12 @@ class DisplayMsgield(object):
 
     @staticmethod
     def disNameOfLable(keyName=str, value=int, lbl=QtWidgets.QLabel,keyGoodVal=-1, keyBadval=-1):
-        if keyName in Atp2atpFieldDic.keys():
+        if keyName in Atp2atoFieldDic.keys():
             # 如果有字段定义
-            if Atp2atpFieldDic[keyName].meaning:
+            if Atp2atoFieldDic[keyName].meaning:
                 # 检查是否有含义
-                if value in Atp2atpFieldDic[keyName].meaning.keys():
-                    lbl.setText(Atp2atpFieldDic[keyName].meaning[value])
+                if value in Atp2atoFieldDic[keyName].meaning.keys():
+                    lbl.setText(Atp2atoFieldDic[keyName].meaning[value])
                     # 提供关键显示功能
                     if value == keyGoodVal:
                         lbl.setStyleSheet("background-color: rgb(0, 255, 127);")

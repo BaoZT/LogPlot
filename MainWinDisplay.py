@@ -7,18 +7,13 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-04 22:38:45
+LastEditTime: 2022-09-15 13:29:30
 '''
 
-from ast import Pass, Return
-import copy
-from itertools import cycle
-import math
 import time
-from xml.dom import INDEX_SIZE_ERR
 from PyQt5 import QtWidgets,QtGui,QtCore
 from ConfigInfo import ConfigFile
-from MsgParse import Atp2atoProto, DisplayMsgield, sp2, sp7
+from MsgParse import Ato2tsrsProto, Atp2atoProto, DisplayMsgield, SP2, SP7, Tsrs2atoFieldDic, Tsrs2atoProto
 
 # custom field
 class InerCustomField(object):
@@ -96,6 +91,7 @@ InerFieldBGColorDic={
 }
 
 AtoInerDic={
+    'm_atomode':InerCustomField('ATO模式',None,{0:"未知",1:"AOS模式",2:"AOR模式",3:"AOM模式",4:"AOF模式"}),
     'ato_start_lamp':InerCustomField('发车指示灯',None,{0:"发车灯灭",1:"发车灯闪",2:"发车灯常亮"}),
     'ato_self_check':InerCustomField('自检状态',None,{1:"自检正常",0:"自检失败"}),
     'station_flag':InerCustomField('站台标志',None,{1:"位于站内",0:"位于区间"}),
@@ -220,7 +216,7 @@ class BtmInfoDisplay(object):
                 row_cnt = BtmInfoDisplay.displayBtmTableRow(sp2_obj,sp7_obj,row_cnt,table)
 
     @staticmethod
-    def displayBtmTableRow(sp2_obj=sp2, sp7_obj=sp7, row_cnt=int, table=QtWidgets.QTableWidget):
+    def displayBtmTableRow(sp2_obj=SP2, sp7_obj=SP7, row_cnt=int, table=QtWidgets.QTableWidget):
         '''
         BTM表单行表格生成显示
         '''
@@ -258,7 +254,7 @@ class BtmInfoDisplay(object):
         return row_cnt
 
     @staticmethod
-    def displayBtmItemSelInfo(obj=sp7,
+    def displayBtmItemSelInfo(obj=SP7,
         led_with_C13=QtWidgets.QLineEdit, 
         led_platform_pos=QtWidgets.QLineEdit,
         led_platform_door=QtWidgets.QLineEdit,
@@ -627,7 +623,30 @@ class AtoKeyInfoDisplay(object):
         else:
             lbl.setText(FieldDic[keyName].name)
             lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
-            
+
+
+    @staticmethod
+    def labelRouteDisplay(value=int, fieldDic='dict', tcIntroDic='dict' ,lbl=QtWidgets.QLabel):
+        keyName = "m_low_frequency"
+        # 检查字典和含义
+        if value in fieldDic[keyName].meaning.keys():
+            # 轨道码值
+            tcName = fieldDic[keyName].meaning[value]
+            # 轨道码进路说明
+            if tcName in tcIntroDic:
+                tcRoute = tcIntroDic[tcName]
+            else:
+                tcRoute = ''
+            lbl.setText(tcName+':'+tcRoute)
+            if keyName in FieldBGColorDic.keys() and value in FieldBGColorDic[keyName].keys():
+                lbl.setStyleSheet(FieldBGColorDic[keyName][value])
+            else:
+                # 没有颜色定义时重置
+                lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
+        else:
+            lbl.setText(fieldDic[keyName].name)
+            lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
+
     # 内部字段显示
     @staticmethod
     def labelInerDisplay(keyName=str,value=int,lbl=QtWidgets.QLabel):
@@ -873,18 +892,23 @@ class AtoKeyInfoDisplay(object):
         """
         使用速度列表按照当前速度, ato命令速度, atp命令速度, atp允许速度
         """
+        defaultVal = 32767
         idx = 0
         if vstrList and (len(vstrList) == 4):
             curSpeed = vstrList[0]
             atoCmdv  = vstrList[1]
             atpCmdv  = vstrList[2]
             atpPmtv  = vstrList[3]
+            # 更新默认值
+            intList = [x if x!=-1 else defaultVal for x in [atoCmdv, atpCmdv, atpPmtv]]
             # 最小速度值
-            intList = [atoCmdv, atpCmdv, atpPmtv]
             minValue = min(intList)
             idxKey = intList.index(minValue) 
             for v in intList:
-                item = QtWidgets.QTableWidgetItem(str(v)+'cm/s')
+                if defaultVal == v:
+                    item = QtWidgets.QTableWidgetItem('')
+                else:
+                    item = QtWidgets.QTableWidgetItem(str(v)+'cm/s')
                 if idx == idxKey:
                     item.setBackground(QtGui.QBrush(QtGui.QColor(255, 107, 107))) # 西瓜红
                 else:
@@ -976,6 +1000,35 @@ class AtoKeyInfoDisplay(object):
     @staticmethod
     def getStrKmh(cms=int):
         return ('%.2f'%(cms*9/250))
+
+    @staticmethod
+    def disTurnbackTable(a2tMsg=Ato2tsrsProto, t2aMsg=Tsrs2atoProto, lblTb=QtWidgets.QLabel,tbTable=QtWidgets.QTableWidget):
+        if t2aMsg and t2aMsg.c47 and t2aMsg.c47.updateflag:
+            tbPlan = t2aMsg.c47
+            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_tbplan"].meaning[tbPlan.m_tbplan])
+            tbTable.setItem(0, 0, item)
+            item = QtWidgets.QTableWidgetItem(str(tbPlan.nid_tbdeparttrack))
+            tbTable.setItem(0, 1, item)
+            item = QtWidgets.QTableWidgetItem(hex(tbPlan.nid_operational))
+            tbTable.setItem(0, 2, item)
+            item = QtWidgets.QTableWidgetItem(str(tbPlan.nid_tbarrivaltrack))
+            tbTable.setItem(0, 3, item)
+            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_task"].meaning[tbPlan.m_task])
+            tbTable.setItem(0, 4, item)
+
+        if a2tMsg and a2tMsg.c48 and a2tMsg.c48.updateflag:
+            tbAck = a2tMsg.c48
+            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_tbplan"].meaning[tbAck.m_tbplan])
+            tbTable.setItem(1, 0, item)
+            item = QtWidgets.QTableWidgetItem(str(tbAck.nid_tbdeparttrack))
+            tbTable.setItem(1, 1, item)
+            item = QtWidgets.QTableWidgetItem(hex(tbAck.nid_operational))
+            tbTable.setItem(1, 2, item)
+            item = QtWidgets.QTableWidgetItem(str(tbAck.nid_tbarrivaltrack))
+            tbTable.setItem(1, 3, item)
+            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_task"].meaning[tbAck.m_task])
+            tbTable.setItem(1, 4, item)
+            lblTb.setText(Tsrs2atoFieldDic["m_tbstatus"].meaning[tbAck.m_tbstatus])
 
 class ProgressBarDisplay(object):
     """
