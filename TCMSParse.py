@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-04 21:40:08
+LastEditTime: 2022-09-15 11:37:49
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -89,6 +89,19 @@ class DisplayMVBField(object):
             return ('异常原因:%s' % str_tcms)
 
     @staticmethod
+    def disTunnelInfo(tunnelDis=int,tunnelLen=int, lbl=QtWidgets.QLabel):
+        expressStr = '隧道信息:'
+        if (tunnelDis != 0xFFFF) and (tunnelDis != 0):
+            expressStr += ('前方%dm有隧道,长度为%dm'%(tunnelDis,tunnelLen))
+        elif tunnelDis == 0:
+            expressStr += ('已经驶入隧道,长度为%dm'%(tunnelLen))
+            lbl.setStyleSheet('background-color: rgb(255, 107, 107);')
+        else:
+            expressStr += '前方无隧道'
+            lbl.setStyleSheet('background-color: rgb(247, 255, 247);')
+        lbl.setText(expressStr)
+
+    @staticmethod
     def disNameOfLineEdit(keyName=str, value=int, led=QtWidgets.QLineEdit):
         if keyName in MVBFieldDic.keys():
             # 如果有字段定义
@@ -128,7 +141,7 @@ class DisplayMVBField(object):
                 if fieldDic[keyName].meaning:
                     # 检查是否有含义
                     if value in fieldDic[keyName].meaning.keys():
-                        twi.setText(3,fieldDic[keyName].meaning[value])
+                        twi.setText(4,fieldDic[keyName].meaning[value])
                     elif keyName == 'd_tsm': # 含义和特殊值并存
                         if fieldDic[keyName].unit:
                             twi.setText(4, str(value)+fieldDic[keyName].unit)
@@ -227,7 +240,7 @@ class Tcms2AtoState(object):
         self.train_unit = 0
         self.train_weight = 0
         self.train_permit_ato = 0
-        self.main_circuit_breaker = 0
+        self.main_circuit_breaker = 0xAA
         self.atp_door_permit = 0
         self.man_door_permit = 0
         self.no_permit_ato_state = 0
