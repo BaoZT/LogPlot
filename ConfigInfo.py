@@ -5,7 +5,7 @@
 @Date: 2020-06-29 20:45:25
 @Desc: Provide base simp agent Defination
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-08-28 14:28:58
+LastEditTime: 2022-09-16 22:14:27
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -110,12 +110,15 @@ class RegConfig(object):
 
 
 class MonitorConfig(object):
-    __slots__ = ['section_name','sdu_spd_fault_th',"sdu_dis_fault_th"]
+    __slots__ = ['section_name','sdu_spd_fault_th',"sdu_dis_fault_th", "max_tract_level", "max_brake_level"]
     def __init__(self) -> None:
         self.section_name = "MonitorInfo"
         # 测速测距判断信息
         self.sdu_spd_fault_th = 50   # 测速故障误差阈值 50cm/s
         self.sdu_dis_fault_th = 500  # 测距故障误差阈值 500cm
+        # 牵引制动级位监控
+        self.max_tract_level  = 20   # 最大牵引级位
+        self.max_brake_level  = 7    # 最大制动级位
 
 class ConfigFile(object):
     __slots__ = ["hd","base_config", "mvb_config", "reg_config","monitor_config"]
@@ -134,6 +137,8 @@ class ConfigFile(object):
             self.hd.add_section(self.monitor_config.section_name)
         self.hd.set(self.monitor_config.section_name,"sdu_spd_fault_th", str(self.monitor_config.sdu_spd_fault_th))
         self.hd.set(self.monitor_config.section_name,"sdu_dis_fault_th",str(self.monitor_config.sdu_dis_fault_th))
+        self.hd.set(self.monitor_config.section_name,"max_tract_level",str(self.monitor_config.max_tract_level))
+        self.hd.set(self.monitor_config.section_name,"max_brake_level",str(self.monitor_config.max_brake_level))
 
     def __writeBaseSection(self):
         if self.hd.has_section(self.base_config.section_name):
@@ -227,6 +232,8 @@ class ConfigFile(object):
             if self.hd.has_section(self.monitor_config.section_name):
                 self.monitor_config.sdu_dis_fault_th = self.hd.getint(self.monitor_config.section_name, "sdu_dis_fault_th")
                 self.monitor_config.sdu_spd_fault_th = self.hd.getint(self.monitor_config.section_name,"sdu_spd_fault_th")
+                self.monitor_config.max_tract_level = self.hd.getint(self.monitor_config.section_name,"max_tract_level")
+                self.monitor_config.max_brake_level = self.hd.getint(self.monitor_config.section_name,"max_brake_level")
             else:
                 self.__writeMonitorSection()
 

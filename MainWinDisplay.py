@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-15 13:29:30
+LastEditTime: 2022-09-16 22:46:29
 '''
 
 import time
@@ -938,23 +938,33 @@ class AtoKeyInfoDisplay(object):
             led.setText(str(machine))
 
     @staticmethod
-    def ctrlEstimateLevelDisplay(esLvl=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        if esLvl > 0:
-            content = str(esLvl) +' | '+'牵引'+('%.1f%%'%(esLvl*5)) # 按照20级的百分比 (*100/20)
-        elif esLvl < 0:
-            content = str(esLvl) +' | '+'制动'+('%.1f%%'%(esLvl*5))
+    def ctrlEstimateLevelDisplay(esLvl=int,lvlLimit='list', lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        if lvlLimit:
+            [maxTLvl, maxBLvl] = lvlLimit
         else:
-            content = str(esLvl) +' | '+'惰行'+('%.1f%%'%(esLvl*5))
+            maxTLvl = 10
+            maxBLvl = 7
+        if esLvl > 0:
+            content = str(esLvl) +' | '+'牵引'+('%.1f%%'%(esLvl*100/maxTLvl))
+        elif esLvl < 0:
+            content = str(esLvl) +' | '+'制动'+('%.1f%%'%(-esLvl*100/maxBLvl))
+        else:
+            content = str(esLvl) +' | '+'惰行'+('%.1f%%'%(esLvl))
         led.setText(content)  
 
     @staticmethod
-    def ctrlLevelDisplay(lvl=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        if lvl > 0:
-            content = str(lvl) +' | '+'牵引'+('%.1f%%'%(lvl*5))
-        elif lvl < 0:
-            content = str(lvl) +' | '+'制动'+('%.1f%%'%(lvl*5))
+    def ctrlLevelDisplay(lvl=int, lvlLimit='list', lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+        if lvlLimit:
+            [maxTLvl, maxBLvl] = lvlLimit
         else:
-            content = str(lvl) +' | '+'惰行'+('%.1f%%'%(lvl*5))
+            maxTLvl = 10
+            maxBLvl = 7
+        if lvl > 0:
+            content = str(lvl) +' | '+'牵引'+('%.1f%%'%(lvl*100/maxTLvl))
+        elif lvl < 0:
+            content = str(lvl) +' | '+'制动'+('%.1f%%'%(-lvl*100/maxBLvl))
+        else:
+            content = str(lvl) +' | '+'惰行'+('%.1f%%'%(lvl))
         led.setText(content)  
     
     @staticmethod

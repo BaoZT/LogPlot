@@ -6,14 +6,13 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-04 17:29:48
+LastEditTime: 2022-09-17 15:01:46
 '''
 
 import os
 import sys
 import threading
 import time
-import re
 import numpy as np
 import serial
 import serial.tools.list_ports
@@ -26,10 +25,10 @@ from LogMainWin import Ui_MainWindow
 from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, ATPParserDlg, UTCTransferDlg, RealTimePlotDlg, CtrlMeasureDlg, \
     Cyclewindow, TrainComMeasureDlg, C3ATOTransferDlg
 from TcmsParse import MVBParse,Ato2TcmsCtrl,Ato2TcmsState,Tcms2AtoState,DisplayMVBField,MVBFieldDic
-from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atpFieldDic, DisplayMsgield
+from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atoFieldDic, DisplayMsgield, TrainCircuitDic
 from RealTimeExtension import SerialRead, RealPaintWrite
 from ConfigInfo import ConfigFile
-from MainWinDisplay import BtmInfoDisplay,AtoKeyInfoDisplay, InerIoInfo, InerRunningPlanInfo, InerSduInfo, ProgressBarDisplay
+from MainWinDisplay import AtoInerDic, BtmInfoDisplay,AtoKeyInfoDisplay, InerIoInfo, InerRunningPlanInfo, InerSduInfo, ProgressBarDisplay
 from Version import VersionInfo
 
 # 主界面类
@@ -46,7 +45,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.savePath = os.getcwd()   # 实时存储的文件保存路径（文件夹）,增加斜线直接添加文件名即可
         self.savefilename = ''        # 实时存储的写入文件名(含路径)
         self.pathlist = []
-        self.curWinMode = 0                 # 默认0是浏览模式，1是标注模式
+        self.curWinMode = 0           # 默认0是浏览模式，1是标注模式
         self.curInterface = 0         # 当前界面， 1=离线界面，2=在线界面
         self.isCursorCreated = 0      # 是否创建光标
         self.curveCordType = 1        # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
@@ -162,7 +161,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 窗口设置初始化
         self.showOffLineUI()
         self.filetabFormat()
-        self.model = QtWidgets.QDirModel()
+        self.model = QtWidgets.QFileSystemModel()
+        self.model.setRootPath(QtCore.QDir.currentPath())
         self.led_save_path.setText(self.cfg.base_config.save_path)
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(self.filetabClicked)
@@ -180,13 +180,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBox.setRange(0, 1000000)
         self.action_bubble_track.setChecked(True)
         self.Exit.triggered.connect(QtWidgets.qApp.quit)
-        self.CBvato.stateChanged.connect(self.updateUpCure)
-        self.CBatpcmdv.stateChanged.connect(self.updateUpCure)
-        self.CBlevel.stateChanged.connect(self.updateUpCure)
-        self.CBcmdv.stateChanged.connect(self.updateUpCure)
-        self.CBacc.stateChanged.connect(self.updateDownCurve)
-        self.CBramp.stateChanged.connect(self.updateUpCure)
-        self.CBatppmtv.stateChanged.connect(self.updateUpCure)
+        self.bindOfflineCurve(True)
 
         self.CBvato.stateChanged.connect(self.realtimeLineChoose)
         self.CBatpcmdv.stateChanged.connect(self.realtimeLineChoose)
@@ -237,23 +231,16 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_filetab.setDisabled(True)
         # 初始化绘图
         self.CBvato.setChecked(True)
-        self.CBacc.setChecked(True)
+        self.CBstate.setChecked(True)
         self.CBatpcmdv.setChecked(True)
         self.CBlevel.setChecked(True)
         self.CBcmdv.setChecked(True)
         # 解绑
         if self.curInterface == 1:
-            self.CBvato.stateChanged.disconnect(self.updateUpCure)
-            self.CBatpcmdv.stateChanged.disconnect(self.updateUpCure)
-            self.CBlevel.stateChanged.disconnect(self.updateUpCure)
-            self.CBcmdv.stateChanged.disconnect(self.updateUpCure)
-            self.CBacc.stateChanged.disconnect(self.updateDownCurve)
-            self.CBramp.stateChanged.disconnect(self.updateUpCure)
-            self.CBatppmtv.stateChanged.disconnect(self.updateUpCure)
+            self.bindOfflineCurve(False)
 
         # 如有转换重置右边列表
         self.actionView.trigger()
-        #self.tb_ctrl_stoppoint.clear()
         self.setCtrlTableFormat()
         self.tree_protocol.clear()
         # 初始化表格
@@ -269,14 +256,27 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_train.setEnabled(True)
         self.btn_atp.setEnabled(True)
         self.btn_filetab.setEnabled(True)
-        self.CBvato.stateChanged.connect(self.updateUpCure)
-        self.CBatpcmdv.stateChanged.connect(self.updateUpCure)
-        self.CBlevel.stateChanged.connect(self.updateUpCure)
-        self.CBcmdv.stateChanged.connect(self.updateUpCure)
-        self.CBacc.stateChanged.connect(self.updateDownCurve)
-        self.CBramp.stateChanged.connect(self.updateUpCure)
-        self.CBatppmtv.stateChanged.connect(self.updateUpCure)
+        self.bindOfflineCurve(True)
         self.curInterface = 1
+
+    # 绑定离线绘图
+    def bindOfflineCurve(self, enabled=bool):
+        if enabled:
+            self.CBvato.stateChanged.connect(self.updateUpCure)
+            self.CBatpcmdv.stateChanged.connect(self.updateUpCure)
+            self.CBlevel.stateChanged.connect(self.updateUpCure)
+            self.CBcmdv.stateChanged.connect(self.updateUpCure)
+            self.CBstate.stateChanged.connect(self.updateUpCure)
+            self.CBramp.stateChanged.connect(self.updateUpCure)
+            self.CBatppmtv.stateChanged.connect(self.updateUpCure)
+        else:
+            self.CBvato.stateChanged.disconnect(self.updateUpCure)
+            self.CBatpcmdv.stateChanged.disconnect(self.updateUpCure)
+            self.CBlevel.stateChanged.disconnect(self.updateUpCure)
+            self.CBcmdv.stateChanged.disconnect(self.updateUpCure)
+            self.CBstate.stateChanged.disconnect(self.updateUpCure)
+            self.CBramp.stateChanged.disconnect(self.updateUpCure)
+            self.CBatppmtv.stateChanged.disconnect(self.updateUpCure)
 
     # 显示回放界面
     def showReplayUI(self):
@@ -359,8 +359,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         "串口异常",
                         "注意：打开串口失败，关闭其他占用再尝试！",
                         QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Close)
-                # 按钮显示
+                # 按钮显示及串口使能
                 self.serialBtnStateLinked(False)
+                self.cbb_serial.setEnabled(True)
                 # 停止线程执行
                 self.isRealtimePaint = False
                 # 选择确定继续，否则取消
@@ -442,6 +443,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         atp2ato_msg     = result[6]
         tcms2ato_stat   = result[7]
         time_statictics = result[8]
+        a2tMsg          = result[9]
+        t2aMsg          = result[10]
         # 显示到侧面
         self.realtimeCtrlTableShow(cycleNum, cycleTime, dateTime, scCtrl, stoppoint)
         self.atoFsmInfoShow(fsmList,scCtrl,atp2ato_msg,tcms2ato_stat)
@@ -451,6 +454,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.atpTrainDataShowByMsg(atp2ato_msg)
         self.atpBtmShowByMsg(dateTime, atp2ato_msg)
         self.atoCyleTimeStatistics(time_statictics)
+        AtoKeyInfoDisplay.disTurnbackTable(a2tMsg, t2aMsg, self.lbl_ato_tbstatus, self.tableWidgetTb)
         # 停车误差显示
         if scCtrl and atp2ato_msg: 
             ato_error = int(scCtrl[15])
@@ -468,14 +472,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lbl_min_slot_rtn.setText(str(time_statictics[3])+'ms')
             self.lbl_slot_count_rtn.setText(str(time_statictics[4]))
 
-    # 显示通用信息SP2/SP10/SP135
+    # 显示通用信息SP2/SP10/SP135/SP8
     def atpCommonInfoShowByMsg(self, msg_obj=Atp2atoProto):
         if msg_obj and msg_obj.sp2_obj.updateflag:
             # 门允许左右门合并
             DisplayMsgield.disAtpDoorPmt(msg_obj.sp2_obj.q_leftdoorpermit,msg_obj.sp2_obj.q_rightdoorpermit, self.lbl_door_pmt)
             DisplayMsgield.disNameOfLable("q_stopstatus", msg_obj.sp2_obj.q_stopstatus, self.lbl_atp_stop_ok, 2)
-            DisplayMsgield.disTsmStat(msg_obj.sp2_obj.d_tsm, self.lbl_tsm)
-            DisplayMsgield.disTsmStat(msg_obj.sp2_obj.d_tsm, self.lbl_csm_or_tsm) # 在控制界面复显
+            DisplayMsgield.disTsmStat(msg_obj.sp2_obj.d_tsm, self.lbl_tsm, False)
+            DisplayMsgield.disTsmStat(msg_obj.sp2_obj.d_tsm, self.lbl_csm_or_tsm, True) # 在控制界面复显
             DisplayMsgield.disNameOfLable("m_tco_state", msg_obj.sp2_obj.m_tco_state, self.lbl_atp_cut_traction,2,1)
             DisplayMsgield.disNameOfLable("reserve", msg_obj.sp2_obj.reserve, self.lbl_atp_brake,2,1)
             DisplayMsgield.disNameOfLable("q_tb", msg_obj.sp2_obj.q_tb, self.lbl_tb)
@@ -495,16 +499,25 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             DisplayMsgield.disNameOfLineEdit("d_neu_sec",msg_obj.sp2_obj.d_neu_sec, self.led_atp_gfx_dis)
             DisplayMsgield.disNameOfLineEdit("d_ma",msg_obj.sp2_obj.d_ma, self.led_atp_ma)
             DisplayMsgield.disNameOfLineEdit("m_atp_stop_error",msg_obj.sp2_obj.m_atp_stop_error, self.led_atp_stoperr)
-
-        if msg_obj and msg_obj.sp10_obj:
+            # 控制界面显示分相区
+            DisplayMsgield.disFxInfo(msg_obj.sp2_obj.d_neu_sec, self.lbl_fx_track)
+        if msg_obj and msg_obj.sp10_obj.updateflag:
             DisplayMsgield.disNameOfLable("q_headtail", msg_obj.sp10_obj.q_headtail, self.lbl_headtail)
             DisplayMsgield.disNameOfLineEdit("q_tb_status", msg_obj.sp10_obj.q_tb_status, self.led_atp_tb_status)
             DisplayMsgield.disNameOfLineEdit("m_tb_display", msg_obj.sp10_obj.m_tb_display, self.led_atp_tb_display)
             DisplayMsgield.disNameOfLineEdit("q_tb_relay", msg_obj.sp10_obj.q_tb_relay, self.led_atp_tb_relay)
-
         if msg_obj and msg_obj.sp135_obj.updateflag:
             DisplayMsgield.disNameOfLable("q_ato_tb_status" , msg_obj.sp135_obj.q_ato_tb_status, self.lbl_ato_tb_pmt, 0xA5, 0)
             DisplayMsgield.disNameOfLineEdit("nid_operational", msg_obj.sp135_obj.nid_operational, self.led_tb_nid_operational)
+        if msg_obj and msg_obj.sp130_obj.updateflag:
+            DisplayMsgield.disNameOfLable("m_atomode", msg_obj.sp130_obj.m_atomode, self.lbl_ato_mode, 3)
+        if msg_obj and msg_obj.sp8_obj.updateflag:
+            DisplayMsgield.disNameOfLineEdit("q_tsrs", msg_obj.sp8_obj.q_tsrs, self.led_q_tsrs)
+            tsrs_id = msg_obj.sp8_obj.nid_tsrs + (msg_obj.sp8_obj.nid_c<<14)
+            DisplayMsgield.disNameOfLineEdit("nid_tsrs", tsrs_id, self.led_nid_tsrs)
+            DisplayMsgield.disNameOfLineEdit("nid_radio_h", msg_obj.sp8_obj.nid_radio_h, self.led_tsrs_ip)
+            DisplayMsgield.disNameOfLineEdit("q_sleepsession", msg_obj.sp8_obj.q_sleepsession, self.led_q_sleep)
+            DisplayMsgield.disNameOfLineEdit("m_session_type", msg_obj.sp8_obj.m_session_type, self.led_sess_type)
 
     # 显示列车数据内容SP5
     def atpTrainDataShowByMsg(self, msg_obj=Atp2atoProto):
@@ -515,6 +528,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             DisplayMsgield.disNameOfLineEdit("btm_antenna_position",obj.btm_antenna_position,self.led_atp_btm_pos)
             DisplayMsgield.disNameOfLineEdit("l_door_distance",obj.l_door_distance,self.led_head_foor_dis)
             DisplayMsgield.disNameOfLineEdit("nid_engine",obj.nid_engine,self.led_nid_engine)
+            DisplayMsgield.disNameOfLineEdit("l_sdu_wheel_size_1", obj.l_sdu_wheel_size_1, self.led_wheel_size1)
+            DisplayMsgield.disNameOfLineEdit("l_sdu_wheel_size_2", obj.l_sdu_wheel_size_2, self.led_wheel_size2)
 
     # ATO图标实时显示SP131
     def atoDmiShowByMsg(self, msg_obj=Atp2atoProto):
@@ -551,6 +566,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             DisplayMVBField.disNameOfLineEdit("tunnel_entrance", a2t_stat.tunnel_entrance,self.led_stat_tunnelin)
             DisplayMVBField.disNameOfLineEdit("tunnel_length", a2t_stat.tunnel_length,self.led_stat_tunnellen)
             DisplayMVBField.disNameOfLineEdit("ato_speed", a2t_stat.ato_speed,self.led_stat_atospeed)
+            # 设置控制界面隧道信息
+            DisplayMVBField.disTunnelInfo(a2t_stat.tunnel_entrance, a2t_stat.tunnel_length, self.lbl_tunnel)
         if t2a_stat and t2a_stat.updateflag == True:
             DisplayMVBField.disNameOfLineEdit("tcms_heartbeat", t2a_stat.tcms_heartbeat, self.led_tcms_hrt)
             DisplayMVBField.disNameOfLineEdit("door_mode_mo_mc", t2a_stat.door_mode_mo_mc, self.led_tcms_mm)
@@ -611,15 +628,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 显示ATP2ATO接口协议内容
         if msg_obj:
             if  msg_obj.sp2_obj.updateflag:
-                AtoKeyInfoDisplay.lableFieldDisplay("q_ato_hardpermit",msg_obj.sp2_obj.q_ato_hardpermit, Atp2atpFieldDic, self.lbl_hpm)
-                AtoKeyInfoDisplay.lableFieldDisplay("q_atopermit",msg_obj.sp2_obj.q_atopermit, Atp2atpFieldDic, self.lbl_pm)
-                AtoKeyInfoDisplay.lableFieldDisplay("m_ms_cmd",msg_obj.sp2_obj.m_ms_cmd, Atp2atpFieldDic, self.lbl_atpdcmd)
-                AtoKeyInfoDisplay.lableFieldDisplay("m_low_frequency",msg_obj.sp2_obj.m_low_frequency, Atp2atpFieldDic, self.lbl_freq)
+                AtoKeyInfoDisplay.lableFieldDisplay("q_ato_hardpermit",msg_obj.sp2_obj.q_ato_hardpermit, Atp2atoFieldDic, self.lbl_hpm)
+                AtoKeyInfoDisplay.lableFieldDisplay("q_atopermit",msg_obj.sp2_obj.q_atopermit, Atp2atoFieldDic, self.lbl_pm)
+                AtoKeyInfoDisplay.lableFieldDisplay("m_ms_cmd",msg_obj.sp2_obj.m_ms_cmd, Atp2atoFieldDic, self.lbl_atpdcmd)
+                AtoKeyInfoDisplay.lableFieldDisplay("m_low_frequency",msg_obj.sp2_obj.m_low_frequency, Atp2atoFieldDic, self.lbl_freq)
+                AtoKeyInfoDisplay.labelRouteDisplay(msg_obj.sp2_obj.m_low_frequency, Atp2atoFieldDic, TrainCircuitDic, self.lbl_route_smart)
             if msg_obj.sp5_obj.updateflag:
-                AtoKeyInfoDisplay.lableFieldDisplay("n_units",msg_obj.sp5_obj.n_units, Atp2atpFieldDic, self.lbl_trainlen)
-            if msg_obj.sp130_obj.updateflag:
-                AtoKeyInfoDisplay.lableFieldDisplay("m_atomode",msg_obj.sp130_obj.m_atomode, Atp2atpFieldDic, self.lbl_mode)
-                # 显示MVB接口协议内容
+                AtoKeyInfoDisplay.lableFieldDisplay("n_units",msg_obj.sp5_obj.n_units, Atp2atoFieldDic, self.lbl_trainlen)
+        # 显示MVB接口协议内容
         if t2a_stat and t2a_stat.updateflag:
             AtoKeyInfoDisplay.lableFieldDisplay("train_permit_ato",t2a_stat.train_permit_ato, MVBFieldDic, self.lbl_carpm)
             AtoKeyInfoDisplay.lableFieldDisplay("door_state",t2a_stat.door_state, MVBFieldDic, self.lbl_doorstatus)
@@ -628,6 +644,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if fsm:
             AtoKeyInfoDisplay.labelInerDisplay("ato_self_check", int(fsm[5]), self.lbl_check)
             AtoKeyInfoDisplay.labelInerDisplay("ato_start_lamp", int(fsm[6]), self.lbl_lamp)
+            AtoKeyInfoDisplay.lableFieldDisplay("m_atomode",int(fsm[0]), AtoInerDic, self.lbl_mode)
             # 站台标志由于FSM中记录后会经过处理，采用SC才是本周期控车使用的
             if ctrl:  # 按周期索引取控制信息，妨不连续
                 AtoKeyInfoDisplay.labelInerDisplay("station_flag", int(list(ctrl)[17]), self.lbl_stn)
@@ -898,7 +915,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             msg_atp2ato = self.log.cycle_dic[cycle_num].msg_atp2ato
             if (not trainDataFind) and msg_atp2ato.sp5_obj.updateflag:
                 self.atpTrainDataShowByMsg(self.log.cycle_dic[cycle_num].msg_atp2ato)
-                AtoKeyInfoDisplay.lableFieldDisplay("n_units",msg_atp2ato.sp5_obj.n_units, Atp2atpFieldDic, self.lbl_trainlen)
+                AtoKeyInfoDisplay.lableFieldDisplay("n_units",msg_atp2ato.sp5_obj.n_units, Atp2atoFieldDic, self.lbl_trainlen)
                 trainDataFind = True
 
         # 显示BTM信息
@@ -1068,7 +1085,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             x_monitor = self.sp.mainAxes.get_xlim()
             y_monitor = self.sp.mainAxes.get_ylim()
             if self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
-                    or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked() or self.CBramp.isChecked():
+                    or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked() or self.CBramp.isChecked() or self.CBstate.isChecked():
                 self.clearAxis()
                 self.Log("Mode Change recreate the paint", __name__, sys._getframe().f_lineno)
                 # 清除光标重新创建
@@ -1111,6 +1128,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.spAux.plotLogRamp(self.log, self.curveCordType)
                 else:
                     self.CBramp.setChecked(False)
+                # 处理状态机
+                if self.CBstate.isChecked():
+                    self.spAux.plotLogState(self.log, self.curveCordType)
+                else:
+                    self.CBstate.setChecked(False)
             else:
                 self.clearAxis()
             self.sp.plotMainSpeedCord(self.log, self.curveCordType, x_monitor, y_monitor)
@@ -1119,10 +1141,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.spAux.draw()
         else:
             pass
-
-    # 绘制加速度和坡度曲线
-    def updateDownCurve(self):
-        pass
 
     # 绘制离线模式下事件选择点
     def updateEventPointType(self):
@@ -1332,46 +1350,37 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def cyclePrint(self):
         self.cyclewin.statusBar.showMessage('')  # 清除上一次显示内容
         idx = self.spinBox.value()
-        print_flag = 0  # 是否弹窗打印，0=不弹窗，1=弹窗
-        c_num = 0
-        line_count = 0
-        pat_cycle_start = self.cfg.reg_config.pat_cycle_start # 周期起点匹配
+        printFlag = 0  # 是否弹窗打印，0=不弹窗，1=弹窗
+        cNum = 0
         self.cyclewin.textEdit.clear()
 
         if 1 == self.islogLoad or 2 == self.islogLoad:  # 文件已经加载
             # 前提是必须有周期，字典能查到
             if idx in self.log.cycle_dic.keys():
-                c_num = self.log.cycle_dic[idx].cycle_num
-                with open(self.file, 'rU', encoding='ansi', errors='ignore') as f:  # notepad++默认是ANSI编码
-                    f.seek(self.log.cycle_dic[idx].file_begin_offset, 0)
-                    lines = f.readline()   # f.read调用f.readline计算的偏移量，实际多读（每行多一个字节），怀疑为python缺陷
-                    line_count = line_count + 1
-                    while lines:
-                        if self.log.cycle_dic[idx].file_end_offset == f.tell():   # 模拟readline读取过程，逻辑保持一致
-                            break
-                        elif pat_cycle_start.findall(lines.strip().split('\n')[-1]) and line_count > 1:
-                            break                     # 当读出最近一行是否是新的周期，若已经读到另一个周期，防护性退出
-                        else:
-                            lines = lines + f.readline()
-                            line_count = line_count + 1
-                    self.cyclewin.textEdit.setText(lines)
+                cycleObj = self.log.cycle_dic[idx]
+                cNum = cycleObj.cycle_num
+                with open(self.file, 'r',encoding='Shift JIS', errors='ignore', newline='') as f:
+                    f.seek(cycleObj.file_begin_offset, 0)
+                    txtLines = ''
+                    txtLines = f.read(cycleObj.file_end_offset - cycleObj.file_begin_offset)  
+                    self.cyclewin.textEdit.setText(txtLines)
                 # 周期完整性
                 if self.log.cycle_dic[idx].cycle_property == 1:
-                    self.cyclewin.statusBar.showMessage(str(c_num) + '周期序列完整！')
+                    self.cyclewin.statusBar.showMessage(str(cNum) + '周期序列完整！')
                 elif self.log.cycle_dic[idx].cycle_property == 2:
-                    self.cyclewin.statusBar.showMessage(str(c_num) + '周期尾部缺失！')
+                    self.cyclewin.statusBar.showMessage(str(cNum) + '周期尾部缺失！')
                 elif self.log.cycle_dic[idx].cycle_property == 3:
-                    self.cyclewin.statusBar.showMessage(str(c_num) + '周期头部缺失！')
+                    self.cyclewin.statusBar.showMessage(str(cNum) + '周期头部缺失！')
                 else:
                     self.cyclewin.statusBar.showMessage('记录异常！')  # 清除上一次显示内容
-                print_flag = 1
+                printFlag = 1
             else:
                 self.showMessage("Info：周期不存在，查询无效")
         else:
             self.showMessage("Info：文件未加载，查询无效")
         # 有信息才弹窗
-        if print_flag == 1:
-            self.cyclewin.setWindowTitle("Software:"+ self.verObj.getVerToken() + " 周期号 : " + str(c_num))
+        if printFlag == 1:
+            self.cyclewin.setWindowTitle("周期号:"+str(cNum))
             self.cyclewin.show()
         else:
             pass
@@ -1382,32 +1391,36 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，设置主界面表格内容
     def setCtrlTableAllContentByIndex(self, idx):
-        atoPos = int(self.log.s[idx])
-        atoSpeed = int(self.log.v_ato[idx])
-        level = int(self.log.level[idx])
-        esLevel = int(self.log.real_level[idx])
-        ramp = int(self.log.ramp[idx])
-        esRamp = int(self.log.adjramp[idx])
-        stateMachine = int(self.log.statmachine[idx])
-        tPos = int(self.log.targetpos[idx])
-        tSpeed = int(self.log.v_target[idx])
-        atoCmdv = int(self.log.cmdv[idx])
-        atpCmdv = int(self.log.ceilv[idx])
-        atpPmtv = int(self.log.atp_permit_v[idx])
-        skip    = int(self.log.skip[idx])
-        keyList = [atoPos,atoSpeed,level,esLevel,ramp,esRamp,stateMachine,tPos,tSpeed,atoCmdv,atpCmdv,atpPmtv,skip]
-        self.setCtrlInfoShow(keyList)
-        # 停车点表格显示
-        stTuple = self.log.cycle_dic[self.log.cycle[idx]].stoppoint
-        self.setStoppointShow(atoPos,stTuple)
-        # 停车误差显示
-        atoStopErr = int(self.log.stop_error[idx])
-        cycleObj = self.log.cycle_dic[self.log.cycle[idx]]
-        AtoKeyInfoDisplay.ctrlStopErrorDisplay(atoStopErr, cycleObj.msg_atp2ato.sp2_obj.m_atp_stop_error, self.tb_ctrl_stoppoint)
-        # 时间周期
-        self.lbl_date.setText(self.log.cycle_dic[self.log.cycle[idx]].time)
-        self.lbl_sys_time.setText(str(cycleObj.ostime_start)+'ms')
-        self.spinBox.setValue(int(self.log.cycle_dic[self.log.cycle[idx]].cycle_num))
+        # 不妨使用位置长度进行防护
+        if idx < len(self.log.s):
+            atoPos = int(self.log.s[idx])
+            atoSpeed = int(self.log.v_ato[idx])
+            level = int(self.log.level[idx])
+            esLevel = int(self.log.real_level[idx])
+            ramp = int(self.log.ramp[idx])
+            esRamp = int(self.log.adjramp[idx])
+            stateMachine = int(self.log.statmachine[idx])
+            tPos = int(self.log.targetpos[idx])
+            tSpeed = int(self.log.v_target[idx])
+            atoCmdv = int(self.log.cmdv[idx])
+            atpCmdv = int(self.log.ceilv[idx])
+            atpPmtv = int(self.log.atp_permit_v[idx])
+            skip    = int(self.log.skip[idx])
+            keyList = [atoPos,atoSpeed,level,esLevel,ramp,esRamp,stateMachine,tPos,tSpeed,atoCmdv,atpCmdv,atpPmtv,skip]
+            self.setCtrlInfoShow(keyList)
+            # 停车点表格显示
+            stTuple = self.log.cycle_dic[self.log.cycle[idx]].stoppoint
+            self.setStoppointShow(atoPos,stTuple)
+            # 停车误差显示
+            atoStopErr = int(self.log.stop_error[idx])
+            cycleObj = self.log.cycle_dic[self.log.cycle[idx]]
+            AtoKeyInfoDisplay.ctrlStopErrorDisplay(atoStopErr, cycleObj.msg_atp2ato.sp2_obj.m_atp_stop_error, self.tb_ctrl_stoppoint)
+            # 时间周期
+            self.lbl_date.setText(self.log.cycle_dic[self.log.cycle[idx]].time)
+            self.lbl_sys_time.setText(str(cycleObj.ostime_start)+'ms')
+            self.spinBox.setValue(int(self.log.cycle_dic[self.log.cycle[idx]].cycle_num))
+        else:
+            pass
 
     # 辅助显示函数停车点
     def setStoppointShow(self, curPos=int, stTuple='tuple'):
@@ -1418,8 +1431,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         [atoPos,atoSpeed,level,esLevel,ramp,esRamp,stateMachine,tPos,tSpeed,atoCmdv,atpCmdv,atpPmtv,skip] = keyList
         AtoKeyInfoDisplay.ctrlAtoPosDisplay(atoPos,self.lbl_ato_pos,self.led_ato_pos)
         AtoKeyInfoDisplay.ctrlAtoSpeedDisplay(atoSpeed, self.lbl_ato_speed, self.led_ato_speed)
-        AtoKeyInfoDisplay.ctrlLevelDisplay(level, self.lbl_ctrl_level, self.led_ctrl_level)
-        AtoKeyInfoDisplay.ctrlEstimateLevelDisplay(esLevel, self.lbl_ctrl_estimate_level, self.led_ctrl_estimate_level)
+        # 获取配置的级位范围
+        lvlLimit = [self.cfg.monitor_config.max_tract_level, self.cfg.monitor_config.max_brake_level]
+        AtoKeyInfoDisplay.ctrlLevelDisplay(level, lvlLimit, self.lbl_ctrl_level, self.led_ctrl_level)
+        AtoKeyInfoDisplay.ctrlEstimateLevelDisplay(esLevel, lvlLimit, self.lbl_ctrl_estimate_level, self.led_ctrl_estimate_level)
         AtoKeyInfoDisplay.ctrlRampDisplay(ramp,self.lbl_ramp, self.led_ramp)
         AtoKeyInfoDisplay.ctrlEstimateRampDisplay(esRamp, self.lbl_estimate_ramp, self.led_estimate_ramp)
         AtoKeyInfoDisplay.ctrlSkipDisplay(skip,self.lbl_is_skip)
@@ -1449,8 +1464,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 事件处理函数，计算控车数据悬浮气泡窗并显示
     def setCtrlBubbleByIndex(self, idx):
         # 根据输入类型设置气泡
-        self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, self.curveCordType)
-        self.tag_latest_pos_idx = idx
+        if idx < len(self.log.s):
+            self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, self.curveCordType)
+            self.tag_latest_pos_idx = idx
 
     # 事件处理函数，设置树形结构和内容
     def set_tree_content(self, idx):
@@ -1458,22 +1474,29 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，设置车辆接口MVB信息
     def setTrainContentByIndex(self, idx):
-        cycleObj = self.log.cycle_dic[self.log.cycle[idx]]
-        if cycleObj.a2t_ctrl.updateflag or cycleObj.a2t_stat.updateflag or cycleObj.t2a_stat.updateflag:
-            self.mvbShowByData(cycleObj.a2t_ctrl, cycleObj.a2t_stat, cycleObj.t2a_stat)
+        if idx < len(self.log.s):
+            cycleObj = self.log.cycle_dic[self.log.cycle[idx]]
+            if cycleObj.a2t_ctrl.updateflag or cycleObj.a2t_stat.updateflag or cycleObj.t2a_stat.updateflag:
+                self.mvbShowByData(cycleObj.a2t_ctrl, cycleObj.a2t_stat, cycleObj.t2a_stat)
     
     # 事件处理函数，设置ATP信息
     def setAtpContentByIndex(self, idx):
-        msg_obj = self.log.cycle_dic[self.log.cycle[idx]].msg_atp2ato
-        self.atpCommonInfoShowByMsg(msg_obj)
-        self.atoDmiShowByMsg(msg_obj)
+        if idx < len(self.log.s):
+            msg_obj = self.log.cycle_dic[self.log.cycle[idx]].msg_atp2ato
+            self.atpCommonInfoShowByMsg(msg_obj)
+            self.atoDmiShowByMsg(msg_obj)
 
     # 事件处理函数，设置计划信息
     def setPlanContentByIndex(self, idx):
-        cycle_obj = self.log.cycle_dic[self.log.cycle[idx]]
-        rp_obj = cycle_obj.rpInfo
-        self.runningPlanShow(rp_obj, cycle_obj.ostime_start)
-        
+        if idx < len(self.log.s):
+            cycle_obj = self.log.cycle_dic[self.log.cycle[idx]]
+            rp_obj = cycle_obj.rpInfo
+            self.runningPlanShow(rp_obj, cycle_obj.ostime_start)
+            # 显示折返计划
+            a2tMsg = cycle_obj.msg_ato2tsrs
+            t2aMsg = cycle_obj.msg_tsrs2ato
+            AtoKeyInfoDisplay.disTurnbackTable(a2tMsg, t2aMsg, self.lbl_ato_tbstatus, self.tableWidgetTb)
+            
     # 事件处理函数，双击跳转
     def btmSelectedCursorGo(self, rowItem):
         if self.curInterface == 1 and self.curWinMode == 1:  # 必须标记模式:
@@ -1515,7 +1538,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 重置主界面所有的选择框
     def resetAllCheckbox(self):
-        self.CBacc.setChecked(False)
+        self.CBstate.setChecked(False)
         self.CBatpcmdv.setChecked(False)
         self.CBlevel.setChecked(False)
         self.CBcmdv.setChecked(False)
