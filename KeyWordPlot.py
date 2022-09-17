@@ -41,6 +41,7 @@ class SnaptoCursor(QtCore.QObject):
         self.data_x = 0
         self.data_y = 0
         self.nearest_index = 0
+        self._last_index = None
         # 辅助光标 
         if spAux and axAux: 
             self.fmplAux = spAux
@@ -61,69 +62,89 @@ class SnaptoCursor(QtCore.QObject):
 
     def get_cusor_data_idx(self):
         return self.nearest_index
+    
+    def set_cross_hair_visible(self, visible):
+        need_redraw = self.lx.get_visible() != visible
+        self.lx.set_visible(visible)
+        self.ly.set_visible(visible)
+        return need_redraw
 
     def mouse_move(self, event):
         global cursor_track_flag
         if not event.inaxes:
-            return
-        # 下面是当前鼠标坐标
-        x, y = event.xdata, event.ydata
-        indx = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1) # 共用X轴索引
+            self._last_index = None
+            """ 当光标离开绘图区时依然显示
+            need_redraw = self.set_cross_hair_visible(False)
+            if need_redraw:
+                self.ax.figure.canvas.draw()
+            """
+        else:
+            self.set_cross_hair_visible(True)
+            # 下面是当前鼠标坐标
+            x, y = event.xdata, event.ydata
+            index = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1) # 共用X轴索引
+            if index == self._last_index:
+                return # still on the same data point. Nothing to do.
+            self._last_index = index
+            # update record data and index for return
+            self.data_x = x
+            self.data_y = y
+            self.nearest_index = index
+            # nearest data 这是数据
+            x = self.x[index]
+            y = self.y[index]
+            # 辅助光标
+            if self.yAux.any():
+                yAux = self.yAux[index]
+            else:
+                yAux = None
+            # update the line positions
+            if cursor_track_flag == 1:          # 看标志追踪
+                y = self.y[index]
+                self.lx.set_ydata(y)
+                self.ly.set_xdata(x)
+                self.ax.figure.canvas.draw()
+                # 辅助光标
+                if yAux:
+                    self.lxAux.set_ydata(yAux)
+                    self.lyAux.set_xdata(x)  # 共用X轴索引
+                    self.axAux.figure.canvas.draw()
+                # 发射信号
+                self.move_signal.emit(index)  # 发射信号索引
+            else:
+                pass
+
+    # 输入坐标模拟光标移动
+    def sim_mouse_move(self, x, y):
+        index = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1) # 共用X轴索引
+        if index == self._last_index:
+            return # still on the same data point. Nothing to do.
+        self._last_index = index
         # update record data and index for return
         self.data_x = x
         self.data_y = y
-        self.nearest_index = indx
+        self.nearest_index = index
         # nearest data 这是数据
-        x = self.x[indx]
-        y = self.y[indx]
+        x = self.x[index]
+        y = self.y[index]
         # 辅助光标
         if self.yAux.any():
-            yAux = self.yAux[indx]
+            yAux = self.yAux[index]
         else:
             yAux = None
         # update the line positions
         if cursor_track_flag == 1:          # 看标志追踪
-            y = self.y[indx]
+            y = self.y[index]
             self.lx.set_ydata(y)
             self.ly.set_xdata(x)
-            self.fmpl.draw()
+            self.ax.figure.canvas.draw()
             # 辅助光标
             if yAux:
                 self.lxAux.set_ydata(yAux)
                 self.lyAux.set_xdata(x)  # 共用X轴索引
-                self.fmplAux.draw()
-            # 发射信号
-            self.move_signal.emit(indx)  # 发射信号索引
-        else:
-            pass
-
-    # 输入坐标模拟光标移动
-    def sim_mouse_move(self, x, y):
-        indx = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1)
-        # update record data and index for return
-        self.data_x = x
-        self.data_y = y
-        self.nearest_index = indx
-        # nearest data 这是数据
-        x = self.x[indx]
-        y = self.y[indx]
-        # 辅助光标
-        if self.yAux.any():
-            yAux = self.yAux[indx]
-        else:
-            yAux = None
-        # update the line positions
-        self.lx.set_ydata(y)
-        self.ly.set_xdata(x)
-        print('x=%1.2f, y=%1.2f' % (x, y))
-        self.fmpl.draw()
-        # 辅助光标
-        if yAux:
-            self.lxAux.set_ydata(yAux)
-            self.lyAux.set_xdata(x)  # 共用X轴索引
-            self.fmplAux.draw()
+                self.axAux.figure.canvas.draw()
         # 发射信号
-        self.sim_move_singal.emit(indx)  # 发射信号索引
+        self.sim_move_singal.emit(index)  # 发射信号索引
 
     def resetCursorPlot(self):
         global cursor_track_flag
