@@ -5,7 +5,7 @@
 @Date: 2020-06-29 20:45:25
 @Desc: Provide base simp agent Defination
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-16 22:14:27
+LastEditTime: 2022-09-19 21:57:54
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -55,8 +55,8 @@ class RegConfig(object):
         # 原始数据
         self.reg_p2o = '\[P->O\]\[\d+\]:([0-9a-fA-F?\s]*)'
         self.reg_o2p = '\[O->P\]\[\d+\]:([0-9a-fA-F?\s]*)'
-        self.reg_t2a = '\[T->A\]\[\d+\]:([0-9a-fA-F?\s]*)'
-        self.reg_a2t = '\[A->T\]\[\d+\]:([0-9a-fA-F?\s]*)'
+        self.reg_t2a = '\[T->A\]:([0-9a-fA-F?\s]*)'
+        self.reg_a2t = '\[A->T\]:([0-9a-fA-F?\s]*)'
         # MVB原始数据
         self.reg_mvb = 'MVB\[\d+]:([0-9a-fA-F?\s]*)'
 
