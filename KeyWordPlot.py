@@ -27,9 +27,8 @@ class SnaptoCursor(QtCore.QObject):
     move_signal = QtCore.pyqtSignal(int)        # 带一个参数的信号
     sim_move_singal = QtCore.pyqtSignal(int)    # 模拟手动挪动光标
 
-    def __init__(self, sp, ax, x, y, spAux=None, axAux=None, xAux=None, yAux=None):
+    def __init__(self, ax, x, y, axAux=None, xAux=None, yAux=None):
         super(SnaptoCursor, self).__init__()
-        self.fmpl = sp
         self.ax = ax
         self.ax.set_xlim(x[0], x[len(x)-1])  # 默认与不带光标统一的显示范围
         self.ax.set_ylim(-200, 10000)
@@ -43,8 +42,7 @@ class SnaptoCursor(QtCore.QObject):
         self.nearest_index = 0
         self._last_index = None
         # 辅助光标 
-        if spAux and axAux: 
-            self.fmplAux = spAux
+        if axAux: 
             self.axAux = axAux
             self.axAux.set_xlim(xAux[0], xAux[len(x)-1])  # 默认与不带光标统一的显示范围
             self.lxAux = self.axAux.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
@@ -133,7 +131,7 @@ class SnaptoCursor(QtCore.QObject):
         else:
             yAux = None
         # update the line positions
-        if cursor_track_flag == 1:          # 看标志追踪
+        if cursor_track_flag == 0:          # 看标志追踪
             y = self.y[index]
             self.lx.set_ydata(y)
             self.ly.set_xdata(x)
@@ -184,7 +182,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         self.twinAxes = self.mainAxes.twinx()
         # 气泡绘制
         self.bubbleCtrl = None
-        self.bubbleCrosser = None
+        self.bubbleType = None
         # 事件绘制字典,存储每个需要绘制的列表，列表是tuple类型
         self.event_plot_dic = {}
         self.event_plot_flag = 0                 # 事件绘制标志
@@ -192,6 +190,10 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         # 轨旁信息字典
         self.wayside_plot_dic = {}
 
+    def plotReset(self):
+        # 气泡绘制
+        self.bubbleCtrl = None
+        self.bubbleType = None
 
     # 对于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
@@ -305,6 +307,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             self.mainAxes.set_title(ob.filename + " " + "速度-周期曲线")
         # 公共纵坐标部分,暂时屏蔽
         self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.060, right=0.969, hspace=0.17, wspace=0.25)
+        self.mainAxes.figure.canvas.draw()
 
     # 绘制坡度坐标轴信息
     def plotMainRampCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
@@ -316,6 +319,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             self.twinAxes.legend(loc='upper right')
         self.mainAxes.set_ylabel('坡度值‰', fontdict={'fontsize': 10})
         self.fig.subplots_adjust(top=0.96, bottom=0.055, left=0.060, right=0.969, hspace=0.17, wspace=0.25)
+        self.mainAxes.figure.canvas.draw()
 
     # 绘制级位曲线
     # cmd : 1=周期速度曲线 0=位置速度曲线
@@ -410,7 +414,6 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         :return:None
         '''
 
-        self.mainAxes.texts.clear()    # 删除坐标轴文本信息
         # 越界防护
         if pos_idx < len(ob.s):
             # 根据曲线类型获取文本气泡坐标
@@ -480,16 +483,36 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             props_bubble = dict(boxstyle='round', facecolor=paint_color, alpha=0.15)
             props_sig = dict(facecolor=paint_color, edgecolor='none', alpha=0.02)
 
-            # 设置显示速度信息
-            self.mainAxes.text(sig_x, sig_y, str_spd_sig, fontsize=10, verticalalignment='top', bbox=props_sig)
-
-            if 1 == text_pos_type:
-                self.mainAxes.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
-            elif 0 == text_pos_type:
-                self.mainAxes.text(0.78, 0.95, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
-                                bbox=props_bubble)
+            # 暂不显示独立时间速度框
+            # self.mainAxes.text(sig_x, sig_y, str_spd_sig, fontsize=10, verticalalignment='top', bbox=props_sig)
+            
+            # 检查文本变化
+            if self.bubbleType == None:
+                self.bubbleType = text_pos_type
+            elif self.bubbleType != text_pos_type:
+                self.mainAxes.texts.clear()    # 删除坐标轴文本信息
+                self.bubbleCtrl = None
+                self.bubbleType = text_pos_type
             else:
                 pass
+            # 绘制文本内容
+            if self.bubbleCtrl == None:            
+                if 1 == text_pos_type:
+                    self.bubbleCtrl = self.mainAxes.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
+                elif 0 == text_pos_type:
+                    self.bubbleCtrl = self.mainAxes.text(0.78, 0.95, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
+                                    bbox=props_bubble)
+                else:
+                    pass
+            else:
+                if 1 == text_pos_type:
+                    self.bubbleCtrl.set_x(bubble_x)
+                    self.bubbleCtrl.set_y(bubble_y)
+                elif 0 == text_pos_type:
+                    pass
+                self.bubbleCtrl.set_text(str_show)
+                self.bubbleCtrl.set_bbox(props_bubble)
+                self.mainAxes.figure.canvas.draw()
         else:
             pass
 
