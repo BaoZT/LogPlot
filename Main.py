@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-17 15:01:46
+LastEditTime: 2022-09-23 09:50:10
 '''
 
 import os
@@ -76,8 +76,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spAux = CurveFigureCanvas(self.auxOfflineWidget, sharedAxes=self.sp.mainAxes)
         lAux.addWidget(self.spAux)
         self.cursorVato = None
-        self.bubble_status = 0  # 控车悬浮气泡状态，0=停靠，1=跟随
-        self.tag_latest_pos_idx = 0  # 悬窗最近一次索引，用于状态改变或曲线改变时立即刷新使用，最近一次
+        self.bubbleStatus = 0   # 控车悬浮气泡状态，0=停靠，1=跟随
+        self.tagLatestPosIdx = 0  # 悬窗最近一次索引，用于状态改变或曲线改变时立即刷新使用，最近一次
         self.ctrlMeasureStatus = 0  # 控车曲线测量状态，0=初始态，1=测量起始态，2=进行中 ,3=测量终止态
         # 在线绘图
         lr = QtWidgets.QVBoxLayout(self.mainOnlineWidget)
@@ -85,6 +85,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         lr.addWidget(self.spReal)  # 必须创造布局并且加入才行
         # 设置BTM表
         self.tableATPBTM.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.tb_ato_IN.horizontalHeader().setVisible(True)
+        self.tableWidgetPlan.horizontalHeader().setVisible(True)
+        self.tableWidgetTb.horizontalHeader().setVisible(True)
         # MVB解析面板
         self.mvbParserPage = MVBParse()
         # ATP解析面板
@@ -160,12 +163,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # 窗口设置初始化
         self.showOffLineUI()
-        self.filetabFormat()
-        self.model = QtWidgets.QFileSystemModel()
-        self.model.setRootPath(QtCore.QDir.currentPath())
         self.led_save_path.setText(self.cfg.base_config.save_path)
-        self.treeView.setModel(self.model)
-        self.treeView.doubleClicked.connect(self.filetabClicked)
         self.tableATPBTM.itemClicked.connect(self.btmSelectedInfo)
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
 
@@ -449,7 +447,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.realtimeCtrlTableShow(cycleNum, cycleTime, dateTime, scCtrl, stoppoint)
         self.atoFsmInfoShow(fsmList,scCtrl,atp2ato_msg,tcms2ato_stat)
         # 显示主界面
-        self.atpCommonInfoShowByMsg(atp2ato_msg)
+        self.atpCommonInfoShowByMsg(atp2ato_msg, dateTime)
         self.atoDmiShowByMsg(atp2ato_msg)
         self.atpTrainDataShowByMsg(atp2ato_msg)
         self.atpBtmShowByMsg(dateTime, atp2ato_msg)
@@ -472,8 +470,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lbl_min_slot_rtn.setText(str(time_statictics[3])+'ms')
             self.lbl_slot_count_rtn.setText(str(time_statictics[4]))
 
-    # 显示通用信息SP2/SP10/SP135/SP8
-    def atpCommonInfoShowByMsg(self, msg_obj=Atp2atoProto):
+    # 显示通用信息SP2/SP13/SP138/SP8
+    def atpCommonInfoShowByMsg(self, msg_obj=Atp2atoProto, time=str):
         if msg_obj and msg_obj.sp2_obj.updateflag:
             # 门允许左右门合并
             DisplayMsgield.disAtpDoorPmt(msg_obj.sp2_obj.q_leftdoorpermit,msg_obj.sp2_obj.q_rightdoorpermit, self.lbl_door_pmt)
@@ -501,14 +499,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             DisplayMsgield.disNameOfLineEdit("m_atp_stop_error",msg_obj.sp2_obj.m_atp_stop_error, self.led_atp_stoperr)
             # 控制界面显示分相区
             DisplayMsgield.disFxInfo(msg_obj.sp2_obj.d_neu_sec, self.lbl_fx_track)
-        if msg_obj and msg_obj.sp10_obj.updateflag:
-            DisplayMsgield.disNameOfLable("q_headtail", msg_obj.sp10_obj.q_headtail, self.lbl_headtail)
-            DisplayMsgield.disNameOfLineEdit("q_tb_status", msg_obj.sp10_obj.q_tb_status, self.led_atp_tb_status)
-            DisplayMsgield.disNameOfLineEdit("m_tb_display", msg_obj.sp10_obj.m_tb_display, self.led_atp_tb_display)
-            DisplayMsgield.disNameOfLineEdit("q_tb_relay", msg_obj.sp10_obj.q_tb_relay, self.led_atp_tb_relay)
-        if msg_obj and msg_obj.sp135_obj.updateflag:
-            DisplayMsgield.disNameOfLable("q_ato_tb_status" , msg_obj.sp135_obj.q_ato_tb_status, self.lbl_ato_tb_pmt, 0xA5, 0)
-            DisplayMsgield.disNameOfLineEdit("nid_operational", msg_obj.sp135_obj.nid_operational, self.led_tb_nid_operational)
+        if msg_obj and msg_obj.sp13_obj.updateflag:
+            DisplayMsgield.disNameOfLable("q_leading", msg_obj.sp13_obj.q_leading, self.lbl_headtail)
+            DisplayMsgield.disNameOfLineEdit("m_tb_status", msg_obj.sp13_obj.m_tb_status, self.led_atp_tb_status)
+            DisplayMsgield.disNameOfLineEdit("reserved", msg_obj.sp13_obj.reserved, self.led_reserved)
+            DisplayMsgield.disNameOfLineEdit("q_tb_relay", msg_obj.sp13_obj.q_tb_relay, self.led_atp_tb_relay)
+        if msg_obj and msg_obj.sp138_obj.updateflag:
+            DisplayMsgield.disNameOfLable("m_tb_plan" , msg_obj.sp138_obj.m_tb_plan, self.lbl_ato_tb_pmt, 0xA5, 0)
+            DisplayMsgield.disNameOfLineEdit("nid_operational", msg_obj.sp138_obj.nid_operational, self.led_tb_nid_operational)
         if msg_obj and msg_obj.sp130_obj.updateflag:
             DisplayMsgield.disNameOfLable("m_atomode", msg_obj.sp130_obj.m_atomode, self.lbl_ato_mode, 3)
         if msg_obj and msg_obj.sp8_obj.updateflag:
@@ -750,13 +748,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as err:
                 self.Log(err, __name__, sys._getframe().f_lineno)
 
-    # 默认路径的更新，在文件树结构双击时也更新默认路径
-    def updateFiletab(self):
-        temp = '/'
-        filepath = temp.join(self.pathlist[:-1])  # 纪录上一次的文件路径
-        mdinx = self.model.index(filepath)
-        self.treeView.setRootIndex(mdinx)
-
     # 事件处理函数，获取文件树结构中双击的文件路径和文件名
     def filetabClicked(self, item_index):
         self.Log("Select from file tab", __name__, sys._getframe().f_lineno)
@@ -767,11 +758,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.resetLogPlot()
             self.Log(self.model.fileName(item_index), __name__, sys._getframe().f_lineno)
             self.Log(self.model.filePath(item_index), __name__, sys._getframe().f_lineno)
-
-    # <待验证> 设置文件目录的格式大小
-    def filetabFormat(self):
-        self.treeView.setColumnWidth(1, 5)
-        self.treeView.setColumnWidth(0, 25)
 
     # 默认路径的更新，用于打开文件时，总打开最近一次的文件路径
     def updatePathChanged(self, path2):
@@ -833,7 +819,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.showMessage("Info:文本计算耗时:" + str(t2) + 's')
                 max_c = int(max(self.log.cycle))
                 min_c = int(min(self.log.cycle))
-                self.tag_latest_pos_idx = 0  # 每次加载文件后置为最小
+                self.tagLatestPosIdx = 0  # 每次加载文件后置为最小
                 self.spinBox.setRange(min_c, max_c)
                 self.showMessage("Info:曲线周期数:" + str(max_c - min_c) + ' ' + 'from' + str(min_c) + 'to' + str(max_c))
                 self.spinBox.setValue(min_c)
@@ -843,7 +829,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.showMessage("Info:ATO没有控车！")
                 max_c = int(max(self.log.cycle_dic.keys()))
                 min_c = int(min(self.log.cycle_dic.keys()))
-                self.tag_latest_pos_idx = 0  # 每次加载文件后置为最小
+                self.tagLatestPosIdx = 0  # 每次加载文件后置为最小
                 self.spinBox.setRange(min_c, max_c)
                 self.showMessage("Info:曲线周期数:" + str(max_c - min_c) + ' ' + 'from' + str(min_c) + 'to' + str(max_c))
                 self.spinBox.setValue(min_c)
@@ -897,26 +883,37 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                                           QtWidgets.QMessageBox.Yes)
 
         except Exception as err:
-            self.textEdit.setPlainText(' Error Line ' + str(err.start) + ':' + err.reason + '\n')
             self.textEdit.append('Process file failure! \nPlease Predeal the file!')
         self.showMessage('处理完成!')
 
     # 用于一些界面加载记录初始化后显示的内容
     def winInitAfterLoad(self):
         trainDataFind = False
-        self.barDisplay.setBarStat(95, 5, len(self.log.cycle_dic.keys())) # 从95%开始，界面准备占比5%
+        self.barDisplay.setBarStat(90, 10, len(self.log.cycle_dic.keys())) # 从95%开始，界面准备占比5%
     
         self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
-        # 搜索到列车数据一条
+        # 搜索离线数据
         for cycle_num in self.log.cycle_dic.keys():
             # 计算进度条
             self.barDisplay.barMoving()
             # 预先设置 设置列车数据
             msg_atp2ato = self.log.cycle_dic[cycle_num].msg_atp2ato
+            dateTime = self.log.cycle_dic[cycle_num].time
+            # 添加折返相关按钮信息
+            if msg_atp2ato.sp138_obj.updateflag:
+                sp138 = msg_atp2ato.sp138_obj
+                DisplayMsgield.disTbRelatedBtn(sp138.q_tb_cabbtn, sp138.q_tb_wsdbtn, sp138.q_startbtn, dateTime, self.txt_atp2ato_msg)
+            # 添加列车数据
             if (not trainDataFind) and msg_atp2ato.sp5_obj.updateflag:
                 self.atpTrainDataShowByMsg(self.log.cycle_dic[cycle_num].msg_atp2ato)
                 AtoKeyInfoDisplay.lableFieldDisplay("n_units",msg_atp2ato.sp5_obj.n_units, Atp2atoFieldDic, self.lbl_trainlen)
                 trainDataFind = True
+            # 添加纯文本信息
+            if msg_atp2ato.sp134_obj.updateflag:
+                DisplayMsgield.disPlainText(msg_atp2ato.sp134_obj, dateTime, self.txt_atp2ato_msg)
+            # 添加折返变化
+            if msg_atp2ato.sp13_obj.updateflag:
+                DisplayMsgield.disTbStatus(msg_atp2ato.sp13_obj, dateTime, self.txt_atp2ato_msg)
 
         # 显示BTM信息
         self.Log("Begin search btm info", __name__, sys._getframe().f_lineno)
@@ -1058,7 +1055,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def cursorInFigEventProcess(self, event):
         self.isCursorInFram = 1
         self.cursorVato.move_signal.connect(self.setCtrlTableAllContentByIndex)  # 进入图后绑定光标触发
-        self.Log('connect ' + 'enter figure', __name__, sys._getframe().f_lineno)
 
     # 事件处理函数，更新光标进入图像标志,out=2
     def cursorOutFigEventProcess(self, event):
@@ -1067,7 +1063,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.cursorVato.move_signal.disconnect(self.setCtrlTableAllContentByIndex)  # 离开图后解除光标触发
         except Exception as err:
             self.Log(err, __name__, sys._getframe().f_lineno)
-        self.Log('disconnect ' + 'leave figure', __name__, sys._getframe().f_lineno)
         # 测量立即终止，恢复初始态:
         if self.ctrlMeasureStatus > 0:
             self.ctrlMeasureStatus = 0
@@ -1091,7 +1086,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # 清除光标重新创建
                 if self.curWinMode == 1:
                     # 重绘文字
-                    self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, self.curveCordType)
+                    self.sp.plot_ctrl_text(self.log, self.tagLatestPosIdx, self.bubbleStatus, self.curveCordType)
                     self.Log("Update ctrl text ", __name__, sys._getframe().f_lineno)
                     if self.isCursorCreated == 1:
                         self.isCursorCreated = 0
@@ -1137,8 +1132,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.clearAxis()
             self.sp.plotMainSpeedCord(self.log, self.curveCordType, x_monitor, y_monitor)
             self.spAux.plotMainRampCord(self.log, self.curveCordType)
-            self.sp.draw()
-            self.spAux.draw()
         else:
             pass
 
@@ -1180,6 +1173,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sp.twinAxes.clear()
                 self.spAux.mainAxes.clear()
                 self.spAux.twinAxes.clear()
+                self.sp.plotReset()
         except Exception as err:
             print(err)
 
@@ -1248,8 +1242,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 重置坐标轴范围
             self.sp.plotMainSpeedCord(self.log, self.curveCordType, (0.0, 1.0), (0.0, 1.0))
             self.spAux.plotMainRampCord(self.log, self.curveCordType)
-            self.sp.draw()
-            self.spAux.draw()
             self.statusbar.showMessage(self.file + " " + "曲线类型：" + sender.text())
         else:
             pass
@@ -1259,11 +1251,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 标注模式
         if self.curWinMode == 1 and 0 == self.isCursorCreated:
             if self.curveCordType == 0:
-                self.cursorVato = SnaptoCursor(self.sp, self.sp.mainAxes, self.log.s, self.log.v_ato, 
-                                               self.spAux, self.spAux.mainAxes, self.log.s, self.log.v_ato)  # 初始化一个光标
+                self.cursorVato = SnaptoCursor(self.sp.mainAxes, self.log.s, self.log.v_ato, 
+                                               self.spAux.mainAxes, self.log.s, self.log.v_ato)  # 初始化一个光标
             else:
-                self.cursorVato = SnaptoCursor(self.sp, self.sp.mainAxes, self.log.cycle, self.log.v_ato,
-                                               self.spAux, self.spAux.mainAxes, self.log.cycle, self.log.v_ato)  # 初始化一个光标
+                self.cursorVato = SnaptoCursor(self.sp.mainAxes, self.log.cycle, self.log.v_ato,
+                                               self.spAux.mainAxes, self.log.cycle, self.log.v_ato)  # 初始化一个光标
             self.cursorVato.resetCursorPlot()
             self.Log("Link Signal to Tag Cursor", __name__, sys._getframe().f_lineno)
             self.cid1 = self.sp.mpl_connect('motion_notify_event', self.cursorVato.mouse_move)
@@ -1286,7 +1278,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.cursorVato.move_signal.connect(self.setAtoStatusLabelByIndex)  # 标签
             self.cursorVato.sim_move_singal.connect(self.setAtoStatusLabelByIndex)
             self.isCursorCreated = 1
-            self.Log("Mode changed Create tag cursor ", __name__, sys._getframe().f_lineno)
         elif self.curWinMode == 0 and 1 == self.isCursorCreated:
             self.sp.mpl_disconnect(self.cid1)
             self.sp.mpl_disconnect(self.cid2)
@@ -1309,7 +1300,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.cursorVato.sim_move_singal.disconnect(self.setSduContentByIndex)
             self.isCursorCreated = 0
             del self.cursorVato
-            self.Log("Mode changed clear tag cursor ", __name__, sys._getframe().f_lineno)
         else:
             pass
 
@@ -1452,11 +1442,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 清除光标重新创建
         if self.curWinMode == 1:
             if sender.text() == '跟随光标':
-                self.bubble_status = 1  # 1 跟随模式，立即更新
-                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, self.curveCordType)
+                self.bubbleStatus = 1  # 1 跟随模式，立即更新
+                self.sp.plot_ctrl_text(self.log, self.tagLatestPosIdx, self.bubbleStatus, self.curveCordType)
             elif sender.text() == '停靠窗口':
-                self.bubble_status = 0  # 0 是停靠，默认右上角，立即更新
-                self.sp.plot_ctrl_text(self.log, self.tag_latest_pos_idx, self.bubble_status, self.curveCordType)
+                self.bubbleStatus = 0  # 0 是停靠，默认右上角，立即更新
+                self.sp.plot_ctrl_text(self.log, self.tagLatestPosIdx, self.bubbleStatus, self.curveCordType)
             else:
                 pass
         self.sp.draw()
@@ -1465,8 +1455,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def setCtrlBubbleByIndex(self, idx):
         # 根据输入类型设置气泡
         if idx < len(self.log.s):
-            self.sp.plot_ctrl_text(self.log, idx, self.bubble_status, self.curveCordType)
-            self.tag_latest_pos_idx = idx
+            self.sp.plot_ctrl_text(self.log, idx, self.bubbleStatus, self.curveCordType)
+            self.tagLatestPosIdx = idx
 
     # 事件处理函数，设置树形结构和内容
     def set_tree_content(self, idx):
@@ -1483,7 +1473,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def setAtpContentByIndex(self, idx):
         if idx < len(self.log.s):
             msg_obj = self.log.cycle_dic[self.log.cycle[idx]].msg_atp2ato
-            self.atpCommonInfoShowByMsg(msg_obj)
+            dataTime = self.log.cycle_dic[self.log.cycle[idx]].time
+            self.atpCommonInfoShowByMsg(msg_obj, dataTime)
             self.atoDmiShowByMsg(msg_obj)
 
     # 事件处理函数，设置计划信息
@@ -1563,7 +1554,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.actionRealtime.setEnabled(True)
                 self.curveCordType = 1  # 区分绘制曲线类型，0=速度位置曲线，1=周期位置曲线
                 self.Log('Init UI widgt', __name__, sys._getframe().f_lineno)
-                self.updateFiletab()
                 self.resetAllCheckbox()
                 self.resetTextEdit()
                 self.curWinMode = 0  # 恢复初始浏览模式
@@ -1576,7 +1566,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # 开始处理
                 self.logProcess()
             except Exception as err:
-                self.textEdit.setPlainText(' Error Line ' + str(err.start) + ':' + err.reason + '\n')
                 self.textEdit.append('Process file failure! \nPlease Predeal the file!')
 
     # 导出函数
