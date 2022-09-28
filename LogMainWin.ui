@@ -53,7 +53,7 @@
          <enum>QFrame::NoFrame</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="pageOffline">
          <property name="styleSheet">
@@ -92,56 +92,60 @@
          </layout>
         </widget>
         <widget class="QWidget" name="pageOnline">
-         <layout class="QVBoxLayout" name="verticalLayout_18">
+         <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,30,10">
+          <property name="topMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_7" stretch="1,100,80">
-            <item>
-             <widget class="QStackedWidget" name="stackedOnlineWidget">
-              <property name="styleSheet">
-               <string notr="true">background-color: rgb(243, 243, 243);</string>
-              </property>
-              <property name="currentIndex">
-               <number>0</number>
-              </property>
-              <widget class="QWidget" name="pageRealTime">
-               <property name="styleSheet">
-                <string notr="true">background-color: rgb(253, 227, 167);</string>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_16">
+           <widget class="QStackedWidget" name="stackedOnlineWidget">
+            <property name="styleSheet">
+             <string notr="true">background-color: rgb(243, 243, 243);</string>
+            </property>
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="pageRealTime">
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(253, 227, 167);</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_16">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,32,2,2,5">
+                <property name="spacing">
+                 <number>7</number>
+                </property>
                 <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,32,2,2,5">
-                  <property name="spacing">
-                   <number>7</number>
+                 <widget class="QLabel" name="lbl_save_path">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <pointsize>9</pointsize>
+                    <weight>50</weight>
+                    <italic>false</italic>
+                    <bold>false</bold>
+                   </font>
                   </property>
-                  <item>
-                   <widget class="QLabel" name="lbl_save_path">
-                    <property name="font">
-                     <font>
-                      <family>微软雅黑</family>
-                      <pointsize>9</pointsize>
-                      <weight>50</weight>
-                      <italic>false</italic>
-                      <bold>false</bold>
-                     </font>
-                    </property>
-                    <property name="text">
-                     <string>保存路径</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="led_save_path"/>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="btn_SavePath">
-                    <property name="sizeIncrement">
-                     <size>
-                      <width>0</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">QPushButton
+                  <property name="text">
+                   <string>保存路径</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="led_save_path"/>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_SavePath">
+                  <property name="sizeIncrement">
+                   <size>
+                    <width>0</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton
 {text-align : center;
 background-color: rgb(247, 255, 247);
 font: bold;
@@ -163,22 +167,22 @@ padding: 6px;
 height : 14px;
 border-style: outset;
 font : 14px;}</string>
-                    </property>
-                    <property name="text">
-                     <string>...</string>
-                    </property>
-                    <property name="autoDefault">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QComboBox" name="cbb_serial"/>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="btn_PortLink">
-                    <property name="styleSheet">
-                     <string notr="true">QPushButton
+                  </property>
+                  <property name="text">
+                   <string>...</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="cbb_serial"/>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_PortLink">
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton
 {text-align : center;
 background-color: rgb(255, 107, 107);
 font: bold;
@@ -200,62 +204,62 @@ padding: 6px;
 height : 14px;
 border-style: outset;
 font : 14px;}</string>
-                    </property>
-                    <property name="text">
-                     <string>连接</string>
-                    </property>
-                    <property name="autoDefault">
-                     <bool>true</bool>
-                    </property>
-                    <property name="default">
-                     <bool>false</bool>
-                    </property>
-                    <property name="flat">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>true</bool>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
                 </item>
                </layout>
-              </widget>
-              <widget class="QWidget" name="pageReplay">
-               <property name="styleSheet">
-                <string notr="true">background-color: rgb(253, 227, 167);</string>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_23">
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="pageReplay">
+             <property name="styleSheet">
+              <string notr="true">background-color: rgb(253, 227, 167);</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_23">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="1,8,1,6,2">
+                <property name="spacing">
+                 <number>5</number>
+                </property>
                 <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="1,8,1,6,2">
-                  <property name="spacing">
-                   <number>5</number>
+                 <widget class="QLabel" name="lbl_replay_file">
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>20</height>
+                   </size>
                   </property>
-                  <item>
-                   <widget class="QLabel" name="lbl_replay_file">
-                    <property name="maximumSize">
-                     <size>
-                      <width>16777215</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true"/>
-                    </property>
-                    <property name="text">
-                     <string>选择文件</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="led_replay_file">
-                    <property name="styleSheet">
-                     <string notr="true"/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="btn_choose_replay_file">
-                    <property name="styleSheet">
-                     <string notr="true">QPushButton
+                  <property name="styleSheet">
+                   <string notr="true"/>
+                  </property>
+                  <property name="text">
+                   <string>选择文件</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="led_replay_file">
+                  <property name="styleSheet">
+                   <string notr="true"/>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_choose_replay_file">
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton
 {text-align : center;
 background-color: rgb(247, 255, 247);
 font: bold;
@@ -277,41 +281,41 @@ padding: 6px;
 height : 14px;
 border-style: outset;
 font : 14px;}</string>
-                    </property>
-                    <property name="text">
-                     <string>...</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QProgressBar" name="bar_replay">
-                    <property name="autoFillBackground">
-                     <bool>false</bool>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">background-color: rgb(247, 255, 247);</string>
-                    </property>
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                    <property name="format">
-                     <string>[%p%]</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="btn_load_replay_file">
-                    <property name="font">
-                     <font>
-                      <family>微软雅黑</family>
-                      <pointsize>-1</pointsize>
-                      <weight>50</weight>
-                      <italic>false</italic>
-                      <bold>false</bold>
-                     </font>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">QPushButton
+                  </property>
+                  <property name="text">
+                   <string>...</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QProgressBar" name="bar_replay">
+                  <property name="autoFillBackground">
+                   <bool>false</bool>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(247, 255, 247);</string>
+                  </property>
+                  <property name="value">
+                   <number>24</number>
+                  </property>
+                  <property name="format">
+                   <string>[%p%]</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_load_replay_file">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <pointsize>-1</pointsize>
+                    <weight>50</weight>
+                    <italic>false</italic>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton
 {text-align : center;
 background-color: rgb(247, 255, 247);;
 font: bold;
@@ -333,78 +337,78 @@ padding: 6px;
 height : 14px;
 border-style: outset;
 font : 14px;}</string>
-                    </property>
-                    <property name="text">
-                     <string>记录加载</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>IconFiles/icons8-spinner-64.png</normaloff>IconFiles/icons8-spinner-64.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
+                  </property>
+                  <property name="text">
+                   <string>记录加载</string>
+                  </property>
+                  <property name="icon">
+                   <iconset>
+                    <normaloff>IconFiles/icons8-spinner-64.png</normaloff>IconFiles/icons8-spinner-64.png</iconset>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_13" stretch="0,11,2,2,2">
+                <property name="spacing">
+                 <number>5</number>
+                </property>
+                <property name="sizeConstraint">
+                 <enum>QLayout::SetDefaultConstraint</enum>
+                </property>
+                <item>
+                 <widget class="QLabel" name="lbl_progress">
+                  <property name="text">
+                   <string>进度选择</string>
+                  </property>
+                 </widget>
                 </item>
                 <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_13" stretch="0,11,2,2,2">
-                  <property name="spacing">
-                   <number>5</number>
+                 <widget class="QSlider" name="hsd_replay_progress">
+                  <property name="styleSheet">
+                   <string notr="true">border-color: rgb(58, 83, 155);</string>
                   </property>
-                  <property name="sizeConstraint">
-                   <enum>QLayout::SetDefaultConstraint</enum>
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="cbb_replay_speed">
+                  <property name="styleSheet">
+                   <string notr="true"/>
                   </property>
                   <item>
-                   <widget class="QLabel" name="lbl_progress">
-                    <property name="text">
-                     <string>进度选择</string>
-                    </property>
-                   </widget>
+                   <property name="text">
+                    <string>1倍速</string>
+                   </property>
                   </item>
                   <item>
-                   <widget class="QSlider" name="hsd_replay_progress">
-                    <property name="styleSheet">
-                     <string notr="true">border-color: rgb(58, 83, 155);</string>
-                    </property>
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                   </widget>
+                   <property name="text">
+                    <string>2倍速</string>
+                   </property>
                   </item>
                   <item>
-                   <widget class="QComboBox" name="cbb_replay_speed">
-                    <property name="styleSheet">
-                     <string notr="true"/>
-                    </property>
-                    <item>
-                     <property name="text">
-                      <string>1倍速</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>2倍速</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>4倍速</string>
-                     </property>
-                    </item>
-                   </widget>
+                   <property name="text">
+                    <string>4倍速</string>
+                   </property>
                   </item>
-                  <item>
-                   <widget class="QPushButton" name="btn_replay">
-                    <property name="font">
-                     <font>
-                      <family>微软雅黑</family>
-                      <pointsize>-1</pointsize>
-                      <weight>50</weight>
-                      <italic>false</italic>
-                      <bold>false</bold>
-                     </font>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">QPushButton
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_replay">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <pointsize>-1</pointsize>
+                    <weight>50</weight>
+                    <italic>false</italic>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton
 {text-align : center;
 background-color: rgb(247, 255, 247);
 font: bold;
@@ -426,35 +430,35 @@ padding: 6px;
 height : 14px;
 border-style: outset;
 font : 14px;}</string>
-                    </property>
-                    <property name="text">
-                     <string>记录播放</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>IconFiles/icons8-play-100.png</normaloff>IconFiles/icons8-play-100.png</iconset>
-                    </property>
-                    <property name="default">
-                     <bool>false</bool>
-                    </property>
-                    <property name="flat">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="btn_xlose_replay">
-                    <property name="font">
-                     <font>
-                      <family>微软雅黑</family>
-                      <pointsize>-1</pointsize>
-                      <weight>50</weight>
-                      <italic>false</italic>
-                      <bold>false</bold>
-                     </font>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">QPushButton
+                  </property>
+                  <property name="text">
+                   <string>记录播放</string>
+                  </property>
+                  <property name="icon">
+                   <iconset>
+                    <normaloff>IconFiles/icons8-play-100.png</normaloff>IconFiles/icons8-play-100.png</iconset>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_xlose_replay">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <pointsize>-1</pointsize>
+                    <weight>50</weight>
+                    <italic>false</italic>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton
 {text-align : center;
 background-color: rgb(247, 255, 247);
 font: bold;
@@ -476,403 +480,43 @@ padding: 6px;
 height : 14px;
 border-style: outset;
 font : 14px;}</string>
-                    </property>
-                    <property name="text">
-                     <string>记录关闭</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>IconFiles/icons8-close-100.png</normaloff>IconFiles/icons8-close-100.png</iconset>
-                    </property>
-                    <property name="iconSize">
-                     <size>
-                      <width>20</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </widget>
-             </widget>
-            </item>
-            <item>
-             <widget class="QWidget" name="mainOnlineWidget" native="true">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                <horstretch>1</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="styleSheet">
-               <string notr="true">background-color: rgb(220, 220, 220);</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="5,5">
-              <item>
-               <widget class="QGroupBox" name="groupBox_3">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="title">
-                 <string>ATO-ATP</string>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_19">
-                 <item>
-                  <widget class="QTableWidget" name="tab_atp_ato">
-                   <property name="statusTip">
-                    <string extracomment="ATP和ATO信息交互记录"/>
-                   </property>
-                   <property name="frameShape">
-                    <enum>QFrame::Box</enum>
-                   </property>
-                   <property name="frameShadow">
-                    <enum>QFrame::Raised</enum>
-                   </property>
-                   <property name="midLineWidth">
-                    <number>1</number>
-                   </property>
-                   <property name="gridStyle">
-                    <enum>Qt::SolidLine</enum>
-                   </property>
-                   <property name="sortingEnabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="rowCount">
-                    <number>100</number>
-                   </property>
-                   <attribute name="horizontalHeaderCascadingSectionResizes">
-                    <bool>false</bool>
-                   </attribute>
-                   <attribute name="horizontalHeaderDefaultSectionSize">
-                    <number>70</number>
-                   </attribute>
-                   <attribute name="horizontalHeaderMinimumSectionSize">
-                    <number>30</number>
-                   </attribute>
-                   <attribute name="horizontalHeaderStretchLastSection">
-                    <bool>true</bool>
-                   </attribute>
-                   <attribute name="verticalHeaderHighlightSections">
-                    <bool>false</bool>
-                   </attribute>
-                   <attribute name="verticalHeaderShowSortIndicator" stdset="0">
-                    <bool>false</bool>
-                   </attribute>
-                   <attribute name="verticalHeaderStretchLastSection">
-                    <bool>false</bool>
-                   </attribute>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <row/>
-                   <column>
-                    <property name="text">
-                     <string>时间</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>方向</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>长度</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>周期</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>详细信息</string>
-                    </property>
-                   </column>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <layout class="QVBoxLayout" name="verticalLayout_2">
-                <item>
-                 <widget class="QGroupBox" name="groupBox_4">
-                  <property name="styleSheet">
-                   <string notr="true"/>
                   </property>
-                  <property name="title">
-                   <string>ATO-TSRS</string>
+                  <property name="text">
+                   <string>记录关闭</string>
                   </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_36">
-                   <item>
-                    <widget class="QTableWidget" name="tb_tsrs_ato">
-                     <property name="statusTip">
-                      <string extracomment="TSRS和ATO信息交互记录"/>
-                     </property>
-                     <property name="frameShape">
-                      <enum>QFrame::Box</enum>
-                     </property>
-                     <property name="frameShadow">
-                      <enum>QFrame::Raised</enum>
-                     </property>
-                     <property name="rowCount">
-                      <number>100</number>
-                     </property>
-                     <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>70</number>
-                     </attribute>
-                     <attribute name="horizontalHeaderMinimumSectionSize">
-                      <number>30</number>
-                     </attribute>
-                     <attribute name="horizontalHeaderStretchLastSection">
-                      <bool>true</bool>
-                     </attribute>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <column>
-                      <property name="text">
-                       <string>时间</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>方向</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>消息ID</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>长度</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>周期</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>详细信息</string>
-                      </property>
-                     </column>
-                    </widget>
-                   </item>
-                  </layout>
+                  <property name="icon">
+                   <iconset>
+                    <normaloff>IconFiles/icons8-close-100.png</normaloff>IconFiles/icons8-close-100.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>20</width>
+                    <height>20</height>
+                   </size>
+                  </property>
                  </widget>
                 </item>
                </layout>
               </item>
              </layout>
-            </item>
-           </layout>
+            </widget>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="mainOnlineWidget" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: rgb(220, 220, 220);</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPlainTextEdit" name="txt_aelog"/>
           </item>
          </layout>
         </widget>
@@ -1366,7 +1010,7 @@ border-style: outset;
 font : 14px;}</string>
           </property>
           <property name="text">
-           <string>文件选择</string>
+           <string>通信消息</string>
           </property>
          </widget>
         </item>
@@ -1607,7 +1251,7 @@ font : 14px;}</string>
          <string notr="true"/>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>4</number>
         </property>
         <widget class="QWidget" name="page_ctrl">
          <layout class="QVBoxLayout" name="verticalLayout_24" stretch="20,30,5,0,30,1,50">
@@ -3346,7 +2990,7 @@ background-color: rgb(170, 170, 255);</string>
              <bool>false</bool>
             </property>
             <attribute name="horizontalHeaderVisible">
-             <bool>true</bool>
+             <bool>false</bool>
             </attribute>
             <attribute name="horizontalHeaderCascadingSectionResizes">
              <bool>true</bool>
@@ -3497,7 +3141,7 @@ background-color: rgb(170, 170, 255);</string>
              <bool>false</bool>
             </property>
             <attribute name="horizontalHeaderVisible">
-             <bool>true</bool>
+             <bool>false</bool>
             </attribute>
             <attribute name="horizontalHeaderCascadingSectionResizes">
              <bool>false</bool>
@@ -3575,25 +3219,367 @@ background-color: rgb(170, 170, 255);</string>
         <widget class="QWidget" name="page_files">
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <widget class="QTreeView" name="treeView">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>30</verstretch>
-             </sizepolicy>
+           <widget class="QGroupBox" name="groupBox_3">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
             </property>
-            <attribute name="headerVisible">
-             <bool>false</bool>
-            </attribute>
-            <attribute name="headerCascadingSectionResizes">
-             <bool>true</bool>
-            </attribute>
+            <property name="title">
+             <string>ATO-ATP</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_19">
+             <item>
+              <widget class="QTableWidget" name="tab_atp_ato">
+               <property name="statusTip">
+                <string extracomment="ATP和ATO信息交互记录"/>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::Box</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <property name="midLineWidth">
+                <number>1</number>
+               </property>
+               <property name="gridStyle">
+                <enum>Qt::SolidLine</enum>
+               </property>
+               <property name="sortingEnabled">
+                <bool>true</bool>
+               </property>
+               <property name="rowCount">
+                <number>100</number>
+               </property>
+               <attribute name="horizontalHeaderCascadingSectionResizes">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>70</number>
+               </attribute>
+               <attribute name="horizontalHeaderMinimumSectionSize">
+                <number>30</number>
+               </attribute>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderHighlightSections">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderShowSortIndicator" stdset="0">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderStretchLastSection">
+                <bool>false</bool>
+               </attribute>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <column>
+                <property name="text">
+                 <string>时间</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>周期</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>方向</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>t_atp</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>长度</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>详细信息</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_4">
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
+            <property name="title">
+             <string>ATO-TSRS</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_36">
+             <item>
+              <widget class="QTableWidget" name="tb_tsrs_ato">
+               <property name="statusTip">
+                <string extracomment="TSRS和ATO信息交互记录"/>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::Box</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <property name="rowCount">
+                <number>100</number>
+               </property>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>70</number>
+               </attribute>
+               <attribute name="horizontalHeaderMinimumSectionSize">
+                <number>30</number>
+               </attribute>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <column>
+                <property name="text">
+                 <string>时间</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>周期</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>消息ID</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>ttrain</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>长度</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>详细信息</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="page_ATP">
-         <layout class="QVBoxLayout" name="verticalLayout_14" stretch="4,4,4,1,1,50">
+         <layout class="QVBoxLayout" name="verticalLayout_14" stretch="4,4,1,1,1,50">
           <item>
            <widget class="QGroupBox" name="gp_atp_common">
             <property name="styleSheet">
@@ -3604,13 +3590,13 @@ background-color: rgb(170, 170, 255);</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_8">
              <property name="leftMargin">
-              <number>9</number>
+              <number>0</number>
              </property>
              <property name="topMargin">
               <number>9</number>
              </property>
              <property name="rightMargin">
-              <number>9</number>
+              <number>0</number>
              </property>
              <property name="bottomMargin">
               <number>9</number>
@@ -4375,7 +4361,7 @@ background-color: rgb(170, 170, 255);</string>
               </layout>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_23" stretch="2,3,2,3,2,1,1">
+              <layout class="QHBoxLayout" name="horizontalLayout_23" stretch="2,3,1,3,2,3,3">
                <property name="spacing">
                 <number>2</number>
                </property>
@@ -4420,7 +4406,7 @@ background-color: rgb(170, 170, 255);</string>
                <item>
                 <widget class="QLabel" name="lbl_wheel_size">
                  <property name="text">
-                  <string>ATP速传轮径</string>
+                  <string>ATP轮径</string>
                  </property>
                 </widget>
                </item>
@@ -4453,7 +4439,7 @@ background-color: rgb(170, 170, 255);</string>
               <number>2</number>
              </property>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_18">
+              <layout class="QHBoxLayout" name="horizontalLayout_18" stretch="5,50,0,0">
                <property name="spacing">
                 <number>2</number>
                </property>
@@ -4468,14 +4454,14 @@ background-color: rgb(170, 170, 255);</string>
                 <widget class="QLineEdit" name="led_atp_tb_status"/>
                </item>
                <item>
-                <widget class="QLabel" name="lbl_atp_tb_display">
+                <widget class="QLabel" name="lbl_reserved">
                  <property name="text">
-                  <string>ATP折返显示</string>
+                  <string>预留字段</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="led_atp_tb_display"/>
+                <widget class="QLineEdit" name="led_reserved"/>
                </item>
               </layout>
              </item>
@@ -4575,7 +4561,7 @@ background-color: rgb(170, 170, 255);</string>
               </layout>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,4,2,4,6">
+              <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,4,1,5,5">
                <property name="spacing">
                 <number>2</number>
                </property>
@@ -4618,7 +4604,7 @@ background-color: rgb(170, 170, 255);</string>
            </widget>
           </item>
           <item>
-           <widget class="QTextBrowser" name="txt_atp2ato_msg"/>
+           <widget class="QPlainTextEdit" name="txt_atp2ato_msg"/>
           </item>
          </layout>
         </widget>
@@ -4769,8 +4755,14 @@ background-color: rgb(170, 170, 255);</string>
                <property name="rowCount">
                 <number>100</number>
                </property>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>110</number>
+               </attribute>
                <attribute name="horizontalHeaderMinimumSectionSize">
                 <number>80</number>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>30</number>
                </attribute>
                <attribute name="verticalHeaderMinimumSectionSize">
                 <number>30</number>
@@ -5676,7 +5668,7 @@ background-color: rgb(170, 170, 255);</string>
      <x>0</x>
      <y>0</y>
      <width>1583</width>
-     <height>26</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_2">
