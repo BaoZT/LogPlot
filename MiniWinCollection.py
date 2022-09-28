@@ -309,8 +309,8 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         DisplayMsgield.disNameOfMsgShell(msg, root)
         # 添加数据包
         pktList=[msg.sp0_obj, msg.sp1_obj, msg.sp2_obj, msg.sp3_obj, msg.sp4_obj, msg.sp5_obj,
-        msg.sp6_obj, msg.sp7_obj, msg.sp8_obj, msg.sp9_obj, msg.sp10_obj, msg.sp130_obj, 
-        msg.sp131_obj, msg.sp132_obj, msg.sp133_obj, msg.sp134_obj, msg.sp135_obj]
+        msg.sp6_obj, msg.sp7_obj, msg.sp8_obj, msg.sp9_obj, msg.sp13_obj, msg.sp130_obj, 
+        msg.sp131_obj, msg.sp132_obj, msg.sp133_obj, msg.sp134_obj, msg.sp138_obj]
         for pkt in pktList:
             self.addSubpacket(pkt, self.treeWidget)
         root.setExpanded(True)
@@ -646,7 +646,7 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.sp.ax.plot(self.unifyCycleList, self.tcmsCtrlFbList, label='TCMS反馈MVB命令',color='green', marker='.', markersize=0.5)
         self.ax1 = self.sp.ax.twinx()
         self.ax1.plot(self.log.cycle, self.log.v_ato, color='red', marker='.', markersize=0.5)
-        self.tb_cursor = SnaptoCursor(self.sp, self.sp.ax, self.unifyCycleList, self.atoCtrlCmdList)  # 初始化一个光标
+        self.tb_cursor = SnaptoCursor(self.sp.ax, self.unifyCycleList, self.atoCtrlCmdList)  # 初始化一个光标
         self.tb_cursor.resetCursorPlot()
         self.sp.mpl_connect('motion_notify_event', self.tb_cursor.mouse_move)
         self.tb_cursor.move_signal.connect(self.cursorPlot)
