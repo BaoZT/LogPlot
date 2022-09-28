@@ -7,9 +7,10 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-16 22:46:29
+LastEditTime: 2022-09-28 13:33:59
 '''
 
+import pickle
 import time
 from PyQt5 import QtWidgets,QtGui,QtCore
 from ConfigInfo import ConfigFile
@@ -167,8 +168,8 @@ class BtmInfoDisplay(object):
         '''
         实时显示，每次增加一个单行通过 row_cnt计数
         '''
-        sp2_obj = copy.deepcopy(msg_obj.sp2_obj)
-        sp7_obj = copy.deepcopy(msg_obj.sp7_obj)
+        sp2_obj = pickle.loads(pickle.dumps(msg_obj.sp2_obj))
+        sp7_obj = pickle.loads(pickle.dumps(msg_obj.sp7_obj))
         # 检查应答器信息
         if  sp7_obj and sp7_obj.updateflag:
             # 用于后续实时列表缓存使用
@@ -670,8 +671,7 @@ class AtoKeyInfoDisplay(object):
                 if keyName in InerFieldBGColorDic.keys() and value in InerFieldBGColorDic[keyName].keys():
                     led.setStyleSheet(InerFieldBGColorDic[keyName][value])
                 else:
-                    # 没有颜色定义时重置
-                    led.setStyleSheet("background-color: rgb(170, 170, 255);")
+                    pass
             elif AtoInerDic[keyName].unit:
                 led.setText(str(value)+AtoInerDic[keyName].unit)
             else:
@@ -680,7 +680,8 @@ class AtoKeyInfoDisplay(object):
         else:
             led.setText(str(value))
             led.setStyleSheet("background-color: rgb(170, 170, 255);")
-
+        led.setCursorPosition(0)
+        
     @staticmethod
     def runningPlanTableDisplay(rpInfo=InerRunningPlanInfo ,table=QtWidgets.QTableWidget):
         if rpInfo.rpItem0:
@@ -922,23 +923,26 @@ class AtoKeyInfoDisplay(object):
             pass
     
     @staticmethod
-    def ctrlAtoSpeedDisplay(atoSpeed=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlAtoSpeedDisplay(atoSpeed=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         content = str(atoSpeed)+'cm/s'+' | ' +AtoKeyInfoDisplay.getStrKmh(atoSpeed)+'km/h'
         led.setText(content)
+        led.setCursorPosition(0)
 
     @staticmethod
-    def ctrlAtoPosDisplay(atoPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlAtoPosDisplay(atoPos=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         led.setText(str(atoPos)+'cm')
+        led.setCursorPosition(0)
 
     @staticmethod
-    def ctrlStateMachineDisplay(machine=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlStateMachineDisplay(machine=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         if machine in  StateMachineDic.keys():
             led.setText(str(machine)+' | '+StateMachineDic[machine])
         else:
             led.setText(str(machine))
+        led.setCursorPosition(0)
 
     @staticmethod
-    def ctrlEstimateLevelDisplay(esLvl=int,lvlLimit='list', lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlEstimateLevelDisplay(esLvl=int,lvlLimit='list', lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         if lvlLimit:
             [maxTLvl, maxBLvl] = lvlLimit
         else:
@@ -950,10 +954,11 @@ class AtoKeyInfoDisplay(object):
             content = str(esLvl) +' | '+'制动'+('%.1f%%'%(-esLvl*100/maxBLvl))
         else:
             content = str(esLvl) +' | '+'惰行'+('%.1f%%'%(esLvl))
-        led.setText(content)  
+        led.setText(content)
+        led.setCursorPosition(0) 
 
     @staticmethod
-    def ctrlLevelDisplay(lvl=int, lvlLimit='list', lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlLevelDisplay(lvl=int, lvlLimit='list', lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         if lvlLimit:
             [maxTLvl, maxBLvl] = lvlLimit
         else:
@@ -965,10 +970,11 @@ class AtoKeyInfoDisplay(object):
             content = str(lvl) +' | '+'制动'+('%.1f%%'%(-lvl*100/maxBLvl))
         else:
             content = str(lvl) +' | '+'惰行'+('%.1f%%'%(lvl))
-        led.setText(content)  
+        led.setText(content)
+        led.setCursorPosition(0)  
     
     @staticmethod
-    def ctrlRampDisplay(ramp=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlRampDisplay(ramp=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         if ramp > 0:
             content = str(ramp)+' | '+'上坡'
         elif ramp < 0:
@@ -976,32 +982,44 @@ class AtoKeyInfoDisplay(object):
         else:
             content = str(ramp)+' | '+'平坡'
         led.setText('千分之'+content) 
+        led.setCursorPosition(0)
 
     @staticmethod
-    def ctrlEstimateRampDisplay(esRamp=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlEstimateRampDisplay(esRamp=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         if esRamp > 0:
             content = str(esRamp)+' | '+'上坡'
         elif esRamp < 0:
             content = str(esRamp)+' | '+'下坡'
         else:
             content = str(esRamp)+' | '+'平坡'
-        led.setText('千分之'+content) 
+        led.setText('千分之'+content)
+        led.setCursorPosition(0)
 
     @staticmethod
-    def ctrlTargetPosDisplay(tPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(tPos)+'cm') 
+    def ctrlTargetPosDisplay(tPos=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
+        if tPos == 0xFFFFFFFF:
+            led.setText("无效值")
+        else:
+            led.setText(str(tPos)+'cm')
+        led.setCursorPosition(0) 
     
     @staticmethod
-    def ctrlTargetSpeedDisplay(tspeed=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
+    def ctrlTargetSpeedDisplay(tspeed=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
         content = str(tspeed)+'cm/s'+' | ' +AtoKeyInfoDisplay.getStrKmh(tspeed)+'km/h'
         led.setText(content) 
+        led.setCursorPosition(0)
     
     @staticmethod
-    def ctrlTargetDisDisplay(tPos=int, curPos=int, lbl=QtWidgets.QLineEdit, led=QtWidgets.QLabel):
-        led.setText(str(tPos - curPos)+'cm') 
+    def ctrlTargetDisDisplay(tPos=int, curPos=int, lbl=QtWidgets.QLabel, led=QtWidgets.QLineEdit):
+        if tPos == 0xFFFFFFFF:
+            led.setText("无效值")
+        else:
+            dis = (tPos - curPos)/100
+            led.setText('%.2fm'%dis)
+        led.setCursorPosition(0) 
 
     @staticmethod
-    def ctrlSkipDisplay(skip=int, lbl=QtWidgets.QLineEdit):
+    def ctrlSkipDisplay(skip=int, lbl=QtWidgets.QLabel):
         if skip == 1:
             lbl.setText('前方站通过')
         else:
@@ -1058,6 +1076,7 @@ class ProgressBarDisplay(object):
         percent = self.barMovingCompute()
         if percent:
             self.bar.setValue(self.percent)
+            self.bar.show()
         else:
             pass
     
@@ -1066,6 +1085,8 @@ class ProgressBarDisplay(object):
         本函数应该在循环中调用
         """
         self.tick  = self.tick + 1
+        if self.percentTick == 0:
+            return None
         if (self.tick % self.percentTick) == 0:
             self.percent = self.percent + 1
             return self.percent
