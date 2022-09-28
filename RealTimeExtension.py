@@ -32,7 +32,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
         while self.runningFlag:
             # 有数据就读取
             try:
-                line = self.handle.readline().decode('ansi', errors='ignore').rstrip()  # 串口设置，测试时注释
+                line = self.handle.readline().decode('utf-8', errors='ignore').rstrip()  # 串口设置，测试时注释
             except UnicodeDecodeError as err:
                 print("serial read unicode error! :"+line)
             # 若队列未满，则继续加入:

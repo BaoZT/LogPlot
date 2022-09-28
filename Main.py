@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-23 09:50:10
+LastEditTime: 2022-09-28 13:13:25
 '''
 
 import os
@@ -1349,7 +1349,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if idx in self.log.cycle_dic.keys():
                 cycleObj = self.log.cycle_dic[idx]
                 cNum = cycleObj.cycle_num
-                with open(self.file, 'r',encoding='Shift JIS', errors='ignore', newline='') as f:
+                with open(self.file, 'r',encoding='utf-8', errors='ignore', newline='') as f:
                     f.seek(cycleObj.file_begin_offset, 0)
                     txtLines = ''
                     txtLines = f.read(cycleObj.file_end_offset - cycleObj.file_begin_offset)  
