@@ -78,7 +78,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level','ceilv', 
     'atp_permit_v','statmachine','v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',
     'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic','time_use', 'file_lines_count',
-    'file_path', 'filename']
+    'file_path', 'filename', 'latestTime']
 
     # constructors
     def __init__(self, file_path_in):
@@ -128,6 +128,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 文件名
         self.file_path = file_path_in
         self.filename = file_path_in.split("/")[-1]
+        # 最近时间
+        self.latestTime = ''
 
     def run(self):
         try:
@@ -194,7 +196,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def readkeyword(self, file_path):
         ret = 0            # 函数返回值，切割结果
         self.reset_vars()  # 重置所有变量
-        with open(file_path, 'r', encoding='Shift JIS', errors='ignore', newline='') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
+        with open(file_path, 'r', encoding='utf-8', errors='ignore', newline='') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
             self.file_lines_count = self.bufcount(log)  # 获取文件总行数
             print("Read line num %d"%self.file_lines_count)
             try:
@@ -273,17 +275,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 使用自动迭代器调用方法
         for line in f:
             # 计算行尾字节
-            cur_line_tail_offset = cur_line_tail_offset + len(line.encode('Shift JIS')) # 和读取采用的编码一致,
-            # 调试发现，使用计算的字节，对于换行符'\n'每次虽然读取一个字节，但是f.tell(）获取的文件指针却会跳跃一个字节
-            #  目前未知原因，为了适应该情况，每次读取单行计算后，将文件字节偏移量加+1来保持与tell()一致
-            index = index + 1                                     # 计算当前行号，用于重启行号反馈
-            # 如果有启机过程立即判断
-            if '###' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
-                restart_idx = index
-                restart_flag = 1
+            cur_line_tail_offset = cur_line_head_offset + len(line.encode('utf-8')) # 和读取采用的编码一致
+            # print(line,end='|')
+            # print(cur_line_head_offset, cur_line_tail_offset)       
             # 进度条
             self.barRun()
-            # 搜索周期
+            # 搜索周期与启机过程
             if '---CORE' in line:
                 # 检查周期头
                 s_r = self.cfg.reg_config.pat_cycle_start.findall(line)
@@ -296,6 +293,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
             else:
                 e_r = None
                 s_r = None
+                 # 如果有启机过程立即判断
+                if '###' in line:            # 存在重启记录行号，用于后面判断是否需要手动分割
+                    restart_idx = index
+                    restart_flag = 1
+            index = index + 1 # 计算当前行号，用于重启行号反馈
+
             # 检查是否周期头
             if s_r:
                 # 检查状态机
@@ -303,10 +306,11 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     c = CycleLog()
                     self.cycleCreateProcess()
                     c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
-                    c.ostime_start = int(s_r[0][0])  # 格式0是系统时间
-                    c.cycle_num = int(s_r[0][1])     # 格式1是周期号
+                    c.ostime_start = int(s_r[0][0])    # 格式0是系统时间
+                    c.cycle_num = int(s_r[0][1])       # 格式1是周期号
                     content_search_state = 2           # 开始周期尾继续搜寻内容！
                 else:                                  # 搜索周期尾时搜到周期头，结束上一周期
+                    c.time = self.latestTime if c.time=='' else c.time # 存档时间
                     c.file_end_offset = cur_line_head_offset   # 残尾周期的结束偏移
                     c.ostime_end = 0                   # 0为特殊值，代表未搜索到
                     c.cycle_property = 2               # 设置该周期属性，尾部缺失
@@ -321,12 +325,13 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
                     c.ostime_start = int(s_r[0][0])  # 格式0是系统时间
                     c.cycle_num = int(s_r[0][1])     # 格式1是周期号
-                    content_search_state = 2           # 开始周期尾继续搜寻内容
+                    content_search_state = 2         # 开始周期尾继续搜寻内容
             elif e_r:
                 # 头部残缺情况，直接生成周期
                 if content_search_state == 0 or content_search_state ==1:
                     c = CycleLog()
                     self.cycleCreateProcess()
+                    c.time = self.latestTime if c.time=='' else c.time # 存档时间
                     c.file_begin_offset = last_cycle_end_offset  # 获取上次或初始化的周期结束的文件偏移量
                     c.file_end_offset = cur_line_tail_offset     # 获取尾部文件偏移量
                     c.ostime_start = 0                           # 格式0是系统时间，0为特殊值，未知
@@ -335,6 +340,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     content_search_state = 1                     # 开始下一次周期头搜索工作
                 else:                                            # 搜索周期尾时找到，状态机是2
                     if int(e_r[0][1]) == c.cycle_num:          # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
+                        c.time = self.latestTime if c.time=='' else c.time # 存档时间
                         c.file_end_offset = cur_line_tail_offset           # 获取周期结束偏移量
                         c.ostime_end = int(e_r[0][0])          # 找到完整周期
                         c.cycle_property = 1                     # 完整周期
@@ -349,14 +355,14 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 # 更新最近一次周期尾的偏移量
                 last_cycle_end_offset = cur_line_tail_offset          # 当前周期偏移，下次首部丢失，获取周期内容用
             else:
-                # 只有搜索尾部时解析，搜索头部属于周期间不处理
-                if content_search_state == 2:
-                    ret = 1                                       # 有周期!!!
+                # 初期设计只有搜索尾部时解析,但MVB数据在周期外因此需要持续解析
+                if content_search_state == 2 or content_search_state == 1:
+                    ret = 1                          # 有周期!!!
                     if not self.match_log_packet_content(c, line):
                         # 每一行只能有一种结果，当无数据包，才继续
                         self.match_log_basic_content(c, line)
                 else:
-                    pass                                          # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
+                    pass # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
 
             # 更新下一行读取的记录起点
             cur_line_head_offset = cur_line_tail_offset
@@ -373,6 +379,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         match = self.cfg.reg_config.pat_time.findall(line)
         if match:
             c.time = str(match[0])
+            self.latestTime = c.time #更新最近一次的时间
         else:
             match = self.cfg.reg_config.pat_fsm.findall(line)
             if match:
@@ -460,7 +467,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         last_atp_pmv = -1    # 初始化最近的一次ATP允许速度-1代表未知
         c_num_end = 0
         # 进度条
-        self.bar.setBarStat(85, 10, len(self.cycle_dic.keys()))
+        self.bar.setBarStat(85, 5, len(self.cycle_dic.keys()))
         # 遍历周期
         if len(self.cycle_dic.keys()) != 0:
             try:
@@ -602,7 +609,14 @@ class FileProcess(threading.Thread, QtCore.QObject):
 if __name__ == "__main__":
     x = InerRunningPlanInfo()
     #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
-    path = r"C:\Users\baozh\Desktop\0914102317.log"
+    path = r"F:\04-ATO Debug Data\logplot样本\09021137 7.log"
     fd  = FileProcess(path)
     cProfile.run('fd.readkeyword(path)')
+    x = 0
+    with open(path, 'r', encoding='Shift JIS', errors='ignore', newline='') as f:  # notepad++默认是ANSI编码,简洁且自带关闭
+        f.seek(0,0)
+        for c in fd.cycle_dic.keys():
+            f.seek(fd.cycle_dic[c].file_begin_offset,0)
+            print(f.read(fd.cycle_dic[c].file_end_offset - fd.cycle_dic[c].file_begin_offset + x))
+            x+=2  # 每次读取时少了2个导致累计错误
     print("end read!")
