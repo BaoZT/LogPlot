@@ -289,14 +289,21 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         self.parser = Atp2atoParse()
         self.actionParse.triggered.connect(self.parseAtp2atoProto)
         self.msg = Atp2atoProto()
+        self.splitter.setSizes([10,100])
     
     def parseAtp2atoProto(self):
         inputLine = self.textEdit.toPlainText()
         try:
             streamLine = re.sub('\s+', '', inputLine)
-            self.parser.resetMsg(self.msg)
-            self.msg = self.parser.msgParse(streamLine)
-            self.showParserRst(self.msg)
+            if streamLine:
+                self.parser.resetMsg()
+                self.msg = self.parser.msgParse(streamLine)
+                self.showParserRst(self.msg)
+            else:
+             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                      "提示",
+                                                      "注意:为输入有效字节流数据",
+                                                      QtWidgets.QMessageBox.Yes)               
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                       "错误",
