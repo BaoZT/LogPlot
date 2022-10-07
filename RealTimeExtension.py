@@ -32,7 +32,7 @@ class SerialRead(threading.Thread, QtCore.QObject):
         while self.runningFlag:
             # 有数据就读取
             try:
-                line = self.handle.readline().decode('utf-8', errors='ignore').rstrip()  # 串口设置，测试时注释
+                line = self.handle.readline().decode('gbk', errors='ignore').rstrip()  # 串口设置，测试时注释
             except UnicodeDecodeError as err:
                 print("serial read unicode error! :"+line)
             # 若队列未满，则继续加入:
@@ -104,7 +104,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 创建周期后应重置ATP/ATO解析模块解析结果
         # 文件中可能有多个ATP/ATO消息时需要均解析，直到所有P->以及O->P解析完成后周期结束才能重置
         # 因为不同消息中可能带有差异项的包，需要在一个周期内均保留解析结果，在周期头或周期尾重置
-        Atp2atoParse.resetMsg(self.atp2atoParser.msg_obj)
+        self.atp2atoParser.resetMsg()
         # MVB总是覆盖解析
         self.mvbParser.resetPacket()
         # 每周期重置更新标志
