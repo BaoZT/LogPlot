@@ -33,8 +33,8 @@ from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
 class CycleLog(object):
     __slots__ = ['cycle_start_idx', 'cycle_end_idx', 'ostime_start', 'ostime_end',  'control', 
     'fsm', 'time', 'cycle_num', 'msg_ato2tsrs',"msg_tsrs2ato","msg_atp2ato",'a2t_ctrl','a2t_stat','t2a_stat',
-    'rpInfo','ioInfo','sduInfo','raw_analysis_lines', 'stoppoint', 'file_begin_offset',
-    'file_end_offset',  'cycle_property']
+    'rpInfo','ioInfo','sduInfo', 'stoppoint', 'file_begin_offset','file_end_offset', 
+    'cycle_property','ato2atpRawBytes', 'atp2atoRawBytes', 'ato2tsrsRawBytes', 'tsrs2atoRawBytes']
 
     def __init__(self, ):  # 存储的是读取的内容
         # 周期文本索引号
@@ -56,6 +56,11 @@ class CycleLog(object):
         self.a2t_ctrl = Ato2TcmsCtrl()
         self.a2t_stat = Ato2TcmsState()
         self.t2a_stat = Tcms2AtoState()
+        # 原始数据
+        self.atp2atoRawBytes = None
+        self.ato2atpRawBytes = None
+        self.ato2tsrsRawBytes = None
+        self.tsrs2atoRawBytes = None
         # 内部计划信息
         self.rpInfo = InerRunningPlanInfo()
         # 内部速传信息
@@ -74,6 +79,8 @@ class CycleLog(object):
 class FileProcess(threading.Thread, QtCore.QObject):
     bar_show_signal = QtCore.pyqtSignal(int)
     end_result_signal = QtCore.pyqtSignal(bool)
+    msg_atp_ato_signal = QtCore.pyqtSignal(tuple)
+    msg_tsrs_ato_signal = QtCore.pyqtSignal(tuple)
     __slots__ = ['daemon','atp2atoParser','rpParser', 'mvbParser','sduParser', 'ioParser', 
     'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level','ceilv', 
     'atp_permit_v','statmachine','v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',
@@ -196,7 +203,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     def readkeyword(self, file_path):
         ret = 0            # 函数返回值，切割结果
         self.reset_vars()  # 重置所有变量
-        with open(file_path, 'r', encoding='utf-8', errors='ignore', newline='') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
+        with open(file_path, 'r', encoding='gbk', errors='ignore', newline='') as log:  # notepad++默认是ANSI编码,简洁且自带关闭
             self.file_lines_count = self.bufcount(log)  # 获取文件总行数
             print("Read line num %d"%self.file_lines_count)
             try:
@@ -233,7 +240,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 创建周期后应重置ATP/ATO解析模块解析结果
         # 文件中可能有多个ATP/ATO消息时需要均解析，直到所有P->以及O->P解析完成后周期结束才能重置
         # 因为不同消息中可能带有差异项的包，需要在一个周期内均保留解析结果，在周期头或周期尾重置
-        Atp2atoParse.resetMsg(self.atp2atoParser.msg_obj)
+        self.atp2atoParser.resetMsg()
         # MVB总是覆盖解析
         self.mvbParser.resetPacket()
         # 每周期重置更新标志
@@ -305,12 +312,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 if content_search_state == 0 or content_search_state == 1:  # 未知或搜头状态下搜到周期头
                     c = CycleLog()
                     self.cycleCreateProcess()
+                    c.time = self.latestTime if c.time=='' else c.time # 先存档时间
                     c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
                     c.ostime_start = int(s_r[0][0])    # 格式0是系统时间
                     c.cycle_num = int(s_r[0][1])       # 格式1是周期号
                     content_search_state = 2           # 开始周期尾继续搜寻内容！
                 else:                                  # 搜索周期尾时搜到周期头，结束上一周期
-                    c.time = self.latestTime if c.time=='' else c.time # 存档时间
                     c.file_end_offset = cur_line_head_offset   # 残尾周期的结束偏移
                     c.ostime_end = 0                   # 0为特殊值，代表未搜索到
                     c.cycle_property = 2               # 设置该周期属性，尾部缺失
@@ -322,6 +329,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     # 同时开始新周期的统计
                     c = CycleLog()
                     self.cycleCreateProcess()
+                    c.time = self.latestTime if c.time=='' else c.time # 先存档时间
                     c.file_begin_offset = cur_line_head_offset   # 获取周期头文件偏移量
                     c.ostime_start = int(s_r[0][0])  # 格式0是系统时间
                     c.cycle_num = int(s_r[0][1])     # 格式1是周期号
@@ -331,7 +339,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 if content_search_state == 0 or content_search_state ==1:
                     c = CycleLog()
                     self.cycleCreateProcess()
-                    c.time = self.latestTime if c.time=='' else c.time # 存档时间
+                    c.time = self.latestTime if c.time=='' else c.time # 先存档时间
                     c.file_begin_offset = last_cycle_end_offset  # 获取上次或初始化的周期结束的文件偏移量
                     c.file_end_offset = cur_line_tail_offset     # 获取尾部文件偏移量
                     c.ostime_start = 0                           # 格式0是系统时间，0为特殊值，未知
@@ -340,7 +348,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     content_search_state = 1                     # 开始下一次周期头搜索工作
                 else:                                            # 搜索周期尾时找到，状态机是2
                     if int(e_r[0][1]) == c.cycle_num:          # 找到匹配周期，s_r 和 e_r 每周期都更新可能空，要与记录值比较
-                        c.time = self.latestTime if c.time=='' else c.time # 存档时间
                         c.file_end_offset = cur_line_tail_offset           # 获取周期结束偏移量
                         c.ostime_end = int(e_r[0][0])          # 找到完整周期
                         c.cycle_property = 1                     # 完整周期
@@ -409,21 +416,29 @@ class FileProcess(threading.Thread, QtCore.QObject):
             if match:
                 msg_line = match[0]
                 c.msg_atp2ato = pickle.loads(pickle.dumps(self.atp2atoParser.msgParse(msg_line)))
+                c.atp2atoRawBytes = self.atp2atoParser.rawBytes
+                self.msg_atp_ato_signal.emit((c.msg_atp2ato,c.time, c.cycle_num))
         elif '[O->P]' in line:
             match = self.cfg.reg_config.pat_o2p.findall(line)
             if match:
                 msg_line = match[0]
                 c.msg_atp2ato =  pickle.loads(pickle.dumps(self.atp2atoParser.msgParse(msg_line)))
+                c.ato2atpRawBytes =  self.atp2atoParser.rawBytes
+                self.msg_atp_ato_signal.emit((c.msg_atp2ato,c.time, c.cycle_num))
         elif '[A->T]:' in line:
             match = self.cfg.reg_config.pat_a2t.findall(line)
             if match:
                 msg_line = match[0]
                 c.msg_ato2tsrs = pickle.loads(pickle.dumps(self.ato2tsrsParser.msgParse(msg_line)))
+                c.ato2tsrsRawBytes =  self.ato2tsrsParser.rawBytes
+                self.msg_tsrs_ato_signal.emit(('A->T', c.msg_ato2tsrs,c.time, c.cycle_num))
         elif '[T->A]:' in line:
             match = self.cfg.reg_config.pat_t2a.findall(line)
             if match:
                 msg_line = match[0]
                 c.msg_tsrs2ato = pickle.loads(pickle.dumps(self.tsrs2atoParser.msgParse(msg_line)))
+                c.tsrs2atoRawBytes =  self.tsrs2atoParser.rawBytes
+                self.msg_tsrs_ato_signal.emit(('T->A', c.msg_tsrs2ato,c.time, c.cycle_num))
         elif 'MVB[' in line:
             match = self.cfg.reg_config.pat_mvb.findall(line)
             if match:
@@ -609,14 +624,17 @@ class FileProcess(threading.Thread, QtCore.QObject):
 if __name__ == "__main__":
     x = InerRunningPlanInfo()
     #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
-    path = r"F:\04-ATO Debug Data\logplot样本\09021137 7.log"
+    #path = r"C:\Users\baozh\Desktop\sypc_09300932tbout.log"
+    path = r"F:\04-ATO Debug Data\300T+ATO\08_M_L-Serial-COM8-1126174824-序列4-姚家窝铺-新民北.log"
     fd  = FileProcess(path)
     cProfile.run('fd.readkeyword(path)')
     x = 0
-    with open(path, 'r', encoding='Shift JIS', errors='ignore', newline='') as f:  # notepad++默认是ANSI编码,简洁且自带关闭
+    '''
+    with open(path, 'r', encoding='gbk', errors='ignore', newline='') as f:  # notepad++默认是ANSI编码,简洁且自带关闭
         f.seek(0,0)
         for c in fd.cycle_dic.keys():
             f.seek(fd.cycle_dic[c].file_begin_offset,0)
             print(f.read(fd.cycle_dic[c].file_end_offset - fd.cycle_dic[c].file_begin_offset + x))
-            x+=2  # 每次读取时少了2个导致累计错误
+            #x+=2  # 每次读取时少了2个导致累计错误
+    '''
     print("end read!")
