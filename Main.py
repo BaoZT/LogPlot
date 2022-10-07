@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-28 13:13:25
+LastEditTime: 2022-10-07 20:18:03
 '''
 
 import os
@@ -83,11 +83,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         lr = QtWidgets.QVBoxLayout(self.mainOnlineWidget)
         self.spReal = Figure_Canvas_R(self.mainOnlineWidget)
         lr.addWidget(self.spReal)  # 必须创造布局并且加入才行
-        # 设置BTM表
-        self.tableATPBTM.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.tb_ato_IN.horizontalHeader().setVisible(True)
-        self.tableWidgetPlan.horizontalHeader().setVisible(True)
-        self.tableWidgetTb.horizontalHeader().setVisible(True)
         # MVB解析面板
         self.mvbParserPage = MVBParse()
         # ATP解析面板
@@ -160,12 +155,25 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_statistics.clicked.connect(self.showoffRight_STATISTICS)
         self.btn_balise.clicked.connect(self.showoffRight_BALISE)
         self.btn_io_info.clicked.connect(self.showoffRight_ato_IO)
-
-        # 窗口设置初始化
-        self.showOffLineUI()
-        self.led_save_path.setText(self.cfg.base_config.save_path)
+        # 表格显示
+        self.tableATPBTM.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.tb_ato_IN.horizontalHeader().setVisible(True)
+        self.tableWidgetPlan.horizontalHeader().setVisible(True)
+        self.tableWidgetTb.horizontalHeader().setVisible(True)
+        self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.tab_atp_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.tab_tsrs_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        # 表逻辑
         self.tableATPBTM.itemClicked.connect(self.btmSelectedInfo)
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
+        self.tab_atp_ato.itemClicked.connect(self.msgAtp2atoSelectedInfo)
+        self.tab_atp_ato.itemDoubleClicked.connect(self.msgAtp2atoSelectedParserGo)
+        self.tab_tsrs_ato.itemClicked.connect(self.msgTsrs2atoSelectedInfo)
+        # 树逻辑
+        self.tree_protocol.itemDoubleClicked.connect(self.msgTreeSelectedParserGo)
+        # 窗口设置初始化
+        self.showOffLineUI()
 
     def initUI(self):
         # 初始化
@@ -190,6 +198,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.cyclewin = Cyclewindow()
         self.cfg = ConfigFile()
         self.cfg.readConfigFile()
+        self.led_save_path.setText(self.cfg.base_config.save_path)
         self.show()
 
     # 事件处理函数，打开文件读取并初始化界面
@@ -205,7 +214,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 name = filepath[0].split("/")[-1]
                 self.pathlist = filepath[0].split("/")
                 self.file = path
-                self.statusbar.showMessage(path)
+                self.resetLogPlot()
+                self.statusbar.showMessage(self.file)
         else:
             self.Log('Init file path', __name__, sys._getframe().f_lineno)
             filepath = temp.join(self.pathlist[:-1])  # 纪录上一次的文件路径
@@ -215,11 +225,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 求出本次路径序列
             templist = filepath[0].split("/")
             self.updatePathChanged(templist)
-            self.file = path
-            self.statusbar.showMessage(path)
-        # 当文件路径不为空
-        self.resetLogPlot()
-
+            if path:
+                self.file = path
+                self.resetLogPlot()
+            self.statusbar.showMessage(self.file)
+        
     # 显示实时界面
     def showRealTimeUI(self):
         self.stackedOnlineWidget.setCurrentWidget(self.pageRealTime)
@@ -799,6 +809,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 绑定信号量
         self.log.bar_show_signal.connect(self.progressBar.setValue)
         self.log.end_result_signal.connect(self.LogProcessResult)
+        self.log.msg_atp_ato_signal.connect(self.msgAtp2atoTabShow)
+        self.log.msg_tsrs_ato_signal.connect(self.msgTsrs2atoTabShow)
         # 读取文件
         self.Log('Preprocess file path!', __name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
@@ -1263,8 +1275,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.cid3 = self.sp.mpl_connect('figure_leave_event', self.cursorOutFigEventProcess)
             self.cursorVato.move_signal.connect(self.setCtrlTableAllContentByIndex)  # 连接图表更新的槽函数
             self.cursorVato.sim_move_singal.connect(self.setCtrlTableAllContentByIndex)
-            self.cursorVato.move_signal.connect(self.set_tree_content)  # 连接信号槽函数
-            self.cursorVato.sim_move_singal.connect(self.set_tree_content)  # 连接信号槽函数
+            self.cursorVato.move_signal.connect(self.setProtocolTreeByIndex)  # 连接信号槽函数
+            self.cursorVato.sim_move_singal.connect(self.setProtocolTreeByIndex)  # 连接信号槽函数
             self.cursorVato.move_signal.connect(self.setCtrlBubbleByIndex)
             self.cursorVato.sim_move_singal.connect(self.setCtrlBubbleByIndex)
             self.cursorVato.move_signal.connect(self.setTrainContentByIndex)
@@ -1284,8 +1296,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.sp.mpl_disconnect(self.cid3)
             self.cursorVato.move_signal.disconnect(self.setCtrlTableAllContentByIndex)
             self.cursorVato.sim_move_singal.disconnect(self.setCtrlTableAllContentByIndex)
-            self.cursorVato.move_signal.disconnect(self.set_tree_content)  # 连接信号槽函数
-            self.cursorVato.sim_move_singal.disconnect(self.set_tree_content)  # 连接信号槽函数
+            self.cursorVato.move_signal.disconnect(self.setProtocolTreeByIndex)  # 连接信号槽函数
+            self.cursorVato.sim_move_singal.disconnect(self.setProtocolTreeByIndex)  # 连接信号槽函数
             self.cursorVato.move_signal.disconnect(self.setCtrlBubbleByIndex)
             self.cursorVato.sim_move_singal.disconnect(self.setCtrlBubbleByIndex)
             self.cursorVato.move_signal.disconnect(self.setTrainContentByIndex)
@@ -1349,7 +1361,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if idx in self.log.cycle_dic.keys():
                 cycleObj = self.log.cycle_dic[idx]
                 cNum = cycleObj.cycle_num
-                with open(self.file, 'r',encoding='utf-8', errors='ignore', newline='') as f:
+                with open(self.file, 'r',encoding='gbk', errors='ignore', newline='') as f:
                     f.seek(cycleObj.file_begin_offset, 0)
                     txtLines = ''
                     txtLines = f.read(cycleObj.file_end_offset - cycleObj.file_begin_offset)  
@@ -1459,8 +1471,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tagLatestPosIdx = idx
 
     # 事件处理函数，设置树形结构和内容
-    def set_tree_content(self, idx):
-        pass  # 该周期无数据包
+    def setProtocolTreeByIndex(self, idx):
+        if idx < len(self.log.s):
+            cycle_obj = self.log.cycle_dic[self.log.cycle[idx]]
+            AtoKeyInfoDisplay.disMsgOutlineTree(cycle_obj.msg_ato2tsrs, cycle_obj.msg_tsrs2ato, 
+            cycle_obj.msg_atp2ato, self.tree_protocol)
 
     # 事件处理函数，设置车辆接口MVB信息
     def setTrainContentByIndex(self, idx):
@@ -1510,6 +1525,82 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if sp7_obj:
             BtmInfoDisplay.displayBtmItemSelInfo(sp7_obj, self.led_with_c13, self.led_platform_pos, 
             self.led_platform_door,self.led_track, self.led_stop_d_JD, self.led_btm_id)
+
+    # 事件处理函数，双击解析
+    def msgAtp2atoSelectedParserGo(self, rowItem=QtWidgets.QTableWidgetItem):
+        # 获取周期
+        c_num = int(self.tab_atp_ato.item(rowItem.row(), 1).text())
+        if c_num in self.log.cycle_dic.keys():
+            try:
+                cycle_obj = self.log.cycle_dic[c_num]
+                if 'P->O' == self.tab_atp_ato.item(rowItem.row(), 2).text() and cycle_obj.atp2atoRawBytes:
+                    self.atpParserDlg.textEdit.setText(bytes.hex(cycle_obj.atp2atoRawBytes).upper())
+                elif 'O->P' == self.tab_atp_ato.item(rowItem.row(), 2).text() and cycle_obj.ato2atpRawBytes:
+                    self.atpParserDlg.textEdit.setText(bytes.hex(cycle_obj.ato2atpRawBytes).upper())
+                else:
+                    pass
+                self.atpParserDlg.actionParse.trigger()
+                self.atpParserDlg.show()
+            except Exception as err:
+                self.Log(err, __name__, sys._getframe().f_lineno)
+
+    # 事件处理函数，单击显示
+    def msgAtp2atoSelectedInfo(self, rowItem):
+        # 获取周期
+        c_num = int(self.tab_atp_ato.item(rowItem.row(), 1).text())
+        if c_num in self.log.cycle_dic.keys():
+            try:
+                cycle_obj = self.log.cycle_dic[c_num]
+                if 'P->O' == self.tab_atp_ato.item(rowItem.row(), 2).text() and cycle_obj.atp2atoRawBytes:
+                    self.txt_atpato_protocol.setText(bytes.hex(cycle_obj.atp2atoRawBytes).upper())
+                elif 'O->P' == self.tab_atp_ato.item(rowItem.row(), 2).text() and cycle_obj.ato2atpRawBytes:
+                    self.txt_atpato_protocol.setText(bytes.hex(cycle_obj.ato2atpRawBytes).upper())
+                else:
+                    pass
+            except Exception as err:
+                self.Log(err, __name__, sys._getframe().f_lineno)
+
+    # 事件处理函数，显示ATPATO消息表格
+    def msgAtp2atoTabShow(self, rst='tuple'):
+        msgObj=rst[0]
+        dateTime=rst[1]
+        cycleNum=rst[2]
+        DisplayMsgield.disMsgAtpatoTab(msgObj, dateTime, cycleNum, self.tab_atp_ato)
+
+    # 事件处理函数，单击显示
+    def msgTsrs2atoSelectedInfo(self, rowItem):
+        # 获取周期
+        c_num = int(self.tab_tsrs_ato.item(rowItem.row(), 1).text())
+        if c_num in self.log.cycle_dic.keys():
+            try:
+                cycle_obj = self.log.cycle_dic[c_num]
+                if 'T->A' == self.tab_tsrs_ato.item(rowItem.row(), 2).text() and cycle_obj.tsrs2atoRawBytes:
+                    self.txt_tsrsato_protocol.setText(bytes.hex(cycle_obj.tsrs2atoRawBytes).upper())
+                elif 'A->T' == self.tab_tsrs_ato.item(rowItem.row(), 2).text() and cycle_obj.ato2tsrsRawBytes:
+                    self.txt_tsrsato_protocol.setText(bytes.hex(cycle_obj.ato2tsrsRawBytes).upper())
+                else:
+                    pass
+            except Exception as err:
+                self.Log(err, __name__, sys._getframe().f_lineno)
+
+    # 事件处理函数，显示TSRSATO消息表格
+    def msgTsrs2atoTabShow(self, rst='tuple'):
+        dirStr = rst[0]
+        msgObj=rst[1]
+        dateTime=rst[2]
+        cycleNum=rst[3]
+        if dirStr == 'T->A':
+            DisplayMsgield.disMsgTsrsatoTab(msgObj, dateTime, cycleNum, self.tab_tsrs_ato)
+        elif dirStr == 'A->T':
+            DisplayMsgield.disMsgAtotsrsTab(msgObj, dateTime, cycleNum, self.tab_tsrs_ato)
+        else:
+            pass
+
+    # 事件处理函数,协议树快速跳转
+    def msgTreeSelectedParserGo(self, root=QtWidgets.QTreeWidgetItem):
+        print(root.text(0))
+        if 'Pkt:' in root.text(0):
+            print('cycle:', self.spinBox.value())
 
     # 事件处理函数，显示测速测距信息
     def setSduContentByIndex(self, idx):
@@ -1562,6 +1653,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.sp.mainAxes.clear()
                 self.spAux.mainAxes.clear()
                 self.textEdit.clear()
+                self.tab_atp_ato.clearContents()
+                self.tab_tsrs_ato.clearContents()
+                DisplayMsgield.atpatoMsgCnt = 0
+                DisplayMsgield.tsrsatoMsgCnt = 0
                 self.Log('Init File log', __name__, sys._getframe().f_lineno)
                 # 开始处理
                 self.logProcess()
