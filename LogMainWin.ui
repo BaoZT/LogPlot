@@ -343,7 +343,7 @@ font : 14px;}</string>
                   </property>
                   <property name="icon">
                    <iconset>
-                    <normaloff>IconFiles/icons8-spinner-64.png</normaloff>IconFiles/icons8-spinner-64.png</iconset>
+                    <normaloff>C:/Users/baozh/.designer/backup/IconFiles/icons8-spinner-64.png</normaloff>C:/Users/baozh/.designer/backup/IconFiles/icons8-spinner-64.png</iconset>
                   </property>
                  </widget>
                 </item>
@@ -436,7 +436,7 @@ font : 14px;}</string>
                   </property>
                   <property name="icon">
                    <iconset>
-                    <normaloff>IconFiles/icons8-play-100.png</normaloff>IconFiles/icons8-play-100.png</iconset>
+                    <normaloff>C:/Users/baozh/.designer/backup/IconFiles/icons8-play-100.png</normaloff>C:/Users/baozh/.designer/backup/IconFiles/icons8-play-100.png</iconset>
                   </property>
                   <property name="default">
                    <bool>false</bool>
@@ -486,7 +486,7 @@ font : 14px;}</string>
                   </property>
                   <property name="icon">
                    <iconset>
-                    <normaloff>IconFiles/icons8-close-100.png</normaloff>IconFiles/icons8-close-100.png</iconset>
+                    <normaloff>C:/Users/baozh/.designer/backup/IconFiles/icons8-close-100.png</normaloff>C:/Users/baozh/.designer/backup/IconFiles/icons8-close-100.png</iconset>
                   </property>
                   <property name="iconSize">
                    <size>
@@ -1010,7 +1010,7 @@ border-style: outset;
 font : 14px;}</string>
           </property>
           <property name="text">
-           <string>通信消息</string>
+           <string>ATP/TSRS消息</string>
           </property>
          </widget>
         </item>
@@ -1103,7 +1103,7 @@ border-style: outset;
 font : 14px;}</string>
           </property>
           <property name="text">
-           <string>车辆接口MVB</string>
+           <string>列车接口MVB</string>
           </property>
          </widget>
         </item>
@@ -1171,7 +1171,7 @@ border-style: outset;
 font : 14px;}</string>
           </property>
           <property name="text">
-           <string>计划信息</string>
+           <string>运行/折返计划</string>
           </property>
          </widget>
         </item>
@@ -1251,7 +1251,7 @@ font : 14px;}</string>
          <string notr="true"/>
         </property>
         <property name="currentIndex">
-         <number>4</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="page_ctrl">
          <layout class="QVBoxLayout" name="verticalLayout_24" stretch="20,30,5,0,30,1,50">
@@ -2038,21 +2038,7 @@ border-color: rgb(26, 83, 92);</string>
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="4,3">
-            <item>
-             <widget class="QTextEdit" name="txt_protocol">
-              <property name="styleSheet">
-               <string notr="true">font: 9pt &quot;微软雅黑&quot;;</string>
-              </property>
-              <property name="html">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'SimSun';&quot;&gt;协议数据&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-             </widget>
-            </item>
+           <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="3">
             <item>
              <widget class="QTreeWidget" name="tree_protocol">
               <property name="styleSheet">
@@ -2077,6 +2063,11 @@ font: 9pt &quot;微软雅黑&quot;;</string>
               <column>
                <property name="text">
                 <string>协议类型</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>详细信息</string>
                </property>
               </column>
               <item>
@@ -3002,7 +2993,10 @@ background-color: rgb(170, 170, 255);</string>
              <bool>true</bool>
             </attribute>
             <attribute name="verticalHeaderDefaultSectionSize">
-             <number>30</number>
+             <number>25</number>
+            </attribute>
+            <attribute name="verticalHeaderMinimumSectionSize">
+             <number>20</number>
             </attribute>
             <attribute name="verticalHeaderStretchLastSection">
              <bool>false</bool>
@@ -3156,7 +3150,10 @@ background-color: rgb(170, 170, 255);</string>
              <bool>true</bool>
             </attribute>
             <attribute name="verticalHeaderDefaultSectionSize">
-             <number>30</number>
+             <number>25</number>
+            </attribute>
+            <attribute name="verticalHeaderMinimumSectionSize">
+             <number>20</number>
             </attribute>
             <attribute name="verticalHeaderShowSortIndicator" stdset="0">
              <bool>false</bool>
@@ -3217,7 +3214,19 @@ background-color: rgb(170, 170, 255);</string>
          </layout>
         </widget>
         <widget class="QWidget" name="page_files">
-         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <layout class="QVBoxLayout" name="verticalLayout_3" stretch="30,30">
+          <property name="leftMargin">
+           <number>2</number>
+          </property>
+          <property name="topMargin">
+           <number>11</number>
+          </property>
+          <property name="rightMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
           <item>
            <widget class="QGroupBox" name="groupBox_3">
             <property name="minimumSize">
@@ -3229,7 +3238,36 @@ background-color: rgb(170, 170, 255);</string>
             <property name="title">
              <string>ATO-ATP</string>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_19">
+            <layout class="QVBoxLayout" name="verticalLayout_7" stretch="1,10">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QTextEdit" name="txt_atpato_protocol">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>60</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">background-color: rgb(255, 107, 107);</string>
+               </property>
+               <property name="html">
+                <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'SimSun';&quot;&gt;协议数据&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+              </widget>
+             </item>
              <item>
               <widget class="QTableWidget" name="tab_atp_ato">
                <property name="statusTip">
@@ -3242,7 +3280,16 @@ background-color: rgb(170, 170, 255);</string>
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="midLineWidth">
-                <number>1</number>
+                <number>0</number>
+               </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarAlwaysOn</enum>
+               </property>
+               <property name="editTriggers">
+                <set>QAbstractItemView::NoEditTriggers</set>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectRows</enum>
                </property>
                <property name="gridStyle">
                 <enum>Qt::SolidLine</enum>
@@ -3257,7 +3304,7 @@ background-color: rgb(170, 170, 255);</string>
                 <bool>false</bool>
                </attribute>
                <attribute name="horizontalHeaderDefaultSectionSize">
-                <number>70</number>
+                <number>100</number>
                </attribute>
                <attribute name="horizontalHeaderMinimumSectionSize">
                 <number>30</number>
@@ -3265,8 +3312,17 @@ background-color: rgb(170, 170, 255);</string>
                <attribute name="horizontalHeaderStretchLastSection">
                 <bool>true</bool>
                </attribute>
-               <attribute name="verticalHeaderHighlightSections">
+               <attribute name="verticalHeaderCascadingSectionResizes">
                 <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>25</number>
+               </attribute>
+               <attribute name="verticalHeaderHighlightSections">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderMinimumSectionSize">
+                <number>20</number>
                </attribute>
                <attribute name="verticalHeaderShowSortIndicator" stdset="0">
                 <bool>false</bool>
@@ -3391,12 +3447,17 @@ background-color: rgb(170, 170, 255);</string>
                </column>
                <column>
                 <property name="text">
-                 <string>t_atp</string>
+                 <string>序号</string>
                 </property>
                </column>
                <column>
                 <property name="text">
-                 <string>长度</string>
+                 <string>t_atp(ms)</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>长度(B)</string>
                 </property>
                </column>
                <column>
@@ -3417,9 +3478,38 @@ background-color: rgb(170, 170, 255);</string>
             <property name="title">
              <string>ATO-TSRS</string>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_36">
+            <layout class="QVBoxLayout" name="verticalLayout_36" stretch="1,10">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
-              <widget class="QTableWidget" name="tb_tsrs_ato">
+              <widget class="QTextEdit" name="txt_tsrsato_protocol">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>60</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">background-color: rgb(78, 205, 196);</string>
+               </property>
+               <property name="html">
+                <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;协议数据&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QTableWidget" name="tab_tsrs_ato">
                <property name="statusTip">
                 <string extracomment="TSRS和ATO信息交互记录"/>
                </property>
@@ -3429,17 +3519,44 @@ background-color: rgb(170, 170, 255);</string>
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarAlwaysOn</enum>
+               </property>
+               <property name="editTriggers">
+                <set>QAbstractItemView::NoEditTriggers</set>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectRows</enum>
+               </property>
+               <property name="sortingEnabled">
+                <bool>true</bool>
+               </property>
                <property name="rowCount">
                 <number>100</number>
                </property>
+               <attribute name="horizontalHeaderCascadingSectionResizes">
+                <bool>false</bool>
+               </attribute>
                <attribute name="horizontalHeaderDefaultSectionSize">
-                <number>70</number>
+                <number>100</number>
                </attribute>
                <attribute name="horizontalHeaderMinimumSectionSize">
                 <number>30</number>
                </attribute>
+               <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+                <bool>true</bool>
+               </attribute>
                <attribute name="horizontalHeaderStretchLastSection">
                 <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderCascadingSectionResizes">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>25</number>
+               </attribute>
+               <attribute name="verticalHeaderMinimumSectionSize">
+                <number>20</number>
                </attribute>
                <row/>
                <row/>
@@ -3553,17 +3670,22 @@ background-color: rgb(170, 170, 255);</string>
                </column>
                <column>
                 <property name="text">
+                 <string>方向</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
                  <string>消息ID</string>
                 </property>
                </column>
                <column>
                 <property name="text">
-                 <string>ttrain</string>
+                 <string>ttrain(10ms)</string>
                 </property>
                </column>
                <column>
                 <property name="text">
-                 <string>长度</string>
+                 <string>长度(B)</string>
                 </property>
                </column>
                <column>
@@ -4762,10 +4884,10 @@ background-color: rgb(170, 170, 255);</string>
                 <number>80</number>
                </attribute>
                <attribute name="verticalHeaderDefaultSectionSize">
-                <number>30</number>
+                <number>25</number>
                </attribute>
                <attribute name="verticalHeaderMinimumSectionSize">
-                <number>30</number>
+                <number>20</number>
                </attribute>
                <attribute name="verticalHeaderStretchLastSection">
                 <bool>false</bool>
@@ -5520,10 +5642,10 @@ background-color: rgb(170, 170, 255);</string>
                 <number>30</number>
                </attribute>
                <attribute name="verticalHeaderDefaultSectionSize">
-                <number>30</number>
+                <number>25</number>
                </attribute>
                <attribute name="verticalHeaderMinimumSectionSize">
-                <number>30</number>
+                <number>20</number>
                </attribute>
                <attribute name="verticalHeaderStretchLastSection">
                 <bool>false</bool>
@@ -5599,10 +5721,10 @@ background-color: rgb(170, 170, 255);</string>
                 <number>50</number>
                </attribute>
                <attribute name="verticalHeaderDefaultSectionSize">
-                <number>30</number>
+                <number>25</number>
                </attribute>
                <attribute name="verticalHeaderMinimumSectionSize">
-                <number>30</number>
+                <number>20</number>
                </attribute>
                <attribute name="verticalHeaderStretchLastSection">
                 <bool>false</bool>
@@ -5668,7 +5790,7 @@ background-color: rgb(170, 170, 255);</string>
      <x>0</x>
      <y>0</y>
      <width>1583</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_2">
