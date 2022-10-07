@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-28 13:33:59
+LastEditTime: 2022-10-07 17:54:27
 '''
 
 import pickle
@@ -294,7 +294,6 @@ class BtmInfoDisplay(object):
                     led_stop_d_JD.setText('无效值')
             else:
                 led_with_C13.setText('无')
-                led_with_C13.setStyleSheet("background-color: rgb(100, 100, 100);")
                 led_platform_door.clear()
                 led_platform_pos.clear()
                 led_track.clear()
@@ -625,7 +624,6 @@ class AtoKeyInfoDisplay(object):
             lbl.setText(FieldDic[keyName].name)
             lbl.setStyleSheet("background-color: rgb(170, 170, 255);")
 
-
     @staticmethod
     def labelRouteDisplay(value=int, fieldDic='dict', tcIntroDic='dict' ,lbl=QtWidgets.QLabel):
         keyName = "m_low_frequency"
@@ -739,7 +737,8 @@ class AtoKeyInfoDisplay(object):
             # %Y-%m-%d 
             timeStr = time.strftime("%H:%M:%S", ltime)
         return timeStr
-
+    
+    @staticmethod
     def ioInfoDisplay(cycleNumStr=str, timeContentStr=str,ioObj=InerIoInfo, tableIn=QtWidgets.QTableWidget, tableOut=QtWidgets.QTableWidget):
         # 该函数不可重入非静态方法设置为类方法
         if cycleNumStr and timeContentStr and ioObj:
@@ -769,6 +768,7 @@ class AtoKeyInfoDisplay(object):
                 if ioObj.doorCloseRightOut == 1:
                     AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开右门命令', ioObj.doorCloseRightOut,tableOut)
     
+    @staticmethod
     def addIoInItem(cycleNumStr=str, timeContentStr=str, name=str, value=int, table=QtWidgets.QTableWidget):
        
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 0, AtoKeyInfoDisplay.createCustomTableItem(timeContentStr.split(" ")[1]))
@@ -777,6 +777,7 @@ class AtoKeyInfoDisplay(object):
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 3, AtoKeyInfoDisplay.createCustomTableItem(str(value)))
         AtoKeyInfoDisplay.curTableInRowNum += 1
     
+    @staticmethod
     def addIoOutItem(cycleNumStr=str, timeContentStr=str, name=str, value=int, table=QtWidgets.QTableWidget):
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 0, AtoKeyInfoDisplay.createCustomTableItem(timeContentStr.split(" ")[1]))
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 1, AtoKeyInfoDisplay.createCustomTableItem(cycleNumStr))
@@ -784,11 +785,13 @@ class AtoKeyInfoDisplay(object):
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 3, AtoKeyInfoDisplay.createCustomTableItem(str(value)))
         AtoKeyInfoDisplay.curTableOutRowNum += 1
 
+    @staticmethod
     def createCustomTableItem(content=str):
         item = QtWidgets.QTableWidgetItem(content)
         item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
         return item
 
+    @staticmethod
     def sduVInfoDisplay(value=int, valLed=QtWidgets.QLineEdit, valLcd=QtWidgets.QLCDNumber):
         # 进行测速信息计算时
         v = abs(value)
@@ -797,6 +800,7 @@ class AtoKeyInfoDisplay(object):
         valLcd.display(str(float('%.1f' % ato_v_kilo)))
         return v
     
+    @staticmethod
     def sduVJudgeDisplay(atoV=int, atpV=int, judge=int, errLed=QtWidgets.QLineEdit, resultLbl=QtWidgets.QLabel):
         # 计算测速测距偏差
         delta = atoV - atpV
@@ -812,6 +816,7 @@ class AtoKeyInfoDisplay(object):
             resultLbl.setText("测速基本一致")
             resultLbl.setStyleSheet("background-color: rgb(170, 170, 255);")
     
+    @staticmethod
     def sduAtoDeltaSDisplay(vAtoS=int, vAtpS=int, vAtoSLed=QtWidgets.QLineEdit, vAtpSLed=QtWidgets.QLineEdit):
         # 进行测距增量计算时
         deltaAtoS = vAtoS - AtoKeyInfoDisplay.lastSduAtoDis
@@ -822,7 +827,8 @@ class AtoKeyInfoDisplay(object):
         AtoKeyInfoDisplay.lastSduAtpDis = vAtpS
         vAtpSLed.setText(str(deltaAtpS)+'cm')
         return deltaAtoS - deltaAtpS
-    
+
+    @staticmethod    
     def sduSJudgeDisplay(deltaS=int, judge=int, errLed=QtWidgets.QLineEdit, resultLbl=QtWidgets.QLabel):
         errLed.setText(str(deltaS)+'cm')
         # 判断情况
@@ -836,6 +842,7 @@ class AtoKeyInfoDisplay(object):
             resultLbl.setText("测距基本一致")
             resultLbl.setStyleSheet("background-color: rgb(170, 170, 255);")
 
+    @staticmethod
     def btnSerialDisplay(linked=True, btn=QtWidgets.QPushButton):
         if linked:
             btn.setText('断开')
@@ -1046,7 +1053,10 @@ class AtoKeyInfoDisplay(object):
 
         if a2tMsg and a2tMsg.c48 and a2tMsg.c48.updateflag:
             tbAck = a2tMsg.c48
-            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_tbplan"].meaning[tbAck.m_tbplan])
+            if tbAck.m_tbplan in Tsrs2atoFieldDic["m_tbplan"].meaning.keys():
+                item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_tbplan"].meaning[tbAck.m_tbplan])
+            else:
+                item = QtWidgets.QTableWidgetItem("异常值%d"%tbAck.m_tbplan)
             tbTable.setItem(1, 0, item)
             item = QtWidgets.QTableWidgetItem(str(tbAck.nid_tbdeparttrack))
             tbTable.setItem(1, 1, item)
@@ -1054,9 +1064,41 @@ class AtoKeyInfoDisplay(object):
             tbTable.setItem(1, 2, item)
             item = QtWidgets.QTableWidgetItem(str(tbAck.nid_tbarrivaltrack))
             tbTable.setItem(1, 3, item)
-            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_task"].meaning[tbAck.m_task])
+            if tbAck.m_task in Tsrs2atoFieldDic["m_task"].meaning.keys():
+                item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_task"].meaning[tbAck.m_task])
+            else:
+                item = QtWidgets.QTableWidgetItem("异常值%d"%tbAck.m_task)
             tbTable.setItem(1, 4, item)
             lblTb.setText(Tsrs2atoFieldDic["m_tbstatus"].meaning[tbAck.m_tbstatus])
+
+    @staticmethod
+    def disMsgOutlineTree(a2tMsg=Ato2tsrsProto, t2aMsg=Tsrs2atoProto, atpatoMsg=Atp2atoProto, tree=QtWidgets.QTreeWidget):
+        tree.clear()
+        if a2tMsg.msgHeader.nid_message != 0:
+            rootA2t = QtWidgets.QTreeWidgetItem(tree)
+            rootA2t.setText(0, 'ATO->TSRS')
+            rootA2tSub = QtWidgets.QTreeWidgetItem(rootA2t)
+            rootA2tSub.setText(0, 'Msg:'+str(a2tMsg.msgHeader.nid_message))
+            a2tContentsStr = DisplayMsgield.getA2tMsgPktsDetailsStr(a2tMsg)
+            rootA2tSub.setText(1, a2tContentsStr)
+            rootA2t.setExpanded(True)
+        if t2aMsg.msgHeader.nid_message != 0:
+            rootT2a = QtWidgets.QTreeWidgetItem(tree)
+            rootT2a.setText(0, 'TSRS->ATO')
+            rootT2aSub = QtWidgets.QTreeWidgetItem(rootT2a)
+            rootT2aSub.setText(0, 'Msg:'+str(t2aMsg.msgHeader.nid_message))
+            t2aContentsStr = DisplayMsgield.getT2aMsgPktsDetailsStr(t2aMsg)
+            rootT2aSub.setText(1, t2aContentsStr)
+            rootT2a.setExpanded(True)
+        if atpatoMsg.nid_msg != 0:
+            rootAtpato = QtWidgets.QTreeWidgetItem(tree)
+            rootAtpato.setText(0, 'ATP-ATO')
+            rootAtpatoSub = QtWidgets.QTreeWidgetItem(rootAtpato)
+            rootAtpatoSub.setText(0, 'Pkt:'+str(atpatoMsg.nid_packet))
+            atp2atoContentsStr = DisplayMsgield.getAtpatoMsgPktsDetailsStr(atpatoMsg)
+            rootAtpatoSub.setText(1, atp2atoContentsStr)
+            rootAtpato.setExpanded(True)
+        
 
 class ProgressBarDisplay(object):
     """
