@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-23 10:01:13
+LastEditTime: 2022-10-07 20:41:02
 '''
 
 
@@ -454,10 +454,11 @@ class Atp2atoProto(object):
         self.sp138_obj = SP138()
 
 class Atp2atoParse(object):
-    __slots__ = ["msg_obj","pktParseFnDic","objParseDic"]
+    __slots__ = ["msg_obj", "rawBytes" ,"pktParseFnDic","objParseDic"]
     
     def __init__(self) -> None:
         self.msg_obj = Atp2atoProto()
+        self.rawBytes = bytes()
         self.pktParseFnDic  ={
         0:Atp2atoParse.sp0Parse,
         1:Atp2atoParse.sp1Parse,
@@ -498,25 +499,25 @@ class Atp2atoParse(object):
         138:self.msg_obj.sp138_obj,
         }
 
-    @staticmethod
-    def resetMsg(msg_obj=Atp2atoProto):
-        msg_obj.sp0_obj.updateflag = False
-        msg_obj.sp1_obj.updateflag = False
-        msg_obj.sp2_obj.updateflag = False
-        msg_obj.sp3_obj.updateflag = False
-        msg_obj.sp4_obj.updateflag = False
-        msg_obj.sp5_obj.updateflag = False
-        msg_obj.sp6_obj.updateflag = False
-        msg_obj.sp7_obj.updateflag = False
-        msg_obj.sp8_obj.updateflag = False
-        msg_obj.sp9_obj.updateflag = False
-        msg_obj.sp13_obj.updateflag = False
-        msg_obj.sp130_obj.updateflag = False
-        msg_obj.sp131_obj.updateflag = False
-        msg_obj.sp132_obj.updateflag = False
-        msg_obj.sp133_obj.updateflag = False
-        msg_obj.sp134_obj.updateflag = False
-        msg_obj.sp138_obj.updateflag = False
+    def resetMsg(self):
+        self.msg_obj.nid_msg = 0
+        self.msg_obj.sp0_obj.updateflag = False
+        self.msg_obj.sp1_obj.updateflag = False
+        self.msg_obj.sp2_obj.updateflag = False
+        self.msg_obj.sp3_obj.updateflag = False
+        self.msg_obj.sp4_obj.updateflag = False
+        self.msg_obj.sp5_obj.updateflag = False
+        self.msg_obj.sp6_obj.updateflag = False
+        self.msg_obj.sp7_obj.updateflag = False
+        self.msg_obj.sp8_obj.updateflag = False
+        self.msg_obj.sp9_obj.updateflag = False
+        self.msg_obj.sp13_obj.updateflag = False
+        self.msg_obj.sp130_obj.updateflag = False
+        self.msg_obj.sp131_obj.updateflag = False
+        self.msg_obj.sp132_obj.updateflag = False
+        self.msg_obj.sp133_obj.updateflag = False
+        self.msg_obj.sp134_obj.updateflag = False
+        self.msg_obj.sp138_obj.updateflag = False
 
     # 消息完整解析
     def msgParse(self, line=str):
@@ -525,6 +526,7 @@ class Atp2atoParse(object):
         # 防护性编程外界保证数据仅可能有空格
         line = ''.join(line.split(' '))
         item = None
+        self.rawBytes = bytes()
         # 校验字节数
         if (len(line)%2 == 0) and (len(line)/2>=23):
             try:
@@ -536,6 +538,7 @@ class Atp2atoParse(object):
             pass
         # 尝试解析消息 
         if item:
+            self.rawBytes = item.get_stream_in_bytes()
             self.msg_obj.nid_msg = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             self.msg_obj.l_msg = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             # 以下为lpacket描述范围
@@ -874,7 +877,7 @@ class Atp2atoParse(object):
 
 
 class Ato2tsrsProto(object):
-    __slots__ = ["msgHeader", "t_train_ack", "p0", "p1", "p4", "p11","c44", "c46", "c48", "c50"]
+    __slots__ = ["msgHeader", "t_train_ack", "p0", "p1", "p4", "p11","c44", "c45", "c46", "c48", "c50"]
     def __init__(self) -> None:
         """
         车到地消息M129/M136/M146/M150/M154/M155/M156/M157/M159
@@ -891,6 +894,7 @@ class Ato2tsrsProto(object):
         self.p11 = None
         # M136携带用户数据包
         self.c44 = None
+        self.c45 = None
         self.c46 = None
         self.c48 = None
         self.c50 = None
@@ -918,11 +922,12 @@ class P11(object):
     """
     6.5.4	信息包11:列车数据
     """
-    __slots__ = ["updateflag", "nid_packet","nid_operational","nc_train","l_train","v_maxtrain",
+    __slots__ = ["updateflag", "nid_packet", "l_packet","nid_operational","nc_train","l_train","v_maxtrain",
     "m_loadinggauge","m_axleload","m_airtight","n_iter","n_iter_stm","nid_stm0"]
     def __init__(self) -> None:
         self.updateflag = False
         self.nid_packet = 11
+        self.l_packet   = 122
         self.nid_operational = 0
         self.nc_train   = 0
         self.l_train    = 0
@@ -1032,8 +1037,8 @@ class C50(object):
         self.nid_track = 0
 
 class Tsrs2atoProto(object):
-    __slots__ = ["msgHeader", "t_train_ack", "version", "p3", "p21", "p27","p58", "c2", "c12", "c41",
-    "c42", "c47","c49"]
+    __slots__ = ["msgHeader", "t_train_ack", "version", "p3", "p21", "p27","p58","p72", "c2", "c12", "c41",
+    "c43", "c42", "c47","c49"]
     def __init__(self) -> None:
         self.msgHeader = T2aMsgHeader()
         # M8使用确认的时间戳
@@ -1045,11 +1050,13 @@ class Tsrs2atoProto(object):
         self.p21 = None
         self.p27 = None
         self.p58 = None
+        self.p72 = None
         # M24携带的用户数据包
         self.c2  = None
         self.c12 = None
         self.c41 = None
         self.c42 = None
+        self.c43 = None
         self.c47 = None
         self.c49 = None
 
@@ -1278,13 +1285,14 @@ class C49(object):
 
 
 class Tsrs2atoParse(object):
-    msg_obj = Tsrs2atoProto()
     
     def __init__(self) -> None:
-        pass
+        self.msg_obj = Tsrs2atoProto()
+        self.rawBytes = bytes()
 
     def resetMsg(self):
-        Tsrs2atoParse.msg_obj = Tsrs2atoProto()
+        self.msg_obj = Tsrs2atoProto()
+        self.rawBytes = bytes()
 
     def msgParse(self, line=str):
         # 去除换行回车
@@ -1292,6 +1300,7 @@ class Tsrs2atoParse(object):
         # 防护性编程外界保证数据仅可能有空格
         line = ''.join(line.split(' '))
         item = None
+        self.rawBytes = bytes()
         # 校验字节数至少9字节包含空M24
         if (len(line)%2 == 0) and (len(line)/2>=9):
             try:
@@ -1303,6 +1312,7 @@ class Tsrs2atoParse(object):
             pass
         # 尝试解析消息 
         if item:
+            self.rawBytes = item.get_stream_in_bytes()
             self.msg_obj.msgHeader.nid_message = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             self.msg_obj.msgHeader.l_message = item.fast_get_segment_by_index(item.curBitsIndex, 10)
             # 校验消息
@@ -1324,7 +1334,7 @@ class Tsrs2atoParse(object):
         if nid_msg == 8:
             self.msg_obj.t_train_ack = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         elif nid_msg == 24:
-            Tsrs2atoParse.msg24PktsParse(item, self.msg_obj.msgHeader.l_message)
+            self.msg24PktsParse(item, self.msg_obj.msgHeader.l_message)
         elif nid_msg == 32:
             self.msg_obj.version = item.fast_get_segment_by_index(item.curBitsIndex, 7)
         elif nid_msg == 39:
@@ -1333,20 +1343,24 @@ class Tsrs2atoParse(object):
             pass
 
     # M24子包解析函数
-    @staticmethod
-    def msg24PktsParse(item=BytesStream, l_msg=int):
+    def msg24PktsParse(self, item=BytesStream, l_msg=int):
         # 当剩余bit还够一个包头时
         while item.curBitsIndex < (l_msg*8 - 23):
             nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             if nid_packet == 3:
+                self.msg_obj.p3 = P3()
                 Tsrs2atoParse.packetJump(item)
             elif nid_packet == 21:
+                self.msg_obj.p21 = P21()
                 Tsrs2atoParse.packetJump(item)
             elif nid_packet == 27:
+                self.msg_obj.p27 = P27()
                 Tsrs2atoParse.packetJump(item)            
             elif nid_packet == 58:
+                self.msg_obj.p58 = P58()
                 Tsrs2atoParse.packetJump(item) 
             elif nid_packet == 72:
+                self.msg_obj.p72 = P72()
                 Tsrs2atoParse.packetJump(item) 
             elif nid_packet == 44:
                 objP44Header = P44T2aHeader()
@@ -1356,18 +1370,22 @@ class Tsrs2atoParse(object):
                 if nid_xuser == 2:
                     Tsrs2atoParse.ctcsPacketJump(item)
                 elif nid_xuser == 12:
-                    Tsrs2atoParse.msg_obj.c12 = C12()
-                    Tsrs2atoParse.c12Parse(item, Tsrs2atoParse.msg_obj.c12,objP44Header)
+                    self.msg_obj.c12 = C12()
+                    Tsrs2atoParse.c12Parse(item, self.msg_obj.c12,objP44Header)
                 elif nid_xuser == 41:
+                    self.msg_obj.c41 = C41()
                     Tsrs2atoParse.ctcsPacketJump(item)
                 elif nid_xuser == 42:
+                    self.msg_obj.c42 = C42()
                     Tsrs2atoParse.ctcsPacketJump(item)
                 elif nid_xuser == 43:
+                    self.msg_obj.c43 = C43()
                     Tsrs2atoParse.ctcsPacketJump(item)
                 elif nid_xuser == 47:
-                    Tsrs2atoParse.msg_obj.c47 = C47()
-                    Tsrs2atoParse.c47Parse(item, Tsrs2atoParse.msg_obj.c47 ,objP44Header)
+                    self.msg_obj.c47 = C47()
+                    Tsrs2atoParse.c47Parse(item, self.msg_obj.c47 ,objP44Header)
                 elif nid_xuser == 49:
+                    self.msg_obj.c49 = C49()
                     Tsrs2atoParse.ctcsPacketJump(item)                                               
             else:
                 pass
@@ -1435,13 +1453,14 @@ class Tsrs2atoParse(object):
 
 
 class Ato2tsrsParse(object):
-    msg_obj = Ato2tsrsProto()
-
+    
     def __init__(self) -> None:
-        pass
+        self.msg_obj = Ato2tsrsProto()
+        self.rawBytes = bytes()
 
     def resetMsg(self):
-        Ato2tsrsParse.msg_obj = Ato2tsrsProto()
+        self.msg_obj = Ato2tsrsProto()
+        self.rawBytes = bytes()
 
     def msgParse(self, line=str):
         # 去除换行回车
@@ -1449,6 +1468,7 @@ class Ato2tsrsParse(object):
         # 防护性编程外界保证数据仅可能有空格
         line = ''.join(line.split(' '))
         item = None
+        self.rawBytes = bytes()
         # 校验字节数至少9字节
         if (len(line)%2 == 0) and (len(line)/2>=9):
             try:
@@ -1460,6 +1480,7 @@ class Ato2tsrsParse(object):
             pass
         # 尝试解析消息 
         if item:
+            self.rawBytes = item.get_stream_in_bytes()
             self.msg_obj.msgHeader.nid_message = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             self.msg_obj.msgHeader.l_message = item.fast_get_segment_by_index(item.curBitsIndex, 10)
             # 校验消息
@@ -1478,13 +1499,13 @@ class Ato2tsrsParse(object):
         self.msg_obj.msgHeader.nid_engine = item.fast_get_segment_by_index(item.curBitsIndex, 24)
         # 解析消息内容
         if nid_msg == 129:
-            pass
+            self.msg129PktsParse(item, self.msg_obj.msgHeader.l_message)
         elif nid_msg == 136:
-            Ato2tsrsParse.msg136PktsParse(item, self.msg_obj.msgHeader.l_message)
+            self.msg136PktsParse(item, self.msg_obj.msgHeader.l_message)
         elif nid_msg == 146:
-            pass
+            self.msg_obj.t_train_ack = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         elif nid_msg == 150:
-            pass
+            self.msg150PktsParse(item, self.msg_obj.msgHeader.l_message)
         elif nid_msg == 154:
             pass
         elif nid_msg == 155:
@@ -1492,21 +1513,71 @@ class Ato2tsrsParse(object):
         elif nid_msg == 156:
             pass
         elif nid_msg == 157:
-            pass
+            self.msg157PktsParse(item, self.msg_obj.msgHeader.l_message)
         elif nid_msg == 159:
             pass
 
-    # M136子包解析函数
-    @staticmethod
-    def msg136PktsParse(item=BytesStream, l_msg=int):
+    # M129消息子包解析函数
+    def msg129PktsParse(self, item=BytesStream, l_msg=int):
         # 当剩余bit还够一个包头时
         while item.curBitsIndex < (l_msg*8 - 21):
             nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
             if nid_packet == 0:
-                Ato2tsrsParse.packetJump(item)
+                self.msg_obj.p0 = P0()
+                Atp2atoParse.sp0Parse(item,self.msg_obj.p0)
             elif nid_packet == 1:
-                Ato2tsrsParse.packetJump(item)
+                self.msg_obj.p1 = P1()
+                Atp2atoParse.sp1Parse(item,self.msg_obj.p1)
+            elif nid_packet == 11:
+                self.msg_obj.p11 = P11()
+                Ato2tsrsParse.p11Parse(item, self.msg_obj.p11)
+            else:
+                pass
+
+    # M150消息子包解析函数
+    def msg150PktsParse(self, item=BytesStream, l_msg=int):
+        # 当剩余bit还够一个包头时
+        while item.curBitsIndex < (l_msg*8 - 21):
+            nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            if nid_packet == 0:
+                self.msg_obj.p0 = P0()
+                Atp2atoParse.sp0Parse(item,self.msg_obj.p0)
+            elif nid_packet == 1:
+                self.msg_obj.p1 = P1()
+                Atp2atoParse.sp1Parse(item,self.msg_obj.p1)
+            else:
+                pass
+
+    # M157消息子包解析函数
+    def msg157PktsParse(self, item=BytesStream, l_msg=int):
+        # 当剩余bit还够一个包头时
+        while item.curBitsIndex < (l_msg*8 - 21):
+            nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            if nid_packet == 0:
+                self.msg_obj.p0 = P0()
+                Atp2atoParse.sp0Parse(item,self.msg_obj.p0)
+            elif nid_packet == 1:
+                self.msg_obj.p1 = P1()
+                Atp2atoParse.sp1Parse(item,self.msg_obj.p1)
             elif nid_packet == 4:
+                self.msg_obj.p4 = P4()
+                Atp2atoParse.p4Parse(item,self.msg_obj.p4)
+            else:
+                pass
+
+    # M136消息子包解析函数
+    def msg136PktsParse(self, item=BytesStream, l_msg=int):
+        # 当剩余bit还够一个包头时
+        while item.curBitsIndex < (l_msg*8 - 21):
+            nid_packet = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+            if nid_packet == 0:
+                self.msg_obj.p0 = P0()
+                Atp2atoParse.sp0Parse(item,self.msg_obj.p0)
+            elif nid_packet == 1:
+                self.msg_obj.p1 = P1()
+                Atp2atoParse.sp1Parse(item,self.msg_obj.p1)
+            elif nid_packet == 4:
+                self.msg_obj.p4 = P4()
                 Ato2tsrsParse.packetJump(item)           
             elif nid_packet == 44:
                 objP44Header = P44A2tHeader()
@@ -1514,14 +1585,17 @@ class Ato2tsrsParse(object):
                 nid_xuser = item.get_segment_by_index(item.curBitsIndex, 9)
                 # 根据ID选择子包
                 if nid_xuser == 44:
+                    self.msg_obj.c44 = C44()
                     Ato2tsrsParse.ctcsPacketJump(item)
                 elif nid_xuser == 45:
+                    self.msg_obj.c45 = C45()
                     Ato2tsrsParse.ctcsPacketJump(item)
                 elif nid_xuser == 46:
+                    self.msg_obj.c46 = C46()
                     Ato2tsrsParse.ctcsPacketJump(item)
                 elif nid_xuser == 48:
-                    Ato2tsrsParse.msg_obj.c48 = C48()
-                    Ato2tsrsParse.c48Parse(item, Ato2tsrsParse.msg_obj.c48, objP44Header)
+                    self.msg_obj.c48 = C48()
+                    Ato2tsrsParse.c48Parse(item, self.msg_obj.c48, objP44Header)
                 elif nid_xuser == 50:
                     Ato2tsrsParse.ctcsPacketJump(item)                                               
             else:
@@ -1567,11 +1641,31 @@ class Ato2tsrsParse(object):
         obj.m_tbstatus = item.fast_get_segment_by_index(item.curBitsIndex, 8)
         obj.updateflag = True
 
+    @staticmethod
+    def p11Parse(item, obj=P11):
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.nid_operational = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nc_train = item.fast_get_segment_by_index(item.curBitsIndex, 15)
+        obj.l_train = item.fast_get_segment_by_index(item.curBitsIndex, 12)
+        obj.v_maxtrain = item.fast_get_segment_by_index(item.curBitsIndex, 7)
+        obj.m_loadinggauge = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+        obj.m_axleload = item.fast_get_segment_by_index(item.curBitsIndex, 7)
+        obj.m_airtight = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.n_iter = item.fast_get_segment_by_index(item.curBitsIndex, 5)
+        obj.n_iter_stm = item.fast_get_segment_by_index(item.curBitsIndex, 5)
+        obj.nid_stm0 = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+
+    @staticmethod
+    def p4Parse(item, obj=P4):
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.m_error = item.fast_get_segment_by_index(item.curBitsIndex, 8)
 
 class DisplayMsgield(object):
    
     #类属性
     msg_obj = Atp2atoProto()
+    atpatoMsgCnt = 0
+    tsrsatoMsgCnt = 0
 
     @staticmethod
     def disTsmStat(value, lbl=QtWidgets.QLabel, details=False):
@@ -1617,7 +1711,7 @@ class DisplayMsgield(object):
     def disTbRelatedBtn(cabBtn=int, wsdBtn=int, stBtn=int, dateTime=str, txt=QtWidgets.QPlainTextEdit):
         if cabBtn + wsdBtn + stBtn > 0:
             txt.moveCursor(QtGui.QTextCursor.Start)
-            txt.insertPlainText(dateTime+':SP138|')
+            txt.insertPlainText(dateTime+':  '+'SP138|')
             if cabBtn == 1:
                 txt.insertPlainText(':驾驶台折返按钮按下!\n')
             if wsdBtn == 1:
@@ -1629,7 +1723,7 @@ class DisplayMsgield(object):
     def disTbStatus(cls, obj=SP13, dateTime=str, txt=QtWidgets.QPlainTextEdit):
         if obj.m_tb_status != cls.msg_obj.sp13_obj.m_tb_status:
             txt.moveCursor(QtGui.QTextCursor.Start)
-            txt.insertPlainText(dateTime+':SP13|')
+            txt.insertPlainText(dateTime+':  '+'SP13|')
             if obj.m_tb_status in Atp2atoFieldDic["m_tb_status"].meaning.keys():
                 txt.insertPlainText(':'+Atp2atoFieldDic["m_tb_status"].meaning[obj.m_tb_status]+'\n')
         cls.msg_obj.sp13_obj.m_tb_status  = obj.m_tb_status
@@ -1647,17 +1741,219 @@ class DisplayMsgield(object):
             else:
                 txt.insertPlainText(':未知文本\n')
 
-    @staticmethod
-    def disMsgAtpatoTab(msgObj=Atp2atoProto, dateTime=str, sysTime=int, rawString=str, tab=QtWidgets.QTableWidget):
-        pass
+    @classmethod
+    def disMsgAtpatoTab(cls, msgObj=Atp2atoProto, dateTime=str, cycleNum=int, tab=QtWidgets.QTableWidget):
+        # 是否插入新行
+        row_count = tab.rowCount()    # 返回当前行数(尾部)
+        if row_count == cls.atpatoMsgCnt:
+            tab.insertRow(row_count)  # 尾部插入一行  
+        # 时间
+        item = QtWidgets.QTableWidgetItem(dateTime)
+        tab.setItem(cls.atpatoMsgCnt, 0, item)
+        # 周期
+        item = QtWidgets.QTableWidgetItem(str(cycleNum))
+        tab.setItem(cls.atpatoMsgCnt, 1, item)
+        # 方向
+        if msgObj.nid_packet == 250:
+            dir = 'P->O'
+        elif msgObj.nid_packet == 251:
+            dir = 'O->P'
+        else:
+            dir = '未知方向'
+        item = QtWidgets.QTableWidgetItem(dir)
+        tab.setItem(cls.atpatoMsgCnt, 2, item)
+        # 序号
+        item = QtWidgets.QTableWidgetItem(str(msgObj.n_sequence))
+        tab.setItem(cls.atpatoMsgCnt, 3, item)
+        # ATP时间戳
+        item = QtWidgets.QTableWidgetItem(str(msgObj.t_msg_atp))
+        tab.setItem(cls.atpatoMsgCnt, 4, item)
+        # 长度        
+        item = QtWidgets.QTableWidgetItem(str(msgObj.l_msg))
+        tab.setItem(cls.atpatoMsgCnt, 5, item)
+        # 详细信息-子包信息
+        packAbsStr = DisplayMsgield.getAtpatoMsgPktsDetailsStr(msgObj)
+        item = QtWidgets.QTableWidgetItem(packAbsStr)
+        tab.setItem(cls.atpatoMsgCnt, 6, item)
+        # 设置颜色
+        if msgObj.nid_packet == 250:
+            colDef = QtGui.QColor(195, 238, 255)
+        elif msgObj.nid_packet == 251:
+            colDef = QtGui.QColor(234, 213, 255)
+        else:
+            pass
+        for col in range(7):
+            tmp = tab.item(cls.atpatoMsgCnt, col)
+            if tmp:
+                tmp.setBackground(colDef)
+        cls.atpatoMsgCnt += 1     
+                
+    @classmethod
+    def disMsgTsrsatoTab(cls, msgObj=Tsrs2atoProto, dateTime=str, cycleNum=int, tab=QtWidgets.QTableWidget):
+        # 是否插入新行
+        row_count = tab.rowCount()    # 返回当前行数(尾部)
+        if row_count == cls.tsrsatoMsgCnt:
+            tab.insertRow(row_count)  # 尾部插入一行  
+        # 时间
+        item = QtWidgets.QTableWidgetItem(dateTime)
+        tab.setItem(cls.tsrsatoMsgCnt, 0, item)
+        # 周期
+        item = QtWidgets.QTableWidgetItem(str(cycleNum))
+        tab.setItem(cls.tsrsatoMsgCnt, 1, item)
+        # 方向
+        item = QtWidgets.QTableWidgetItem('T->A')
+        tab.setItem(cls.tsrsatoMsgCnt, 2, item)
+        # 消息
+        item = QtWidgets.QTableWidgetItem('M'+str(msgObj.msgHeader.nid_message))
+        tab.setItem(cls.tsrsatoMsgCnt, 3, item)
+        # 时间戳
+        item = QtWidgets.QTableWidgetItem(str(msgObj.msgHeader.t_train))
+        tab.setItem(cls.tsrsatoMsgCnt, 4, item)
+        # 长度        
+        item = QtWidgets.QTableWidgetItem(str(msgObj.msgHeader.l_message))
+        tab.setItem(cls.tsrsatoMsgCnt, 5, item)
+        # 详细信息
+        packAbsStr = DisplayMsgield.getT2aMsgPktsDetailsStr(msgObj)
+        item = QtWidgets.QTableWidgetItem(packAbsStr)
+        tab.setItem(cls.tsrsatoMsgCnt, 6, item)
+        # 设置颜色
+        colDef = QtGui.QColor(195, 238, 255)
+        for col in range(7):
+            tmp = tab.item(cls.tsrsatoMsgCnt, col)
+            if tmp:
+                tmp.setBackground(colDef)
+        cls.tsrsatoMsgCnt += 1    
+
+    @classmethod
+    def disMsgAtotsrsTab(cls, msgObj=Ato2tsrsProto, dateTime=str, cycleNum=int, tab=QtWidgets.QTableWidget):
+        # 是否插入新行
+        row_count = tab.rowCount()    # 返回当前行数(尾部)
+        if row_count == cls.tsrsatoMsgCnt:
+            tab.insertRow(row_count)  # 尾部插入一行  
+        # 时间
+        item = QtWidgets.QTableWidgetItem(dateTime)
+        tab.setItem(cls.tsrsatoMsgCnt, 0, item)
+        # 周期
+        item = QtWidgets.QTableWidgetItem(str(cycleNum))
+        tab.setItem(cls.tsrsatoMsgCnt, 1, item)
+        # 方向
+        item = QtWidgets.QTableWidgetItem('A->T')
+        tab.setItem(cls.tsrsatoMsgCnt, 2, item)
+        # 消息
+        item = QtWidgets.QTableWidgetItem('M'+str(msgObj.msgHeader.nid_message))
+        tab.setItem(cls.tsrsatoMsgCnt, 3, item)
+        # 时间戳
+        item = QtWidgets.QTableWidgetItem(str(msgObj.msgHeader.t_train))
+        tab.setItem(cls.tsrsatoMsgCnt, 4, item)
+        # 长度        
+        item = QtWidgets.QTableWidgetItem(str(msgObj.msgHeader.l_message))
+        tab.setItem(cls.tsrsatoMsgCnt, 5, item)
+        # 详细信息
+        packAbsStr = DisplayMsgield.getA2tMsgPktsDetailsStr(msgObj)
+        item = QtWidgets.QTableWidgetItem(packAbsStr)
+        tab.setItem(cls.tsrsatoMsgCnt, 6, item)
+        # 设置颜色
+        colDef = QtGui.QColor(234, 213, 255)
+        for col in range(7):
+            tmp = tab.item(cls.tsrsatoMsgCnt, col)
+            if tmp:
+                tmp.setBackground(colDef)
+        cls.tsrsatoMsgCnt += 1    
 
     @staticmethod
-    def disMsgTsrsatoTab(msgObj=Tsrs2atoProto, dateTime=str, sysTime=int, rawString=str, tab=QtWidgets.QTableWidget):
-        pass
+    def getAtpatoMsgPktsDetailsStr(msgObj=Atp2atoProto)->str:
+        packAbsStr = ''
+        if msgObj.nid_packet == 250:
+            if msgObj.sp0_obj.updateflag:
+                packAbsStr += 'SP0|'
+            if msgObj.sp1_obj.updateflag:
+                packAbsStr += 'SP1|'
+            if msgObj.sp2_obj.updateflag:
+                packAbsStr += 'SP2|'
+            if msgObj.sp3_obj.updateflag:
+                packAbsStr += 'SP3|'
+            if msgObj.sp4_obj.updateflag:
+                packAbsStr += 'SP4|'
+            if msgObj.sp5_obj.updateflag:
+                packAbsStr += 'SP5|'
+            if msgObj.sp6_obj.updateflag:
+                packAbsStr += 'SP6|'
+            if msgObj.sp7_obj.updateflag:
+                packAbsStr += 'SP7|'
+            if msgObj.sp8_obj.updateflag:
+                packAbsStr += 'SP8|'
+            if msgObj.sp9_obj.updateflag:
+                packAbsStr += 'SP9|'
+            if msgObj.sp13_obj.updateflag:
+                packAbsStr += 'SP13|'
+        if msgObj.nid_packet == 251:
+            if msgObj.sp130_obj.updateflag:
+                packAbsStr += 'SP130|'
+            if msgObj.sp131_obj.updateflag:
+                packAbsStr += 'SP131|'
+            if msgObj.sp132_obj.updateflag:
+                packAbsStr += 'SP132|'
+            if msgObj.sp133_obj.updateflag:
+                packAbsStr += 'SP133|'
+            if msgObj.sp134_obj.updateflag:
+                packAbsStr += 'SP134|'
+            if msgObj.sp138_obj.updateflag:
+                packAbsStr += 'SP138|'
+        return packAbsStr
 
     @staticmethod
-    def disMsgTsrsatoTab(msgObj=Ato2tsrsProto, dateTime=str, sysTime=int, rawString=str, tab=QtWidgets.QTableWidget):
-        pass
+    def getA2tMsgPktsDetailsStr(a2tMsg=Ato2tsrsProto)->str:
+        packAbsStr = ''
+        if a2tMsg.p0:
+            packAbsStr += 'P0|'
+        if a2tMsg.p1:
+            packAbsStr += 'P1|'
+        if a2tMsg.p4:
+            packAbsStr += 'P4|'
+        if a2tMsg.p11:
+            packAbsStr += 'P11|'
+        if a2tMsg.c44:
+            packAbsStr += 'C44|'
+        if a2tMsg.c45:
+            packAbsStr += 'C45|'
+        if a2tMsg.c46:
+            packAbsStr += 'C46|'
+        if a2tMsg.c48:
+            packAbsStr += 'C48|'
+        if a2tMsg.t_train_ack:
+            packAbsStr += ('ack ttrain %d|'%a2tMsg.t_train_ack)
+        return packAbsStr
+
+    @staticmethod
+    def getT2aMsgPktsDetailsStr(t2aMsg=Tsrs2atoProto)->str:
+        packAbsStr = ''
+        if t2aMsg.p3:
+            packAbsStr += 'P3|'
+        if t2aMsg.p21:
+            packAbsStr += 'P27|' 
+        if t2aMsg.p58:
+            packAbsStr += 'P58|'  
+        if t2aMsg.p72:
+            packAbsStr += 'P72|' 
+        if t2aMsg.c2:
+            packAbsStr += 'C2|' 
+        if t2aMsg.c12:
+            packAbsStr += 'C12|'
+        if t2aMsg.c41:
+            packAbsStr += 'C41|'
+        if t2aMsg.c42:
+            packAbsStr += 'C42|'
+        if t2aMsg.c43:
+            packAbsStr += 'C43|'
+        if t2aMsg.c47:
+            packAbsStr += 'C47|'                                                                               
+        if t2aMsg.c49:
+            packAbsStr += 'C49|'
+        if t2aMsg.t_train_ack:
+            packAbsStr += ('ack ttrain:%d|'%t2aMsg.t_train_ack)
+        if t2aMsg.version:
+            packAbsStr += ('ver:0x%x|'%t2aMsg.version)
+        return packAbsStr
 
     @staticmethod
     def disNameOfLineEdit(keyName=str, value=int, led=QtWidgets.QLineEdit):
