@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-07 20:18:03
+LastEditTime: 2022-10-18 21:58:08
 '''
 
 import os
@@ -22,7 +22,7 @@ from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationTo
 import FileProcess
 from KeyWordPlot import CurveFigureCanvas, SnaptoCursor, Figure_Canvas_R
 from LogMainWin import Ui_MainWindow
-from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, ATPParserDlg, UTCTransferDlg, RealTimePlotDlg, CtrlMeasureDlg, \
+from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, ATPParserDlg, TSRSParseDlg, UTCTransferDlg, RealTimePlotDlg, CtrlMeasureDlg, \
     Cyclewindow, TrainComMeasureDlg, C3ATOTransferDlg
 from TcmsParse import MVBParse,Ato2TcmsCtrl,Ato2TcmsState,Tcms2AtoState,DisplayMVBField,MVBFieldDic
 from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atoFieldDic, DisplayMsgield, TrainCircuitDic
@@ -91,6 +91,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.mvbParserDlg = MVBParserDlg()
         # ATP-ATO协议解析器
         self.atpParserDlg = ATPParserDlg()
+        # TSRS-ATO协议解析器
+        self.tsrsParserDlg = TSRSParseDlg()
         # UTC转换器
         self.utctransfer = UTCTransferDlg()
         # C3ATO转义工具
@@ -133,6 +135,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.btn_PortLink.clicked.connect(self.btnLinkorBreak)
         self.actionMVBParser.triggered.connect(self.mvbParserDlg.show)
         self.actionATPParser.triggered.connect(self.atpParserDlg.show)
+        self.actionTSRSParser.triggered.connect(self.tsrsParserDlg.show)
         self.actionUTC.triggered.connect(self.utctransfer.show)
         self.actionC3ATOTrans.triggered.connect(self.C3ATORecordTransfer.show)
         self.action_bubble_dock.triggered.connect(self.setCtrlBubbleFormat)
@@ -162,16 +165,20 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableWidgetTb.horizontalHeader().setVisible(True)
         self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.tab_atp_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
         self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.tab_tsrs_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
         # 表逻辑
         self.tableATPBTM.itemClicked.connect(self.btmSelectedInfo)
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
         self.tab_atp_ato.itemClicked.connect(self.msgAtp2atoSelectedInfo)
         self.tab_atp_ato.itemDoubleClicked.connect(self.msgAtp2atoSelectedParserGo)
         self.tab_tsrs_ato.itemClicked.connect(self.msgTsrs2atoSelectedInfo)
+        self.tab_tsrs_ato.itemDoubleClicked.connect(self.msgTsrsatoSelectedParserGo)
         # 树逻辑
-        self.tree_protocol.itemDoubleClicked.connect(self.msgTreeSelectedParserGo)
+        self.tree_protocol.itemDoubleClicked.connect(self.msgAtpatoTreeSelectedParserGo)
+        self.tree_protocol.itemDoubleClicked.connect(self.msgTsrsatoTreeSelectedParserGo)
         # 窗口设置初始化
         self.showOffLineUI()
 
@@ -236,7 +243,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.stackedMainWidget.setCurrentWidget(self.pageOnline)
         self.stackedWidget_RightCol.setCurrentWidget(self.page_ctrl)
         self.fileOpen.setDisabled(True)  # 设置文件读取不可用
-        self.btn_filetab.setDisabled(True)
         # 初始化绘图
         self.CBvato.setChecked(True)
         self.CBstate.setChecked(True)
@@ -425,6 +431,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.thPaintWrite.ioShowSignal.disconnect(self.realtimeIoInfoShow)  # io信息更新
             self.thPaintWrite.sduShowSignal.disconnect(self.sduInfoShow) # sdu 信息更新
             self.reatimeDefaultShowLabel()
+            time.sleep(0.5)
             self.serialHandle.close()        
 
     # 界面实时绘图函数
@@ -470,6 +477,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             AtoKeyInfoDisplay.ctrlStopErrorDisplay(ato_error, atp_error, self.tb_ctrl_stoppoint)
         else:
             pass
+        # 显示表格
+        self.msgAtp2atoTabShow((atp2ato_msg, dateTime, int(cycleNum)))
+        if t2aMsg.msgHeader.nid_message != 0:
+            self.msgTsrsatoTabShow(('T->A', t2aMsg, dateTime, int(cycleNum)))
+        if a2tMsg.msgHeader.nid_message != 0:
+            self.msgTsrsatoTabShow(('A->T', a2tMsg, dateTime, int(cycleNum)))
+        del result
 
     # 显示时间统计信息
     def atoCyleTimeStatistics(self,time_statictics):
@@ -810,7 +824,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.log.bar_show_signal.connect(self.progressBar.setValue)
         self.log.end_result_signal.connect(self.LogProcessResult)
         self.log.msg_atp_ato_signal.connect(self.msgAtp2atoTabShow)
-        self.log.msg_tsrs_ato_signal.connect(self.msgTsrs2atoTabShow)
+        self.log.msg_tsrs_ato_signal.connect(self.msgTsrsatoTabShow)
         # 读取文件
         self.Log('Preprocess file path!', __name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
@@ -1583,8 +1597,30 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as err:
                 self.Log(err, __name__, sys._getframe().f_lineno)
 
+    # 事件处理函数，双击解析
+    def msgTsrsatoSelectedParserGo(self, rowItem=QtWidgets.QTableWidgetItem):
+         # 获取周期
+        c_num = int(self.tab_tsrs_ato.item(rowItem.row(), 1).text())
+        if c_num in self.log.cycle_dic.keys():
+            try:
+                cycle_obj = self.log.cycle_dic[c_num]
+                if 'T->A' == self.tab_tsrs_ato.item(rowItem.row(), 2).text() and cycle_obj.tsrs2atoRawBytes:
+                    self.tsrsParserDlg.textEdit.setText(bytes.hex(cycle_obj.tsrs2atoRawBytes).upper())
+                    self.tsrsParserDlg.setBytesDir('T->A')
+                elif 'A->T' == self.tab_tsrs_ato.item(rowItem.row(), 2).text() and cycle_obj.ato2tsrsRawBytes:
+                    self.tsrsParserDlg.textEdit.setText(bytes.hex(cycle_obj.ato2tsrsRawBytes).upper())
+                    self.tsrsParserDlg.setBytesDir('A->T')
+                else:
+                    self.tsrsParserDlg.setBytesDir(None)
+                self.tsrsParserDlg.actionParse.trigger()
+                self.tsrsParserDlg.show()
+            except Exception as err:
+                self.Log(err, __name__, sys._getframe().f_lineno)       
+        else:
+            print('msgTsrsatoSelectedParserGo unknown cycle id:%d'%c_num)
+            
     # 事件处理函数，显示TSRSATO消息表格
-    def msgTsrs2atoTabShow(self, rst='tuple'):
+    def msgTsrsatoTabShow(self, rst='tuple'):
         dirStr = rst[0]
         msgObj=rst[1]
         dateTime=rst[2]
@@ -1596,11 +1632,69 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             pass
 
-    # 事件处理函数,协议树快速跳转
-    def msgTreeSelectedParserGo(self, root=QtWidgets.QTreeWidgetItem):
-        print(root.text(0))
-        if 'Pkt:' in root.text(0):
-            print('cycle:', self.spinBox.value())
+    # 事件处理函数,ATP-ATO协议树快速跳转
+    def msgAtpatoTreeSelectedParserGo(self, root=QtWidgets.QTreeWidgetItem):
+        dirFlag = None
+        if 'Pkt:250' in root.text(0):
+            dirFlag = 'P->O'
+        elif 'Pkt:251' in root.text(0):
+            dirFlag = 'O->P'
+        else:
+            pass
+        # 处理文本
+        if dirFlag:
+            c_num = self.spinBox.value()
+            if c_num in self.log.cycle_dic.keys():
+                try:
+                    cycle_obj = self.log.cycle_dic[c_num]
+                    if 'P->O' == dirFlag and cycle_obj.atp2atoRawBytes:
+                        self.atpParserDlg.textEdit.setText(bytes.hex(cycle_obj.atp2atoRawBytes).upper())
+                    elif 'O->P' == dirFlag and cycle_obj.ato2atpRawBytes:
+                        self.atpParserDlg.textEdit.setText(bytes.hex(cycle_obj.ato2atpRawBytes).upper())
+                    else:
+                        pass
+                    self.atpParserDlg.actionParse.trigger()
+                    self.atpParserDlg.show()
+                except Exception as err:
+                    self.Log(err, __name__, sys._getframe().f_lineno)
+            else:
+                print('msgAtpatoTreeSelectedParserGo unknown cycle id:%d'%c_num)
+        else:
+            pass
+
+    # 事件处理函数,TSRS-ATO协议树快速跳转
+    def msgTsrsatoTreeSelectedParserGo(self, root=QtWidgets.QTreeWidgetItem):
+        dirFlag = None
+        rootParent = root.parent()
+        if rootParent:
+            if 'TSRS->ATO' in rootParent.text(0):
+                dirFlag = 'T->A'
+            elif 'ATO->TSRS' in rootParent.text(0):
+                dirFlag = 'A->T'
+            else:
+                pass
+        # 处理文本
+        if dirFlag:
+            c_num = self.spinBox.value()
+            if c_num in self.log.cycle_dic.keys():
+                try:
+                    cycle_obj = self.log.cycle_dic[c_num]
+                    if 'T->A' == dirFlag and cycle_obj.tsrs2atoRawBytes:
+                        self.tsrsParserDlg.textEdit.setText(bytes.hex(cycle_obj.tsrs2atoRawBytes).upper())
+                        self.tsrsParserDlg.setBytesDir('T->A')
+                    elif 'A->T' == dirFlag and cycle_obj.ato2tsrsRawBytes:
+                        self.tsrsParserDlg.textEdit.setText(bytes.hex(cycle_obj.ato2tsrsRawBytes).upper())
+                        self.tsrsParserDlg.setBytesDir('A->T')
+                    else:
+                        self.tsrsParserDlg.setBytesDir(None)
+                    self.tsrsParserDlg.actionParse.trigger()
+                    self.tsrsParserDlg.show()
+                except Exception as err:
+                    self.Log(err, __name__, sys._getframe().f_lineno)
+            else:
+                pass
+        else:
+            pass
 
     # 事件处理函数，显示测速测距信息
     def setSduContentByIndex(self, idx):
