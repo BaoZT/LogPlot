@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-07 17:54:27
+LastEditTime: 2022-10-13 14:12:00
 '''
 
 import pickle
@@ -175,12 +175,13 @@ class BtmInfoDisplay(object):
             # 用于后续实时列表缓存使用
             BtmInfoDisplay.btmItemRealList.append(sp7_obj)
             # 扩展表格更新行数
-            #table.setColumnCount(len(BtmInfoDisplay.btmHeaders))
             if len(BtmInfoDisplay.btmItemRealList) > 0:
                 rowIdx = len(BtmInfoDisplay.btmItemRealList) - 1
             else:
                 rowIdx = 0
-            #table.setRowCount(row_cnt)
+            # 每次超出后扩展10个
+            if rowIdx > table.rowCount():
+                table.insertRow(10)
             if time:
                 d_t = time.split(" ")[1]  # 取时间
             else:
@@ -267,13 +268,7 @@ class BtmInfoDisplay(object):
         '''
         # 存在应答器包
         if obj and obj.updateflag:
-            # 计算应答器编号解析
-            majorRegion = (obj.nid_bg & 0xFE0000)>>17
-            subRegion   = (obj.nid_bg & 0x01C000)>>14
-            station     = (obj.nid_bg & 0x003F00)>>8
-            balise      = (obj.nid_bg & 0x0000FF)
-            strBalise     = ("(%d-%d-%d-%d)"%(majorRegion,subRegion,station,balise))
-            strBaliseInfo = ("大区编号%d-"%majorRegion)+("分区编号%d-"%subRegion)+("车车站编号%d-"%station)+("应答器编号%d"%balise)
+            strBalise,strBaliseInfo = DisplayMsgield.transBaliseToDetail(obj.nid_bg)
             led_btm_id.setText(strBalise + 5*' ' + strBaliseInfo) 
             # JD正常刷颜色
             if obj.nid_xuser == 13:
@@ -1091,13 +1086,24 @@ class AtoKeyInfoDisplay(object):
             rootT2aSub.setText(1, t2aContentsStr)
             rootT2a.setExpanded(True)
         if atpatoMsg.nid_msg != 0:
-            rootAtpato = QtWidgets.QTreeWidgetItem(tree)
-            rootAtpato.setText(0, 'ATP-ATO')
-            rootAtpatoSub = QtWidgets.QTreeWidgetItem(rootAtpato)
-            rootAtpatoSub.setText(0, 'Pkt:'+str(atpatoMsg.nid_packet))
-            atp2atoContentsStr = DisplayMsgield.getAtpatoMsgPktsDetailsStr(atpatoMsg)
-            rootAtpatoSub.setText(1, atp2atoContentsStr)
-            rootAtpato.setExpanded(True)
+            atpatoContentsStr = DisplayMsgield.getAtp2atoMsgPktsDetailsStr(atpatoMsg)
+            if atpatoContentsStr:
+                rootp2o = QtWidgets.QTreeWidgetItem(tree)
+                rootp2o.setText(0, 'ATP->ATO')
+                rootp2oSub = QtWidgets.QTreeWidgetItem(rootp2o)
+                rootp2oSub.setText(0, 'Pkt:250')
+                rootp2oSub.setText(1, atpatoContentsStr)
+                rootp2o.setExpanded(True)
+            atpatoContentsStr = DisplayMsgield.getAto2atpMsgPktsDetailsStr(atpatoMsg)
+            if atpatoContentsStr:
+                rooto2p = QtWidgets.QTreeWidgetItem(tree)
+                rooto2p.setText(0, 'ATO->ATP')
+                rooto2pSub = QtWidgets.QTreeWidgetItem(rooto2p)
+                rooto2pSub.setText(0, 'Pkt:251')
+                rooto2pSub.setText(1, atpatoContentsStr)
+                rooto2p.setExpanded(True)
+            
+
         
 
 class ProgressBarDisplay(object):
