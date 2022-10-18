@@ -5,7 +5,7 @@ File:
 Date: 2022-08-20 10:37:01
 Desc: 
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-17 15:30:25
+LastEditTime: 2022-09-28 13:54:57
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -19,7 +19,7 @@ class VersionInfo(object):
         self.major  = 4  # 主版本-软件进行了大量重写,这些重写使得无法实现向后兼容性。
         self.junior = 0  # 子版本-新功能新版本照顾到了兼容性
         self.build  = 0  # 编译版本-区分平台
-        self.revision = 220917  # 修补版本-内部程序集可以互换
+        self.revision = 220928  # 修补版本-内部程序集可以互换
         self.name = 'LogPlot'
         self.note = 'alpha'
     

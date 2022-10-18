@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-07 20:41:02
+LastEditTime: 2022-10-16 15:03:21
 '''
 
 
@@ -143,13 +143,77 @@ Atp2atoFieldDic={
 }
 
 Tsrs2atoFieldDic={
-        'm_tbplan':ProtoField("折返计划",0,b_endian,2,None,{0:"计划无效", 1:"无人折返", 2:"自动换端"}),
+        'nid_packet':ProtoField("包号",0,b_endian,8,None,None),
+        'nid_xuser':ProtoField("子包号",0,b_endian,9,None,None),
+        'l_packet':ProtoField("信息包位数",0,b_endian,13,None,None),
+        'q_scale':ProtoField("距离/长度的分辨率 ",0,b_endian,2,None,{0:"10cm",1:"1m",2:"10m"}),
+        'nid_lrbg':ProtoField("最近相关应答器组（LRBG）的标识号",24,b_endian,8,None,None),
+        'd_lrbg':ProtoField("最后相关应答器组与列车估计前端(在激活的驾驶室侧)之间的距离",0,b_endian,8,None,None),
+        'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,None),
+        'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,None),
+        'l_doubtover':ProtoField("过读误差",0,b_endian,15,None,None),
+        'l_doubtunder':ProtoField("欠读误差",0,b_endian,15,None,None),
+        'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,None),
+        'l_traint':ProtoField("安全车长",0,b_endian,15,None,None),
+        'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,None,None),
+        'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,None),
+        'm_mode_c2':ProtoField("ATP模式C2等级",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
+        'm_mode_c3':ProtoField("ATP模式C3等级",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
+        'm_level':ProtoField("ATP等级",0,b_endian,3,None,{1:"CTCS-2",3:"CTCS-3",4:"CTCS-4"}),
+        'm_position':ProtoField("公里标",0xFFFFFFFF,b_endian,32,"m",None),
+        'm_doormode':ProtoField("门控模式",0,b_endian,2,None,{1:"MM",2:"AM",3:"AA"}),
+        'm_ato_mode':ProtoField("ATO工作模式",0,b_endian,2,None,{0:"非AM模式",1:"AM模式"}),
+        'm_doorstatus':ProtoField("车门状态",0,b_endian,2,None,{0:"异常",1:"车门开",2:"车门关"}),
+        'm_ato_control_strategy':ProtoField("ATO 当前在用控车策略",0,b_endian,4,None,{1:"默认策略",2:"快行策略",3:"慢行策略",4:"计划控车"}),
+        'm_traintype':ProtoField("列车编组",0,b_endian,8,None,{1:"8节编组列车",2:"16节编组列车",3:"17节编组列车",4:"4节编组列车"}),
+        'm_atoerror':ProtoField("ATO错误代码",0,b_endian,8,None,None),
+        'nid_stm':ProtoField("本国系统等级",0,b_endian,8,None,None),
+        'nid_bg':ProtoField("应答器组ID",0,b_endian,24,None,None),
+        'nid_driver':ProtoField("司机号",0,b_endian,32,None,None),
+        'nid_engine':ProtoField("车载设备CTCS标识",0,b_endian,24,None,None),
+        'nid_operational':ProtoField("车次号",0,b_endian,32,None,None),
+        'nid_radio_h':ProtoField("无线用户地址高32",0,b_endian,32,None,None),
+        'nid_radio_l':ProtoField("无线用户地址地32",0,b_endian,32,None,None),
+        'nid_text':ProtoField("文本编号",0,b_endian,8,None,{0:"备用",1:"站台门联动失败",2:"动车组不允许控车",3:"停车不办客",4:"ATO起车异常",255:"纯文本"}),
+        'nid_tsrs':ProtoField("TSRS编号",0,b_endian,14,None,None),
+        'nid_c':ProtoField("地区编号",0,b_endian,10,None,None),
+        'nid_track':ProtoField("列车当前所在股道编号,来自C13",0,b_endian,10,None,None),
+        'nid_tbdeparttrack':ProtoField("自动换端的股道编号/无人折返发车的股道编号,来自C13",0,b_endian,24,None,None),
+        'nid_tbarrivaltrack':ProtoField("自动换端的股道编号/无人折返终到的股道编号,来自C13",0,b_endian,24,None,None),
+        'q_sleepsession':ProtoField("睡眠设备的通信管理",0,b_endian,1,None,{0:"忽略",1:"考虑"}),
+        'q_stopstatus':ProtoField("停稳停准状态",0,b_endian,4,None,{0:"未停稳",1:"停稳未停准",2:"停稳停准"}),
+        'q_tb':ProtoField("立折标志",0,b_endian,2,None,{0:"无折返",1:"原地折返"}),
+        'q_dir':ProtoField("验证方向",0,b_endian,2,None,{0:"反向有效",1:"正向有效",2:"双向有效"}),
+        'q_tsrs':ProtoField("与TSRS的通信命令",0,b_endian,1,None,{0:"断开通信会话",1:"建立通信会话"}),
+        'm_tbplan':ProtoField("折返计划",0,b_endian,2,None,{1:"计划无效", 2:"无人折返", 3:"自动换端"}),
         'm_task':ProtoField("是否办客",0,b_endian,8,None,{1:"办客", 2:"不办客"}),
         'm_tbstatus':ProtoField("当前换端折返状态",0,b_endian,8,None,{0x00:"非自动折返状态",0x01:"原地自动折返状态",
         0x03:"站后自动折返准备状态",0x04:"站后自动折返状态", 0x07:"站后自动折返成功", 0x08:"原地自动折返成功",
         0x09:"站后自动折返失败", 0x0A:"原地自动折返失败", 0x0B:"站后自动换端成功", 0x0C:"站后自动换端失败",
         0x0D:"原地自动折返准备状态"})
 }
+
+TrainToGroundMsgDic={
+    129:'经过确认的列车数据',
+    136:'列车位置报告',
+    146:'确认',
+    150:'任务结束',
+    154:'版本不兼容',
+    155:'通信会话开始',
+    156:'通信会话结束',
+    157:'SoM位置报告',
+    159:'通信会话已建立'
+}
+
+GroundToTrainMsgDic={
+    8:'列车数据确认',
+    24:'通常消息',
+    32:'系统版本',
+    39:'通信会话结束确认',
+    41:'接受列车'
+
+}
+
 
 TrainCircuitDic={"L码":"前方有3个及以上闭塞分区空闲",
 "LU码":"注意运行,距离目标距离2个闭塞分区",
@@ -169,12 +233,12 @@ TrainCircuitDic={"L码":"前方有3个及以上闭塞分区空闲",
 }
 
 class P0(object):
-    __slots__ = ["updateflag","nid_sub_packet","l_packet","q_scale","nid_lrbg","d_lrbg",
+    __slots__ = ["updateflag","nid_packet","l_packet","q_scale","nid_lrbg","d_lrbg",
     "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
     "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3","m_level","nid_stm"]
     def __init__(self) -> None:
         self.updateflag    = False
-        self.nid_sub_packet= 0
+        self.nid_packet    = 0
         self.l_packet      = 0
         self.q_scale       = 0
         self.nid_lrbg      = 0
@@ -193,13 +257,13 @@ class P0(object):
         self.nid_stm       = 0
 
 class P1(object):
-    __slots__ = ["updateflag","nid_sub_packet","l_packet","q_scale","nid_lrbg","nid_prvbg","d_lrbg",
+    __slots__ = ["updateflag","nid_packet","l_packet","q_scale","nid_lrbg","nid_prvbg","d_lrbg",
     "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
     "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3",
     "m_level","nid_stm"]
     def __init__(self) -> None:
         self.updateflag    = False
-        self.nid_sub_packet= 1
+        self.nid_packet    = 1
         self.l_packet      = 0
         self.q_scale       = 0
         self.nid_lrbg      = 0
@@ -990,7 +1054,8 @@ class C46(object):
     6.5.8	信息包CTCS-46:车载状态
     """
     __slots__ = ["updateflag","p44_header","nid_xuser", "l_packet", "nid_engine","nid_operational",
-    "nid_driver", "m_level", "m_mode", "q_stopstatus", "m_ato_mode", "m_ato_control_strategy"]
+    "nid_driver", "m_level", "m_mode_c2", "m_mode_c3", "q_stopstatus", "m_ato_mode", "m_ato_control_strategy",
+    "m_traintype", "nid_track", "m_doormode", "m_doorstatus", "m_atoerror", "m_position"]
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44A2tHeader()
@@ -1000,10 +1065,16 @@ class C46(object):
         self.nid_operational = 0
         self.nid_driver= 0
         self.m_level   = 0
-        self.m_mode    = 0
+        self.m_mode_c2 = 0
+        self.m_mode_c3 = 0
         self.q_stopstatus = 0
         self.m_ato_mode= 0
-        self.m_ato_control_strategy = 0
+        self.m_traintype = 0
+        self.nid_track = 0
+        self.m_doormode = 0
+        self.m_doorstatus = 0
+        self.m_atoerror = 0
+        self.m_position = 0
 
 class C48(object):
     """
@@ -1182,6 +1253,9 @@ class P44T2aHeader(object):
         self.l_packet   = 0
 
 class C2(object):
+    __slots__ = ["updateflag", "p44_header", "nid_xuser", "q_dir", "l_packet", "q_scale",
+    "l_tsrarea", "d_tsr", "l_tsr", "q_front", "v_tsr", "n_iter", "d_tsr_list", "l_tsr_list",
+    "q_front_list", "v_tsr_list"]
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
@@ -1217,6 +1291,9 @@ class C12(object):
         self.q_sleepsession = 0
 
 class C41(object):
+    __slots__=["updateflag", "p44_header", "nid_xuser", "q_dir", "l_packet", "m_waysidetime", "nid_departtrack",
+    "m_departtime", "nid_arrivaltrack", "m_arrivaltime","m_task", "m_skip", "n_iter", "nid_departtrack_2",
+    "m_departtime_2", "nid_arrivaltrack_2", "m_arrivaltime_2","m_task_2", "m_skip_2"]
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
@@ -1239,6 +1316,7 @@ class C41(object):
         self.m_skip_2     = 0
 
 class C42(object):
+    __slots__=["updateflag", "p44_header", "nid_xuser", "q_dir", "l_packet", "q_scale", "l_stationdistance"]
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
@@ -1249,6 +1327,8 @@ class C42(object):
         self.l_stationdistance = 0
 
 class C43(object):
+    __slots__=["updateflag", "p44_header", "nid_xuser", "q_dir", "l_packet", "m_sequencenum", "m_lpsdstatus",
+    "m_rpsdstatus"]
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
@@ -1368,19 +1448,19 @@ class Tsrs2atoParse(object):
                 nid_xuser = item.get_segment_by_index(item.curBitsIndex, 9)
                 # 根据ID选择子包
                 if nid_xuser == 2:
-                    Tsrs2atoParse.ctcsPacketJump(item)
+                    Tsrs2atoParse.c2Parse(item, self.msg_obj.c2,objP44Header)
                 elif nid_xuser == 12:
                     self.msg_obj.c12 = C12()
                     Tsrs2atoParse.c12Parse(item, self.msg_obj.c12,objP44Header)
                 elif nid_xuser == 41:
                     self.msg_obj.c41 = C41()
-                    Tsrs2atoParse.ctcsPacketJump(item)
+                    Tsrs2atoParse.c41Parse(item, self.msg_obj.c41,objP44Header)
                 elif nid_xuser == 42:
                     self.msg_obj.c42 = C42()
-                    Tsrs2atoParse.ctcsPacketJump(item)
+                    Tsrs2atoParse.c42Parse(item, self.msg_obj.c42,objP44Header)
                 elif nid_xuser == 43:
                     self.msg_obj.c43 = C43()
-                    Tsrs2atoParse.ctcsPacketJump(item)
+                    Tsrs2atoParse.c43Parse(item, self.msg_obj.c43,objP44Header)
                 elif nid_xuser == 47:
                     self.msg_obj.c47 = C47()
                     Tsrs2atoParse.c47Parse(item, self.msg_obj.c47 ,objP44Header)
@@ -1451,6 +1531,79 @@ class Tsrs2atoParse(object):
         obj.q_sleepsession = item.fast_get_segment_by_index(item.curBitsIndex, 1)
         obj.updateflag = True
 
+    @staticmethod
+    def c41Parse(item, obj=C41, p44Header=P44T2aHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        obj.p44_header.q_dir    = p44Header.q_dir
+        # 子包 9bit nid_xuser已经解析
+        obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.m_waysidetime = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_departtrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_departtime = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_arrivaltrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_arrivaltime = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.m_task = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_skip = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.n_iter = item.fast_get_segment_by_index(item.curBitsIndex, 5)
+        obj.nid_departtrack_2 = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_departtime_2 = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_arrivaltrack_2 = item.fast_get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_arrivaltime_2 = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.m_task_2 = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_skip_2 = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.updateflag = True
+
+
+    @staticmethod
+    def c42Parse(item, obj=C42, p44Header=P44T2aHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        obj.p44_header.q_dir    = p44Header.q_dir
+        # 子包 9bit nid_xuser已经解析
+        obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.q_scale = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_stationdistance = item.fast_get_segment_by_index(item.curBitsIndex, 15)
+        obj.updateflag = True
+
+    @staticmethod
+    def c43Parse(item, obj=C43, p44Header=P44T2aHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        obj.p44_header.q_dir    = p44Header.q_dir
+        # 子包 9bit nid_xuser已经解析
+        obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.m_sequencenum = item.fast_get_segment_by_index(item.curBitsIndex, 16)
+        obj.m_lpsdstatus = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_rpsdstatus = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.updateflag = True
+
+    @staticmethod
+    def c12Parse(item, obj=C12, p44Header=P44T2aHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        obj.p44_header.q_dir    = p44Header.q_dir
+        # 子包 9bit nid_xuser已经解析
+        obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.q_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.nid_c = item.fast_get_segment_by_index(item.curBitsIndex, 10)
+        obj.nid_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 14)
+        obj.nid_radio_h = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_radio_l = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.q_sleepsession = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.updateflag = True
 
 class Ato2tsrsParse(object):
     
@@ -1589,10 +1742,10 @@ class Ato2tsrsParse(object):
                     Ato2tsrsParse.ctcsPacketJump(item)
                 elif nid_xuser == 45:
                     self.msg_obj.c45 = C45()
-                    Ato2tsrsParse.ctcsPacketJump(item)
+                    Ato2tsrsParse.c45Parse(item, self.msg_obj.c45, objP44Header)
                 elif nid_xuser == 46:
                     self.msg_obj.c46 = C46()
-                    Ato2tsrsParse.ctcsPacketJump(item)
+                    Ato2tsrsParse.c46Parse(item, self.msg_obj.c46, objP44Header)
                 elif nid_xuser == 48:
                     self.msg_obj.c48 = C48()
                     Ato2tsrsParse.c48Parse(item, self.msg_obj.c48, objP44Header)
@@ -1639,6 +1792,47 @@ class Ato2tsrsParse(object):
         obj.nid_tbarrivaltrack = item.fast_get_segment_by_index(item.curBitsIndex, 24)
         obj.m_task = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.m_tbstatus = item.fast_get_segment_by_index(item.curBitsIndex, 8)
+        obj.updateflag = True
+
+    @staticmethod
+    def c46Parse(item, obj=C46, p44Header=P44A2tHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        # 子包 9bit nid_xuser已经解析
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.nid_engine = item.get_segment_by_index(item.curBitsIndex, 24)
+        obj.nid_operational = item.get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_driver = item.get_segment_by_index(item.curBitsIndex, 32)
+        obj.m_level = item.get_segment_by_index(item.curBitsIndex, 3)
+        obj.m_mode_c2 = item.get_segment_by_index(item.curBitsIndex, 4)
+        obj.m_mode_c3 = obj.m_mode_c2
+        obj.q_stopstatus = item.get_segment_by_index(item.curBitsIndex, 4)
+        obj.m_ato_mode = item.get_segment_by_index(item.curBitsIndex, 4)
+        obj.m_ato_control_strategy = item.get_segment_by_index(item.curBitsIndex, 4)
+        obj.m_traintype = item.get_segment_by_index(item.curBitsIndex, 8)
+        obj.nid_track = item.get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_doormode = item.get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_doorstatus = item.get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_atoerror = item.get_segment_by_index(item.curBitsIndex, 16)
+        obj.m_position = item.get_segment_by_index(item.curBitsIndex, 32)
+        obj.updateflag = True
+
+    @staticmethod
+    def c45Parse(item, obj=C45, p44Header=P44A2tHeader):
+        """
+        except nid_xuser 9bit
+        """
+        obj.p44_header.l_packet = p44Header.l_packet
+        # 子包 9bit nid_xuser已经解析
+        obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
+        obj.nid_depaturetrack = item.get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_departtime = item.get_segment_by_index(item.curBitsIndex, 32)
+        obj.nid_arrivaltrack = item.get_segment_by_index(item.curBitsIndex, 24)
+        obj.m_arrivaltime = item.get_segment_by_index(item.curBitsIndex, 32)
+        obj.m_task = item.get_segment_by_index(item.curBitsIndex, 2)
+        obj.m_skip = item.get_segment_by_index(item.curBitsIndex, 2)
         obj.updateflag = True
 
     @staticmethod
@@ -1741,6 +1935,17 @@ class DisplayMsgield(object):
             else:
                 txt.insertPlainText(':未知文本\n')
 
+    @staticmethod
+    def transBaliseToDetail(baliseID=int)->str:
+        # 计算应答器编号解析
+        majorRegion = (baliseID & 0xFE0000)>>17
+        subRegion   = (baliseID & 0x01C000)>>14
+        station     = (baliseID & 0x003F00)>>8
+        balise      = (baliseID & 0x0000FF)
+        strBalise     = ("(%d-%d-%d-%d)"%(majorRegion,subRegion,station,balise))
+        strBaliseInfo = ("大区编号%d-"%majorRegion)+("分区编号%d-"%subRegion)+("车车站编号%d-"%station)+("应答器编号%d"%balise) 
+        return strBalise, strBaliseInfo      
+
     @classmethod
     def disMsgAtpatoTab(cls, msgObj=Atp2atoProto, dateTime=str, cycleNum=int, tab=QtWidgets.QTableWidget):
         # 是否插入新行
@@ -1756,10 +1961,13 @@ class DisplayMsgield(object):
         # 方向
         if msgObj.nid_packet == 250:
             dir = 'P->O'
+            packAbsStr = DisplayMsgield.getAtp2atoMsgPktsDetailsStr(msgObj)
         elif msgObj.nid_packet == 251:
             dir = 'O->P'
+            packAbsStr = DisplayMsgield.getAto2atpMsgPktsDetailsStr(msgObj)
         else:
             dir = '未知方向'
+            packAbsStr = ''
         item = QtWidgets.QTableWidgetItem(dir)
         tab.setItem(cls.atpatoMsgCnt, 2, item)
         # 序号
@@ -1772,7 +1980,6 @@ class DisplayMsgield(object):
         item = QtWidgets.QTableWidgetItem(str(msgObj.l_msg))
         tab.setItem(cls.atpatoMsgCnt, 5, item)
         # 详细信息-子包信息
-        packAbsStr = DisplayMsgield.getAtpatoMsgPktsDetailsStr(msgObj)
         item = QtWidgets.QTableWidgetItem(packAbsStr)
         tab.setItem(cls.atpatoMsgCnt, 6, item)
         # 设置颜色
@@ -1781,7 +1988,7 @@ class DisplayMsgield(object):
         elif msgObj.nid_packet == 251:
             colDef = QtGui.QColor(234, 213, 255)
         else:
-            pass
+            colDef = QtGui.QColor(255, 0, 0)
         for col in range(7):
             tmp = tab.item(cls.atpatoMsgCnt, col)
             if tmp:
@@ -1861,44 +2068,47 @@ class DisplayMsgield(object):
         cls.tsrsatoMsgCnt += 1    
 
     @staticmethod
-    def getAtpatoMsgPktsDetailsStr(msgObj=Atp2atoProto)->str:
+    def getAtp2atoMsgPktsDetailsStr(msgObj=Atp2atoProto)->str:
         packAbsStr = ''
-        if msgObj.nid_packet == 250:
-            if msgObj.sp0_obj.updateflag:
-                packAbsStr += 'SP0|'
-            if msgObj.sp1_obj.updateflag:
-                packAbsStr += 'SP1|'
-            if msgObj.sp2_obj.updateflag:
-                packAbsStr += 'SP2|'
-            if msgObj.sp3_obj.updateflag:
-                packAbsStr += 'SP3|'
-            if msgObj.sp4_obj.updateflag:
-                packAbsStr += 'SP4|'
-            if msgObj.sp5_obj.updateflag:
-                packAbsStr += 'SP5|'
-            if msgObj.sp6_obj.updateflag:
-                packAbsStr += 'SP6|'
-            if msgObj.sp7_obj.updateflag:
-                packAbsStr += 'SP7|'
-            if msgObj.sp8_obj.updateflag:
-                packAbsStr += 'SP8|'
-            if msgObj.sp9_obj.updateflag:
-                packAbsStr += 'SP9|'
-            if msgObj.sp13_obj.updateflag:
-                packAbsStr += 'SP13|'
-        if msgObj.nid_packet == 251:
-            if msgObj.sp130_obj.updateflag:
-                packAbsStr += 'SP130|'
-            if msgObj.sp131_obj.updateflag:
-                packAbsStr += 'SP131|'
-            if msgObj.sp132_obj.updateflag:
-                packAbsStr += 'SP132|'
-            if msgObj.sp133_obj.updateflag:
-                packAbsStr += 'SP133|'
-            if msgObj.sp134_obj.updateflag:
-                packAbsStr += 'SP134|'
-            if msgObj.sp138_obj.updateflag:
-                packAbsStr += 'SP138|'
+        if msgObj.sp0_obj.updateflag:
+            packAbsStr += 'SP0|'
+        if msgObj.sp1_obj.updateflag:
+            packAbsStr += 'SP1|'
+        if msgObj.sp2_obj.updateflag:
+            packAbsStr += 'SP2|'
+        if msgObj.sp3_obj.updateflag:
+            packAbsStr += 'SP3|'
+        if msgObj.sp4_obj.updateflag:
+            packAbsStr += 'SP4|'
+        if msgObj.sp5_obj.updateflag:
+            packAbsStr += 'SP5|'
+        if msgObj.sp6_obj.updateflag:
+            packAbsStr += 'SP6|'
+        if msgObj.sp7_obj.updateflag:
+            packAbsStr += 'SP7|'
+        if msgObj.sp8_obj.updateflag:
+            packAbsStr += 'SP8|'
+        if msgObj.sp9_obj.updateflag:
+            packAbsStr += 'SP9|'
+        if msgObj.sp13_obj.updateflag:
+            packAbsStr += 'SP13|'
+        return packAbsStr
+
+    @staticmethod
+    def getAto2atpMsgPktsDetailsStr(msgObj=Atp2atoProto)->str:
+        packAbsStr = ''
+        if msgObj.sp130_obj.updateflag:
+            packAbsStr += 'SP130|'
+        if msgObj.sp131_obj.updateflag:
+            packAbsStr += 'SP131|'
+        if msgObj.sp132_obj.updateflag:
+            packAbsStr += 'SP132|'
+        if msgObj.sp133_obj.updateflag:
+            packAbsStr += 'SP133|'
+        if msgObj.sp134_obj.updateflag:
+            packAbsStr += 'SP134|'
+        if msgObj.sp138_obj.updateflag:
+            packAbsStr += 'SP138|'
         return packAbsStr
 
     @staticmethod
@@ -2046,17 +2256,19 @@ class DisplayMsgield(object):
                         twi.setText(4,intro+str(value)+'('+fieldDic[keyName].unit+')')
             elif keyName == 'updateflag':
                 pass
+            elif keyName == 'p44_header':
+                pass
             else:
                 print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
         root.setExpanded(True)
 
     @staticmethod
-    def disNameOfMsgShell(msg=Atp2atoProto, root=QtWidgets.QTreeWidgetItem):
+    def disAtpatoMsgShell(msg=Atp2atoProto, root=QtWidgets.QTreeWidgetItem):
         if msg and root:
             # 消息头
             if msg.nid_packet == 250:
                 root.setText(0, "ATP->ATO通信消息")
-            else:
+            elif msg.nid_packet == 251:
                 root.setText(0, "ATO->ATP通信消息")
             msgTree = QtWidgets.QTreeWidgetItem(root)
             msgTree.setText(1,"msg_id")
@@ -2099,3 +2311,149 @@ class DisplayMsgield(object):
             msgTree.setText(2, '32bits')
             msgTree.setText(3, hex(msg.crc_code))
             msgTree.setText(4, "消息CRC码:循环冗余校验码")
+
+    @staticmethod
+    def disTsrs2atoMsgShell(msg=Tsrs2atoProto, root=QtWidgets.QTreeWidgetItem):
+        if msg and root:
+            root.setText(0, "TSRS->ATO通信消息")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1, 'NID_MESSAGE')
+            msgTree.setText(2, '8bits')
+            msgTree.setText(3, str(msg.msgHeader.nid_message))
+            if msg.msgHeader.nid_message in GroundToTrainMsgDic.keys():
+                msgTree.setText(4, "消息标识:"+GroundToTrainMsgDic[msg.msgHeader.nid_message])
+            for i in range(1,msgTree.columnCount()+1):
+                 msgTree.setBackground(i, QtGui.QBrush(QtGui.QColor(255, 255, 204)))
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"L_MESSAGE")
+            msgTree.setText(2, '10bits')
+            msgTree.setText(3, str(msg.msgHeader.l_message))
+            msgTree.setText(4, "消息长度:全部长度,单位字节")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"T_TRAIN")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.msgHeader.t_train))
+            msgTree.setText(4, "车载时间戳,单位10ms, TSRS以车载时间的安全估计作为自身时间戳基准")
+            
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"M_ACK")
+            msgTree.setText(2, '1bit')
+            msgTree.setText(3, str(msg.msgHeader.m_ack))
+            msgTree.setText(4, "请求确认限定词,0:无需确认,1:车载确认")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"NID_LRBG")
+            msgTree.setText(2, '24bits')
+            strBalise,strBaliseInfo = DisplayMsgield.transBaliseToDetail(msg.msgHeader.nid_lrbg)
+            msgTree.setText(3, strBalise)
+            msgTree.setText(4, '最近相关应答器组:'+strBaliseInfo)
+
+    @staticmethod
+    def disAto2tsrsMsgShell(msg=Ato2tsrsProto, root=QtWidgets.QTreeWidgetItem):
+        if msg and root:
+            root.setText(0, "ATO->TSRS通信消息")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1, 'NID_MESSAGE')
+            msgTree.setText(2, '8bits')
+            msgTree.setText(3, str(msg.msgHeader.nid_message))
+            if msg.msgHeader.nid_message in TrainToGroundMsgDic.keys():
+                msgTree.setText(4, "消息标识:"+TrainToGroundMsgDic[msg.msgHeader.nid_message])
+            for i in range(1,msgTree.columnCount()+1):
+                 msgTree.setBackground(i, QtGui.QBrush(QtGui.QColor(255, 255, 204)))
+                            
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"L_MESSAGE")
+            msgTree.setText(2, '10bits')
+            msgTree.setText(3, str(msg.msgHeader.l_message))
+            msgTree.setText(4, "消息长度:全部长度,单位字节")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"T_TRAIN")
+            msgTree.setText(2, '32bits')
+            msgTree.setText(3, str(msg.msgHeader.t_train))
+            msgTree.setText(4, "车载时间戳,单位10ms")
+
+            msgTree = QtWidgets.QTreeWidgetItem(root)
+            msgTree.setText(1,"NID_ENGINE")
+            msgTree.setText(2, '24bits')
+            msgTree.setText(3, str(msg.msgHeader.nid_engine))
+            msgTree.setText(4, '车载设备车体标识')
+
+    @staticmethod
+    def disNameOfMsgTsrs2atoTreeWidget(t2aMsg=Tsrs2atoProto, rootTree=QtWidgets.QTreeWidgetItem, fieldDic='dict', nomBrush=QtGui.QBrush):
+        # 无子包
+        if t2aMsg.msgHeader.nid_message in [39, 41]:
+            pass
+        elif t2aMsg.msgHeader.nid_message == 32 and t2aMsg.version:
+            rootMsg = QtWidgets.QTreeWidgetItem(rootTree)
+            rootMsg.setText(1, "M_VERSION")
+            rootMsg.setText(2, '7bits')
+            rootMsg.setText(3, hex(t2aMsg.version))
+            rootMsg.setText(4, '信息版本标识:CTCS系统版本')
+        elif t2aMsg.msgHeader.nid_message == 8 and t2aMsg.t_train_ack:
+            rootMsg = QtWidgets.QTreeWidgetItem(rootTree)
+            rootMsg.setText(1, "T_TRAIN")
+            rootMsg.setText(2, '32bits')
+            rootMsg.setText(3, str(t2aMsg.t_train_ack))
+            rootMsg.setText(4, '车载时间戳:取决于被确认消息的时间戳,单位10ms') 
+        elif t2aMsg.msgHeader.nid_message == 24:
+            rootMsg = QtWidgets.QTreeWidgetItem(rootTree)
+            # ETCS 包
+            for etcsPkt in [t2aMsg.p3, t2aMsg.p21, t2aMsg.p27, t2aMsg.p58, t2aMsg.p72]:
+                if etcsPkt:
+                    rootPkt = QtWidgets.QTreeWidgetItem(rootMsg)
+                    rootPkt.setText(0, 'etcsPkt-'+str(etcsPkt.nid_packet))
+                    DisplayMsgield.disNameOfTreeWidget(etcsPkt, rootPkt, Tsrs2atoFieldDic, nomBrush)
+                    rootPkt.setExpanded(True)
+            # CTCS 包
+            for ctcsPkt in [t2aMsg.c2, t2aMsg.c12, t2aMsg.c41, t2aMsg.c42, t2aMsg.c43, t2aMsg.c47, t2aMsg.c49]:
+                if ctcsPkt:
+                    # 先显示E44
+                    rootPkt = QtWidgets.QTreeWidgetItem(rootMsg)
+                    rootPkt.setText(0, 'etcsPkt-'+str(ctcsPkt.p44_header.nid_packet))
+                    DisplayMsgield.disNameOfTreeWidget(ctcsPkt.p44_header, rootPkt, Tsrs2atoFieldDic, nomBrush)
+                    rootPkt.setExpanded(True)
+                    rootPkt = QtWidgets.QTreeWidgetItem(rootMsg)
+                    rootPkt.setText(0, 'ctcsPkt-'+str(ctcsPkt.nid_xuser))
+                    DisplayMsgield.disNameOfTreeWidget(ctcsPkt, rootPkt, Tsrs2atoFieldDic, nomBrush)
+                    rootPkt.setExpanded(True)
+            rootMsg.setExpanded(True)
+
+    @staticmethod
+    def disNameOfMsgAto2tsrsTreeWidget(at2Msg=Ato2tsrsProto, rootTree=QtWidgets.QTreeWidgetItem, fieldDic='dict', nomBrush=QtGui.QBrush):
+        # 无子包
+        if at2Msg.msgHeader.nid_message in [154, 155, 156, 159]:
+            pass
+        elif at2Msg.msgHeader.nid_message == 146 and at2Msg.t_train_ack:
+            rootMsg = QtWidgets.QTreeWidgetItem(rootTree)
+            rootMsg.setText(1, "T_TRAIN")
+            rootMsg.setText(2, '32bits')
+            rootMsg.setText(3, str(at2Msg.t_train_ack))
+            rootMsg.setText(4, '车载时间戳:取决于被确认消息的时间戳,单位10ms') 
+        elif at2Msg.msgHeader.nid_message in [136,150, 157]:
+            rootMsg = QtWidgets.QTreeWidgetItem(rootTree)
+            # ETCS 包
+            for etcsPkt in [at2Msg.p0, at2Msg.p1, at2Msg.p4, at2Msg.p11]:
+                if etcsPkt:
+                    rootPkt = QtWidgets.QTreeWidgetItem(rootMsg)
+                    rootPkt.setText(0, 'etcsPkt-'+str(etcsPkt.nid_packet))
+                    DisplayMsgield.disNameOfTreeWidget(etcsPkt, rootPkt, Tsrs2atoFieldDic, nomBrush)
+                    rootPkt.setExpanded(True)
+            # CTCS 包
+            for ctcsPkt in [at2Msg.c44, at2Msg.c45, at2Msg.c46, at2Msg.c48, at2Msg.c50]:
+                if ctcsPkt:
+                    # 先显示E44
+                    rootPkt = QtWidgets.QTreeWidgetItem(rootMsg)
+                    rootPkt.setText(0, 'etcsPkt-'+str(ctcsPkt.p44_header.nid_packet))
+                    DisplayMsgield.disNameOfTreeWidget(ctcsPkt.p44_header, rootPkt, Tsrs2atoFieldDic, nomBrush)
+                    rootPkt.setExpanded(True)
+                    rootPkt = QtWidgets.QTreeWidgetItem(rootMsg)
+                    rootPkt.setText(0, 'ctcsPkt-'+str(ctcsPkt.nid_xuser))
+                    DisplayMsgield.disNameOfTreeWidget(ctcsPkt, rootPkt, Tsrs2atoFieldDic, nomBrush)
+                    rootPkt.setExpanded(True)
+            rootMsg.setExpanded(True)
+
