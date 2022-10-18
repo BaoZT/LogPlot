@@ -13,7 +13,7 @@
 import matplotlib
 
 from CycleInfo import Ui_MainWindow as CycleWin
-from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atoFieldDic, DisplayMsgield
+from MsgParse import Ato2tsrsParse, Ato2tsrsProto, Atp2atoParse, Atp2atoProto, Atp2atoFieldDic, DisplayMsgield, GroundToTrainMsgDic, TrainToGroundMsgDic, Tsrs2atoFieldDic, Tsrs2atoParse, Tsrs2atoProto
 from ProtoParserWin import Ui_MainWindow as ParserWin
 from MeasureWin import Ui_MainWindow as MeasureWin
 from C3atoRecordTranslator import Ui_Dialog as C3ATOTransferWin
@@ -31,6 +31,7 @@ import serial.tools.list_ports
 import time
 import re
 import os
+import sys
 import shutil
 import numpy as np
 from threading import Thread
@@ -290,6 +291,7 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         self.actionParse.triggered.connect(self.parseAtp2atoProto)
         self.msg = Atp2atoProto()
         self.splitter.setSizes([10,100])
+        self.treeWidget.setColumnWidth(0, 180)
     
     def parseAtp2atoProto(self):
         inputLine = self.textEdit.toPlainText()
@@ -302,7 +304,7 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
             else:
              reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                       "提示",
-                                                      "注意:为输入有效字节流数据",
+                                                      "注意:未输入有效字节流数据",
                                                       QtWidgets.QMessageBox.Yes)               
         except Exception as err:
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
@@ -313,7 +315,7 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         self.treeWidget.clear()
         root = QtWidgets.QTreeWidgetItem(self.treeWidget)
         # 添加消息头
-        DisplayMsgield.disNameOfMsgShell(msg, root)
+        DisplayMsgield.disAtpatoMsgShell(msg, root)
         # 添加数据包
         pktList=[msg.sp0_obj, msg.sp1_obj, msg.sp2_obj, msg.sp3_obj, msg.sp4_obj, msg.sp5_obj,
         msg.sp6_obj, msg.sp7_obj, msg.sp8_obj, msg.sp9_obj, msg.sp13_obj, msg.sp130_obj, 
@@ -323,18 +325,104 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         root.setExpanded(True)
 
     def addSubpacket(self, pkt=None, root=QtWidgets.QTreeWidgetItem):
-        contentBrush = QtGui.QBrush(QtGui.QColor(82, 179, 217))
-        headerBrush = QtGui.QBrush(QtGui.QColor(197, 239, 247))
+        contentBrush = QtGui.QBrush(QtGui.QColor(204, 255, 255))
+        headerBrush = QtGui.QBrush(QtGui.QColor(153, 204, 255))
         if pkt and root:
             if pkt.updateflag:
                 rootSub = QtWidgets.QTreeWidgetItem(root)
                 rootSub.setText(0, 'sub_packet-'+str(pkt.nid_sub_packet))
                 for i in range(rootSub.columnCount()+1):
                     rootSub.setBackground(i, headerBrush)
-                DisplayMsgield.disNameOfTreeWidget(pkt,rootSub, Atp2atoFieldDic, contentBrush)
+                DisplayMsgield.disNameOfTreeWidget(pkt, rootSub, Atp2atoFieldDic, contentBrush)
                 rootSub.setExpanded(True)
             else:
                 pass
+
+# TSRS协议解析器
+class TSRSParseDlg(QtWidgets.QMainWindow, ParserWin):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        logicon = QtGui.QIcon()
+        logicon.addPixmap(QtGui.QPixmap(":IconFiles/TSRSParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.setWindowIcon(logicon)
+        self.setWindowTitle(u'TSRS-ATO协议解析')
+        self.t2aParser = Tsrs2atoParse()
+        self.at2Parser = Ato2tsrsParse()
+        self.actionParse.triggered.connect(self.parseTsrsatoProto)
+        self.t2aMsg = Tsrs2atoProto()
+        self.a2tMsg = Ato2tsrsProto()
+        self.curDir = None
+        self.splitter.setSizes([10,100])
+        self.treeWidget.setColumnWidth(0, 180)
+    
+    def setBytesDir(self, token=str):
+        self.curDir = token
+
+    def __updateDirIfUnknown(self, line=str):
+        line = line.strip()
+        line = ''.join(line.split(' '))
+        try:
+            msgID = int(line[0:2],16)
+            if msgID in TrainToGroundMsgDic.keys():
+                self.curDir == 'A->T'
+            if msgID in GroundToTrainMsgDic.keys():
+                self.curDir == 'T->A'
+        except Exception as err:
+            print(err)
+
+    def parseTsrsatoProto(self):
+        inputLine = self.textEdit.toPlainText()
+        streamLine = re.sub('\s+', '', inputLine)
+        try:
+            if streamLine:
+                self.t2aParser.resetMsg()
+                self.at2Parser.resetMsg()
+                self.__updateDirIfUnknown(streamLine)
+                if self.curDir == 'T->A':
+                    self.t2aMsg = self.t2aParser.msgParse(streamLine)
+                    self.showTsrs2atoParserRst(self.t2aMsg)
+                elif self.curDir == 'A->T':
+                    self.a2tMsg = self.at2Parser.msgParse(streamLine)
+                    self.showAto2tsrsParserRst(self.a2tMsg)
+                else:
+                    pass
+                
+            else:
+                reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                      "提示",
+                                                      "注意:未输入有效字节流数据",
+                                                      QtWidgets.QMessageBox.Yes)               
+        except Exception as err:
+            print(err)
+            reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
+                                                      "错误",
+                                                      "注意:数据异常或非16进制数据",
+                                                      QtWidgets.QMessageBox.Yes)
+
+    def showAto2tsrsParserRst(self, a2tMsg=Ato2tsrsProto):
+        contentBrush = QtGui.QBrush(QtGui.QColor(204, 255, 255))
+        self.treeWidget.clear()
+        root = QtWidgets.QTreeWidgetItem(self.treeWidget)
+        # 添加消息头
+        DisplayMsgield.disAto2tsrsMsgShell(a2tMsg, root)
+        # 填写子包信息
+        DisplayMsgield.disNameOfMsgAto2tsrsTreeWidget(a2tMsg, self.treeWidget, Tsrs2atoFieldDic, contentBrush)
+        # 添加数据包
+        root.setExpanded(True)
+        
+
+    def showTsrs2atoParserRst(self, t2aMsg=Tsrs2atoProto):
+        contentBrush = QtGui.QBrush(QtGui.QColor(204, 255, 255))
+        self.treeWidget.clear()
+        root = QtWidgets.QTreeWidgetItem(self.treeWidget)
+        # 添加消息头
+        DisplayMsgield.disTsrs2atoMsgShell(t2aMsg, root)
+        # 填写子包信息
+        DisplayMsgield.disNameOfMsgTsrs2atoTreeWidget(t2aMsg, self.treeWidget, Tsrs2atoFieldDic, contentBrush)
+        # 添加数据包
+        root.setExpanded(True)
+
 
 # UTC时间解析器
 class UTCTransferDlg(QtWidgets.QDialog):
@@ -998,3 +1086,10 @@ class C3ATOTransferDlg(QtWidgets.QDialog, C3ATOTransferWin):
             # 这里不复制文件和状态
             # 所以只复制了文件路径
         return dst
+
+
+if __name__ == '__main__':
+    app = QtWidgets.QApplication(sys.argv)
+    tsrsParser = TSRSParseDlg()
+    tsrsParser.show()
+    sys.exit(app.exec_())
