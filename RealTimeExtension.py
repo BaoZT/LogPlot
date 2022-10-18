@@ -5,6 +5,7 @@ import threading
 import time
 import numpy as np
 from PyQt5 import QtCore
+import serial
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse
 from MsgParse import Ato2tsrsParse, Atp2atoParse, Tsrs2atoParse
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
@@ -20,10 +21,11 @@ paintList = np.zeros([5, real_curve_all_buff],dtype=int)       # 初始化1000�
 
 class SerialRead(threading.Thread, QtCore.QObject):
 
-    def __init__(self, name, serialHandle):
+    def __init__(self, name, serialHandle=serial.Serial):
         threading.Thread.__init__(self)
         self.name = name
         self.handle = serialHandle
+        self.handle.set_buffer_size(4096)
         self.runningFlag = False
         super(QtCore.QObject, self).__init__()
 
@@ -32,18 +34,20 @@ class SerialRead(threading.Thread, QtCore.QObject):
         while self.runningFlag:
             # 有数据就读取
             try:
-                line = self.handle.readline().decode('gbk', errors='ignore').rstrip()  # 串口设置，测试时注释
+                lineBytes = self.handle.read_until()  # 串口设置，测试时注释 默认终止符\n
             except UnicodeDecodeError as err:
-                print("serial read unicode error! :"+line)
+                print("serial read unicode error!")
             # 若队列未满，则继续加入:
             if not workQueue.full():
                 thLock.acquire()
-                workQueue.put(pickle.loads(pickle.dumps(line)), block=False, timeout=0.1)   # 必须读到数据
+                workQueue.put(pickle.loads(pickle.dumps(lineBytes)), block=False, timeout=0.1)   # 必须读到数据
                 thLock.release()
             else:
                 time.sleep(0.1)
         # 发送停止信号
         workQueue.put(_sentinel)
+        self.handle.reset_input_buffer()
+        self.handle.flush()
     
     # 允许线程
     def setThreadEnabled(self, en=bool):
@@ -124,14 +128,15 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             while True:
                 if not workQueue.empty():
                     thLock.acquire()
-                    line = workQueue.get(block=False, timeout=0.1)
+                    lineBytes = workQueue.get(block=False, timeout=0.1)
                     # 收到信号进行停止
-                    if line is _sentinel:
+                    if lineBytes is _sentinel:
                         break
                     else:
+                        lineText = lineBytes.decode('gbk', errors='ignore')
                         # 防止数据处理过程中被刷新
-                        self.fileWrite(line, f) # 测试时关闭
-                        self.lineProcessPaint(line)
+                        self.fileWrite(lineText, f) # 测试时关闭
+                        self.lineProcessPaint(lineText)
                     thLock.release()
                 else:
                     time.sleep(0.1)
