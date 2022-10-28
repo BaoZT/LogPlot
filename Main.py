@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-18 21:58:08
+LastEditTime: 2022-10-28 14:26:58
 '''
 
 import os
@@ -163,12 +163,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tb_ato_IN.horizontalHeader().setVisible(True)
         self.tableWidgetPlan.horizontalHeader().setVisible(True)
         self.tableWidgetTb.horizontalHeader().setVisible(True)
-        self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        self.tab_atp_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
-        self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        self.tab_tsrs_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Interactive)
+        #self.tab_atp_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        #self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        #self.tab_tsrs_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        #self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         # 表逻辑
         self.tableATPBTM.itemClicked.connect(self.btmSelectedInfo)
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
@@ -355,10 +353,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 实时界面连接或断开按钮
     def btnLinkorBreak(self):
-        if self.serialHandle.port != self.cbb_serial.currentText():
-            self.serialHandle.close()
-        else:
-            pass
         # 串口关闭状态
         if not self.serialHandle.is_open:
             self.cbb_serial.setEnabled(False)
@@ -430,9 +424,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.thPaintWrite.planShowSignal.disconnect(self.runningPlanShow)  # 局部变量无需考虑后续解绑
             self.thPaintWrite.ioShowSignal.disconnect(self.realtimeIoInfoShow)  # io信息更新
             self.thPaintWrite.sduShowSignal.disconnect(self.sduInfoShow) # sdu 信息更新
-            self.reatimeDefaultShowLabel()
-            time.sleep(0.5)
-            self.serialHandle.close()        
+            self.reatimeDefaultShowLabel()       
 
     # 界面实时绘图函数
     def runPaint(self):
@@ -1544,7 +1536,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def msgAtp2atoSelectedParserGo(self, rowItem=QtWidgets.QTableWidgetItem):
         # 获取周期
         c_num = int(self.tab_atp_ato.item(rowItem.row(), 1).text())
-        if c_num in self.log.cycle_dic.keys():
+        if self.log and c_num in self.log.cycle_dic.keys():
             try:
                 cycle_obj = self.log.cycle_dic[c_num]
                 if 'P->O' == self.tab_atp_ato.item(rowItem.row(), 2).text() and cycle_obj.atp2atoRawBytes:
@@ -1562,7 +1554,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def msgAtp2atoSelectedInfo(self, rowItem):
         # 获取周期
         c_num = int(self.tab_atp_ato.item(rowItem.row(), 1).text())
-        if c_num in self.log.cycle_dic.keys():
+        if self.log and c_num in self.log.cycle_dic.keys():
             try:
                 cycle_obj = self.log.cycle_dic[c_num]
                 if 'P->O' == self.tab_atp_ato.item(rowItem.row(), 2).text() and cycle_obj.atp2atoRawBytes:
@@ -1585,7 +1577,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def msgTsrs2atoSelectedInfo(self, rowItem):
         # 获取周期
         c_num = int(self.tab_tsrs_ato.item(rowItem.row(), 1).text())
-        if c_num in self.log.cycle_dic.keys():
+        if self.log and c_num in self.log.cycle_dic.keys():
             try:
                 cycle_obj = self.log.cycle_dic[c_num]
                 if 'T->A' == self.tab_tsrs_ato.item(rowItem.row(), 2).text() and cycle_obj.tsrs2atoRawBytes:
@@ -1601,7 +1593,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def msgTsrsatoSelectedParserGo(self, rowItem=QtWidgets.QTableWidgetItem):
          # 获取周期
         c_num = int(self.tab_tsrs_ato.item(rowItem.row(), 1).text())
-        if c_num in self.log.cycle_dic.keys():
+        if self.log and c_num in self.log.cycle_dic.keys():
             try:
                 cycle_obj = self.log.cycle_dic[c_num]
                 if 'T->A' == self.tab_tsrs_ato.item(rowItem.row(), 2).text() and cycle_obj.tsrs2atoRawBytes:
@@ -1698,19 +1690,21 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 事件处理函数，显示测速测距信息
     def setSduContentByIndex(self, idx):
-        cycle_obj = self.log.cycle_dic[self.log.cycle[idx]]
-        sduObj = cycle_obj.sduInfo
-        self.sduInfoShow(sduObj)
+        if idx < len(self.log.s):
+            cycle_obj = self.log.cycle_dic[self.log.cycle[idx]]
+            sduObj = cycle_obj.sduInfo
+            self.sduInfoShow(sduObj)
 
     # ATO状态显示标签
     def setAtoStatusLabelByIndex(self, idx):
-        cycleItem = self.log.cycle_dic[self.log.cycle[idx]]
-        self.atoFsmInfoShow(cycleItem.fsm, cycleItem.control, cycleItem.msg_atp2ato, cycleItem.t2a_stat)
-        # 根据分相和主断路器设置光标
-        if cycleItem.t2a_stat.main_circuit_breaker == 0x00 or cycleItem.msg_atp2ato.sp2_obj.m_ms_cmd == 1:
-            self.cursorVato.boldRedEnabled(True)
-        else:
-            self.cursorVato.boldRedEnabled(False)
+        if idx < len(self.log.s):
+            cycleItem = self.log.cycle_dic[self.log.cycle[idx]]
+            self.atoFsmInfoShow(cycleItem.fsm, cycleItem.control, cycleItem.msg_atp2ato, cycleItem.t2a_stat)
+            # 根据分相和主断路器设置光标
+            if cycleItem.t2a_stat.main_circuit_breaker == 0x00 or cycleItem.msg_atp2ato.sp2_obj.m_ms_cmd == 1:
+                self.cursorVato.boldRedEnabled(True)
+            else:
+                self.cursorVato.boldRedEnabled(False)
 
     # 重置主界面所有的选择框
     def resetAllCheckbox(self):
