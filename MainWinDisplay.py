@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-13 14:12:00
+LastEditTime: 2022-10-26 22:43:46
 '''
 
 import pickle
@@ -1124,7 +1124,7 @@ class ProgressBarDisplay(object):
         percent = self.barMovingCompute()
         if percent:
             self.bar.setValue(self.percent)
-            self.bar.show()
+            self.bar.update()
         else:
             pass
     
