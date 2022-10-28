@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-16 15:03:21
+LastEditTime: 2022-10-26 22:48:20
 '''
 
 
@@ -573,6 +573,12 @@ class Atp2atoParse(object):
         self.msg_obj.sp5_obj.updateflag = False
         self.msg_obj.sp6_obj.updateflag = False
         self.msg_obj.sp7_obj.updateflag = False
+        self.msg_obj.sp7_obj.nid_xuser  = 0
+        self.msg_obj.sp7_obj.q_scale    = 0
+        self.msg_obj.sp7_obj.q_platform = 0
+        self.msg_obj.sp7_obj.q_door     = 0
+        self.msg_obj.sp7_obj.n_g        = 0
+        self.msg_obj.sp7_obj.d_stop     = 0
         self.msg_obj.sp8_obj.updateflag = False
         self.msg_obj.sp9_obj.updateflag = False
         self.msg_obj.sp13_obj.updateflag = False
@@ -592,7 +598,7 @@ class Atp2atoParse(object):
         item = None
         self.rawBytes = bytes()
         # 校验字节数
-        if (len(line)%2 == 0) and (len(line)/2>=23):
+        if (len(line)%2 == 0) and (len(line)/2>=22):
             try:
                 int(line, 16) # 校验防护
                 item = BytesStream(line)
