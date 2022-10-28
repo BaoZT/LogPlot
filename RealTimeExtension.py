@@ -46,8 +46,11 @@ class SerialRead(threading.Thread, QtCore.QObject):
                 time.sleep(0.1)
         # 发送停止信号
         workQueue.put(_sentinel)
+        time.sleep(0.1)
+        self.handle.cancel_read()
         self.handle.reset_input_buffer()
         self.handle.flush()
+        self.handle.close()
     
     # 允许线程
     def setThreadEnabled(self, en=bool):
@@ -142,10 +145,8 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                     time.sleep(0.1)
             # 清空缓存
             self.fileFlush(f)
-            # 线程停止
-            f.close()
-            tmp = self.fileRename()
-            os.rename(self.logFile, self.filepath + tmp)
+        tmp = self.fileRename()
+        os.rename(self.logFile, self.filepath + tmp)
 
     # 按行写入文件
     def fileWrite(self, line, f):
