@@ -362,14 +362,16 @@ class TSRSParseDlg(QtWidgets.QMainWindow, ParserWin):
     def __updateDirIfUnknown(self, line=str):
         line = line.strip()
         line = ''.join(line.split(' '))
+        token = None
         try:
             msgID = int(line[0:2],16)
             if msgID in TrainToGroundMsgDic.keys():
-                self.curDir == 'A->T'
+                token = 'A->T'
             if msgID in GroundToTrainMsgDic.keys():
-                self.curDir == 'T->A'
+                token = 'T->A'
         except Exception as err:
             print(err)
+        return token
 
     def parseTsrsatoProto(self):
         inputLine = self.textEdit.toPlainText()
@@ -378,7 +380,7 @@ class TSRSParseDlg(QtWidgets.QMainWindow, ParserWin):
             if streamLine:
                 self.t2aParser.resetMsg()
                 self.at2Parser.resetMsg()
-                self.__updateDirIfUnknown(streamLine)
+                self.curDir = self.__updateDirIfUnknown(streamLine)
                 if self.curDir == 'T->A':
                     self.t2aMsg = self.t2aParser.msgParse(streamLine)
                     self.showTsrs2atoParserRst(self.t2aMsg)
