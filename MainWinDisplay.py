@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-26 22:43:46
+LastEditTime: 2022-10-29 15:53:08
 '''
 
 import pickle
@@ -270,6 +270,7 @@ class BtmInfoDisplay(object):
         if obj and obj.updateflag:
             strBalise,strBaliseInfo = DisplayMsgield.transBaliseToDetail(obj.nid_bg)
             led_btm_id.setText(strBalise + 5*' ' + strBaliseInfo) 
+            led_btm_id.setCursorPosition(0)
             # JD正常刷颜色
             if obj.nid_xuser == 13:
                 DisplayMsgield.disNameOfLineEdit("nid_xuser", obj.nid_xuser, led_with_C13)
@@ -792,6 +793,7 @@ class AtoKeyInfoDisplay(object):
         v = abs(value)
         ato_v_kilo = (v * 9 / 250.0)
         valLed.setText(str(v)+'cm/s')
+        valLed.setCursorPosition(0)
         valLcd.display(str(float('%.1f' % ato_v_kilo)))
         return v
     
