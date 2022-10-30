@@ -12,7 +12,6 @@ from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
 from ConfigInfo import ConfigFile
 
 _sentinel = object()                                 # Object that signals shutdown
-thLock = threading.Lock()
 workQueue = queue.Queue(10000)
 real_curve_buff = 50                                 # 每次绘图话添加的点数
 real_curve_all_buff = 50000                          # 每次绘画总点数
@@ -39,22 +38,26 @@ class SerialRead(threading.Thread, QtCore.QObject):
                 print("serial read unicode error!")
             # 若队列未满，则继续加入:
             if not workQueue.full():
-                thLock.acquire()
                 workQueue.put(pickle.loads(pickle.dumps(lineBytes)), block=False, timeout=0.1)   # 必须读到数据
-                thLock.release()
             else:
                 time.sleep(0.1)
         # 发送停止信号
         workQueue.put(_sentinel)
-        time.sleep(0.1)
-        self.handle.cancel_read()
-        self.handle.reset_input_buffer()
-        self.handle.flush()
-        self.handle.close()
+
     
     # 允许线程
     def setThreadEnabled(self, en=bool):
         self.runningFlag = en
+        if en:
+            pass
+        elif self.handle and self.handle.is_open:
+            self.handle.cancel_read()
+            time.sleep(0.1)
+            self.handle.reset_input_buffer()
+            self.handle.flush()
+            self.handle.close()
+        else:
+            pass
 
 class RealPaintWrite(threading.Thread, QtCore.QObject):
 
@@ -130,17 +133,15 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         with open(self.logFile, 'w', encoding='utf-8') as f:
             while True:
                 if not workQueue.empty():
-                    thLock.acquire()
                     lineBytes = workQueue.get(block=False, timeout=0.1)
                     # 收到信号进行停止
                     if lineBytes is _sentinel:
                         break
                     else:
-                        lineText = lineBytes.decode('gbk', errors='ignore')
+                        lineText = lineBytes.decode('gbk', errors='ignore').strip()
                         # 防止数据处理过程中被刷新
                         self.fileWrite(lineText, f) # 测试时关闭
                         self.lineProcessPaint(lineText)
-                    thLock.release()
                 else:
                     time.sleep(0.1)
             # 清空缓存
@@ -160,7 +161,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     def fileFlush(self, f):
         # 目前预留不使用文件缓存
         for item in self.logBuff:
-            f.write(item)
+            f.write(item+'\n')
         f.flush()
         print("file exit flush!")
 
@@ -268,6 +269,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.time_statictics,
             self.ato2tsrsParser.msg_obj, self.tsrs2atoParser.msg_obj)
             self.patShowSignal.emit(pickle.loads(pickle.dumps(result)))
+            del result
         # 返回用于画图
         return update_flag
 
