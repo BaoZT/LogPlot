@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-26 22:48:20
+LastEditTime: 2022-10-29 20:53:06
 '''
 
 
@@ -167,6 +167,11 @@ Tsrs2atoFieldDic={
         'm_ato_control_strategy':ProtoField("ATO 当前在用控车策略",0,b_endian,4,None,{1:"默认策略",2:"快行策略",3:"慢行策略",4:"计划控车"}),
         'm_traintype':ProtoField("列车编组",0,b_endian,8,None,{1:"8节编组列车",2:"16节编组列车",3:"17节编组列车",4:"4节编组列车"}),
         'm_atoerror':ProtoField("ATO错误代码",0,b_endian,8,None,None),
+        'm_waysidetime':ProtoField("地面当前时刻",0,b_endian,32,'s',None),
+        'm_departtime':ProtoField("计划发车时刻",0,b_endian,32,'s',None),
+        'm_arrivaltime':ProtoField("计划到站时刻",0,b_endian,32,'s',None),
+        'm_departtime_2':ProtoField("计划发车时刻",0,b_endian,32,'s',None),
+        'm_arrivaltime_2':ProtoField("计划到站时刻",0,b_endian,32,'s',None),
         'nid_stm':ProtoField("本国系统等级",0,b_endian,8,None,None),
         'nid_bg':ProtoField("应答器组ID",0,b_endian,24,None,None),
         'nid_driver':ProtoField("司机号",0,b_endian,32,None,None),
@@ -178,6 +183,10 @@ Tsrs2atoFieldDic={
         'nid_tsrs':ProtoField("TSRS编号",0,b_endian,14,None,None),
         'nid_c':ProtoField("地区编号",0,b_endian,10,None,None),
         'nid_track':ProtoField("列车当前所在股道编号,来自C13",0,b_endian,10,None,None),
+        'nid_departtrack':ProtoField("发车股道编号",0,b_endian,24,None,None),
+        'nid_arrivaltrack':ProtoField("到站股道编号",0,b_endian,24,None,None),
+        'nid_departtrack_2':ProtoField("发车股道编号",0,b_endian,24,None,None),
+        'nid_arrivaltrack_2':ProtoField("到站股道编号",0,b_endian,24,None,None),
         'nid_tbdeparttrack':ProtoField("自动换端的股道编号/无人折返发车的股道编号,来自C13",0,b_endian,24,None,None),
         'nid_tbarrivaltrack':ProtoField("自动换端的股道编号/无人折返终到的股道编号,来自C13",0,b_endian,24,None,None),
         'q_sleepsession':ProtoField("睡眠设备的通信管理",0,b_endian,1,None,{0:"忽略",1:"考虑"}),
@@ -186,7 +195,10 @@ Tsrs2atoFieldDic={
         'q_dir':ProtoField("验证方向",0,b_endian,2,None,{0:"反向有效",1:"正向有效",2:"双向有效"}),
         'q_tsrs':ProtoField("与TSRS的通信命令",0,b_endian,1,None,{0:"断开通信会话",1:"建立通信会话"}),
         'm_tbplan':ProtoField("折返计划",0,b_endian,2,None,{1:"计划无效", 2:"无人折返", 3:"自动换端"}),
-        'm_task':ProtoField("是否办客",0,b_endian,8,None,{1:"办客", 2:"不办客"}),
+        'm_task':ProtoField("是否办客",0,b_endian,2,None,{1:"办客", 2:"不办客"}),
+        'm_skip':ProtoField("是否跳停",0,b_endian,2,None,{1:"通过", 2:"到发"}),
+        'm_task_2':ProtoField("是否办客",0,b_endian,2,None,{1:"办客", 2:"不办客"}),
+        'm_skip_2':ProtoField("是否跳停",0,b_endian,2,None,{1:"通过", 2:"到发"}),
         'm_tbstatus':ProtoField("当前换端折返状态",0,b_endian,8,None,{0x00:"非自动折返状态",0x01:"原地自动折返状态",
         0x03:"站后自动折返准备状态",0x04:"站后自动折返状态", 0x07:"站后自动折返成功", 0x08:"原地自动折返成功",
         0x09:"站后自动折返失败", 0x0A:"原地自动折返失败", 0x0B:"站后自动换端成功", 0x0C:"站后自动换端失败",
@@ -1108,7 +1120,7 @@ class C50(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44A2tHeader()
-        self.nid_xuser = 0
+        self.nid_xuser = 50
         self.l_packet  = 0
         self.m_tblamp  = 0
         self.nid_track = 0
@@ -1265,7 +1277,7 @@ class C2(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 2
         self.q_dir      = 0
         self.l_packet   = 0
         self.q_scale    = 0
@@ -1286,7 +1298,7 @@ class C12(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 12
         self.q_dir      = 0
         self.l_packet   = 0
         self.q_tsrs     = 0
@@ -1303,7 +1315,7 @@ class C41(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 41
         self.q_dir      = 0
         self.l_packet   = 0
         self.m_waysidetime = 0
@@ -1326,7 +1338,7 @@ class C42(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 42
         self.q_dir      = 0
         self.l_packet   = 0
         self.q_scale    = 0
@@ -1338,7 +1350,7 @@ class C43(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 43
         self.q_dir      = 0
         self.l_packet   = 0
         self.m_sequencenum = 0
@@ -1351,7 +1363,7 @@ class C47(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 47
         self.q_dir      = 0
         self.l_packet   = 0
         self.m_tbplan   = 0
@@ -1364,7 +1376,7 @@ class C49(object):
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44T2aHeader()
-        self.nid_xuser  = 0
+        self.nid_xuser  = 49
         self.q_dir      = 0
         self.l_packet   = 0
         self.m_tbbtnstatus = 0
