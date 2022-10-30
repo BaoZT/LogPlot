@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-15 11:37:49
+LastEditTime: 2022-10-30 12:06:05
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -144,7 +144,7 @@ class DisplayMVBField(object):
                         twi.setText(4,fieldDic[keyName].meaning[value])
                     elif keyName == 'd_tsm': # 含义和特殊值并存
                         if fieldDic[keyName].unit:
-                            twi.setText(4, str(value)+fieldDic[keyName].unit)
+                            twi.setText(4, str(value) +'('+fieldDic[keyName].unit+')')
                     else:
                         brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
                         twi.setBackground(1, brush)
@@ -159,7 +159,9 @@ class DisplayMVBField(object):
                     else:
                         # 直接处理显示
                         if fieldDic[keyName].unit:
-                            twi.setText(4, str(value)+fieldDic[keyName].unit)
+                            twi.setText(4, str(value)+'('+fieldDic[keyName].unit+')')
+                        else:
+                            twi.setText(4, str(value))
             elif keyName == 'updateflag':
                 pass
             elif keyName == 'm_mode':
