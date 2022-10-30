@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-28 14:26:58
+LastEditTime: 2022-10-30 12:34:44
 '''
 
 import os
@@ -243,14 +243,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.fileOpen.setDisabled(True)  # 设置文件读取不可用
         # 初始化绘图
         self.CBvato.setChecked(True)
-        self.CBstate.setChecked(True)
+        self.CBatppmtv.setChecked(True)
         self.CBatpcmdv.setChecked(True)
         self.CBlevel.setChecked(True)
         self.CBcmdv.setChecked(True)
         # 解绑
         if self.curInterface == 1:
             self.bindOfflineCurve(False)
-
         # 如有转换重置右边列表
         self.actionView.trigger()
         self.setCtrlTableFormat()
@@ -262,12 +261,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 显示离线界面
     def showOffLineUI(self):
         self.stackedMainWidget.setCurrentWidget(self.pageOffline)
-        self.fileOpen.setEnabled(True)  # 设置文件读取可用
         self.stackedWidget_RightCol.setCurrentWidget(self.page_ctrl)
-        self.btn_plan.setEnabled(True)
-        self.btn_train.setEnabled(True)
-        self.btn_atp.setEnabled(True)
-        self.btn_filetab.setEnabled(True)
+        self.fileOpen.setEnabled(True)  # 设置文件读取可用
         self.bindOfflineCurve(True)
         self.curInterface = 1
 
@@ -294,6 +289,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def showReplayUI(self):
         self.showRealTimeUI()
         self.stackedOnlineWidget.setCurrentWidget(self.pageReplay)
+        self.fileOpen.setEnabled(False)
 
     # 显示控车情况
     def showOffRight_ATO(self):
@@ -470,7 +466,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             pass
         # 显示表格
-        self.msgAtp2atoTabShow((atp2ato_msg, dateTime, int(cycleNum)))
+        if atp2ato_msg.nid_msg != 0:
+            self.msgAtp2atoTabShow((atp2ato_msg, dateTime, int(cycleNum)))
         if t2aMsg.msgHeader.nid_message != 0:
             self.msgTsrsatoTabShow(('T->A', t2aMsg, dateTime, int(cycleNum)))
         if a2tMsg.msgHeader.nid_message != 0:
