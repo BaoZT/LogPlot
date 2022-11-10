@@ -257,6 +257,7 @@ class MVBParserDlg(QtWidgets.QMainWindow, ParserWin):
         inputLine = self.textEdit.toPlainText()
         try:
             mvbLine = re.sub('\s+', '', inputLine)
+            self.parser.resetPacket()
             [self.a2tCtrl,self.a2tStat, self.t2aStat] = self.parser.parseProtocol(mvbLine)
             self.showParserRst(self.a2tCtrl,self.a2tStat, self.t2aStat)
         except Exception as err:
@@ -330,7 +331,12 @@ class ATPParserDlg(QtWidgets.QMainWindow, ParserWin):
         if pkt and root:
             if pkt.updateflag:
                 rootSub = QtWidgets.QTreeWidgetItem(root)
-                rootSub.setText(0, 'sub_packet-'+str(pkt.nid_sub_packet))
+                if "nid_sub_packet" in  pkt.__slots__:
+                    rootSub.setText(0, 'sub_packet-'+str(pkt.nid_sub_packet))
+                elif "nid_packet" in  pkt.__slots__:
+                    rootSub.setText(0, 'sub_packet-'+str(pkt.nid_packet))
+                else:
+                    rootSub.setText(0, "unknown id")
                 for i in range(rootSub.columnCount()+1):
                     rootSub.setBackground(i, headerBrush)
                 DisplayMsgield.disNameOfTreeWidget(pkt, rootSub, Atp2atoFieldDic, contentBrush)
