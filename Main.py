@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-30 12:34:44
+LastEditTime: 2022-11-02 12:23:53
 '''
 
 import os
@@ -569,7 +569,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             DisplayMVBField.disNameOfLineEdit("const_speed_cmd",a2t_ctrl.const_speed_cmd,self.led_ctrl_costspeed)
             DisplayMVBField.disNameOfLineEdit("const_speed_value",a2t_ctrl.const_speed_value,self.led_ctrl_aimspeed)
             DisplayMVBField.disNameOfLineEdit("ato_start_light",a2t_ctrl.ato_start_light,self.led_ctrl_starlamp)
-            DisplayMVBField.disNameOfLineEdit("ato_tb_light",a2t_ctrl.ato_start_light,self.led_ctrl_tb_lamp)
+            DisplayMVBField.disNameOfLineEdit("ato_tb_light",a2t_ctrl.ato_tb_light,self.led_ctrl_tb_lamp)
         if a2t_stat and a2t_stat.updateflag == True:
             DisplayMVBField.disNameOfLineEdit("ato_heartbeat", a2t_stat.ato_heartbeat,self.led_stat_hrt)
             DisplayMVBField.disNameOfLineEdit("ato_error", a2t_stat.ato_error,self.led_stat_error)
