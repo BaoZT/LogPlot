@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-29 15:53:08
+LastEditTime: 2022-11-17 22:20:25
 '''
 
 import pickle
@@ -335,8 +335,8 @@ class InerRunningPlanInfo(object):
     提供计划信息定义
     '''
     __slots__ = ['rpCurTrack', 'remainArrivalTime', 'remainDepartTime', 'rpUpdateSysTime', 'rpStopStableFlg' ,
-    'rpPlanLegalFlg', 'rpFinalStnFlg','rpPlanTimeout','rpTrainStnState','rpPlanValid','rpStartTrain',
-    'rpValidNum', 'rpItem0','rpItem1','rpItem2','updateflag'] 
+    'rpPlanLegalFlg', 'rpFinalStnFlg','rpPlanTimeout','rpTrainStnState','rpPlanValid','rpStartTrain','storeTrackFromBalise',
+    'storeTrackFromPlan' ,'rpValidNum', 'rpItem0','rpItem1','rpItem2','updateflag'] 
     def __init__(self) -> None:
         self.rpCurTrack        = 0
         self.remainArrivalTime = 0
@@ -351,7 +351,8 @@ class InerRunningPlanInfo(object):
         self.rpTrainStnState = 2 # 到发状态
         self.rpPlanValid     = 1 # 计划有效状态
         self.rpStartTrain    = 0 # 发车状态-发车按钮按下？
-
+        self.storeTrackFromBalise = 0
+        self.storeTrackFromPlan = 0
         # 内部合法计划条目
         self.rpValidNum = 0
         self.rpItem0 = RunningPlanItem()
@@ -425,6 +426,8 @@ class InerRunningPlanParse(object):
                     if match:
                         self.rpInfo.rpPlanTimeout = int(match[0][0])
                         self.rpInfo.rpTrainStnState = int(match[0][1])
+                        self.rpInfo.storeTrackFromBalise = int(match[0][2])
+                        self.rpInfo.storeTrackFromPlan = int(match[0][3])
                         # 来自应答器股道 来自计划股道 计划迭代 暂不解析
                     else:
                         match = self.cfg.reg_config.pat_rp4.findall(line)
@@ -675,21 +678,23 @@ class AtoKeyInfoDisplay(object):
             led.setText(str(value))
             led.setStyleSheet("background-color: rgb(170, 170, 255);")
         led.setCursorPosition(0)
-        
+
+    @staticmethod
+    def runningPlanStoreTrack(fromBalise=int, fromPlan=int, led=QtWidgets.QLineEdit):
+        led.setText(str(fromBalise)+'/来自应答器;'+str(fromPlan)+'/来自计划')
+
     @staticmethod
     def runningPlanTableDisplay(rpInfo=InerRunningPlanInfo ,table=QtWidgets.QTableWidget):
         if rpInfo.rpItem0:
             AtoKeyInfoDisplay.runningPlanItemRowDisplay(rpInfo.rpItem0, 0, table)
-        elif rpInfo.rpItem1:
+        if rpInfo.rpItem1:
             AtoKeyInfoDisplay.runningPlanItemRowDisplay(rpInfo.rpItem1, 1, table)
-        elif rpInfo.rpItem2:
+        if rpInfo.rpItem2:
             AtoKeyInfoDisplay.runningPlanItemRowDisplay(rpInfo.rpItem2, 2, table)
-        else:
-            pass
 
     @staticmethod
     def runningPlanItemRowDisplay(rpItem=RunningPlanItem, column=int,table=QtWidgets.QTableWidget):
-        if rpItem:
+        if rpItem.rpWaysideTtrain != 0:
             # 消息ttrian
             table.setItem(0, column, QtWidgets.QTableWidgetItem(str(rpItem.rpWaysideTtrain)+'ms'))
             # 地面时刻
@@ -861,7 +866,10 @@ class AtoKeyInfoDisplay(object):
             minValue = min(valueList)
             idxKey = valueList.index(minValue) 
             for v in valueList:
-                item = QtWidgets.QTableWidgetItem(str(v)+'cm')
+                if v == 0xFFFFFFFF:
+                    item = QtWidgets.QTableWidgetItem('无效')
+                else:
+                    item = QtWidgets.QTableWidgetItem(str(v)+'cm')
                 if idx == idxKey:
                     item.setBackground(QtGui.QBrush(QtGui.QColor(255, 107, 107))) # 西瓜红
                 else:
