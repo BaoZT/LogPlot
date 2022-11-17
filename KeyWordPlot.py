@@ -257,7 +257,6 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             self.twinAxes.plot(ob.s, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
         else:
             self.twinAxes.plot(ob.cycle, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
-            self.twinAxes.scatter(ob.cycle, ob.level, color='r', label='ATO输出级位', marker='o', linewidths=0,s=1.1, alpha=0.8)
 
     # 绘制速度坐标轴相关信息
     def plotMainSpeedCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
