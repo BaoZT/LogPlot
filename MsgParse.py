@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-29 20:53:06
+LastEditTime: 2022-11-16 16:28:16
 '''
 
 
@@ -33,47 +33,48 @@ Atp2atoFieldDic={
         'l_packet':ProtoField("信息包位数",0,b_endian,13,None,None),
         'q_scale':ProtoField("距离/长度的分辨率 ",0,b_endian,2,None,{0:"10cm",1:"1m",2:"10m"}),
         'nid_lrbg':ProtoField("最近相关应答器组（LRBG）的标识号",24,b_endian,8,None,None),
+        'nid_prvlrbg':ProtoField("上一个LRBG标识号,应答器组间方向未改变的LRBG",24,b_endian,8,None,None),
         'd_lrbg':ProtoField("最后相关应答器组与列车估计前端(在激活的驾驶室侧)之间的距离",0,b_endian,8,None,None),
-        'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,None),
-        'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,None),
+        'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
+        'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
         'l_doubtover':ProtoField("过读误差",0,b_endian,15,None,None),
         'l_doubtunder':ProtoField("欠读误差",0,b_endian,15,None,None),
-        'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,None),
-        'l_traint':ProtoField("安全车长",0,b_endian,15,None,None),
+        'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,{0:"无可用完整性信息",1:"完整性由监控设备确认",2:"完整性由司机确认",3:"完整性丢失"}),
+        'l_traint':ProtoField("安全车长",0,b_endian,15,'m',None),
         'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,None,None),
-        'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,None),
+        'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
         'm_mode_c2':ProtoField("ATP模式C2等级",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
         'm_mode_c3':ProtoField("ATP模式C3等级",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
         'm_level':ProtoField("ATP等级",0,b_endian,3,None,{1:"CTCS-2",3:"CTCS-3",4:"CTCS-4"}),
         'nid_stm':ProtoField("本国系统等级",0,b_endian,8,None,None),
         'btm_antenna_position':ProtoField("BTM 天线位置",0,b_endian,8,"10cm",None),
-        'd_cz_sig_pos':ProtoField("前方出站信号机距离",0xFFFFFFFF,b_endian,32,"cm",None),
-        'd_jz_sig_pos':ProtoField("前方进站信号机距离",0xFFFFFFFF,b_endian,32,"cm",None),
-        'd_ma':ProtoField("ATP的移动授权终点",0xFFFF,b_endian,16,"m",None),
-        'd_neu_sec':ProtoField("到最近一个分相区的距离",0xFFFF,b_endian,16,"m",None),
-        'd_normal':ProtoField("列车累计走行距离",0xFFFFFFFF,b_endian,32,"cm",None),
-        'd_pos_adj':ProtoField("列车位置校正值",0xFFFFFFFF,b_endian,32,"cm",None),
-        'd_station_mid_pos':ProtoField("站台/股道中心距离",0xFFFFFFFF,b_endian,32,"cm",None),
-        'd_stop':ProtoField("本应答器距离运营停车点距离",0,b_endian,15,"cm",None),
-        'd_target':ProtoField("目标距离",0xFFFFFFFF,b_endian,32,"cm",None),
-        'd_tsm':ProtoField("前方TSM区的距离",0xFFFFFFFF,b_endian,32,"cm",{0x7FFFFFFF:"TSM无穷远",0xFFFFFFFF:"无TSM区或处于TSM区"}),
-        'd_trackcond':ProtoField("到特殊轨道区段长度的距离",0xFFFFFFFF,b_endian,32,"cm",None),
+        'd_cz_sig_pos':ProtoField("前方出站信号机距离",0,b_endian,32,"cm",{0xFFFFFFFF:"无效值"}),
+        'd_jz_sig_pos':ProtoField("前方进站信号机距离",0,b_endian,32,"cm", {0xFFFFFFFF:"无效值"}),
+        'd_ma':ProtoField("ATP的移动授权终点",0,b_endian,16,"m",{0xFFFF:"无效值"}),
+        'd_neu_sec':ProtoField("到最近一个分相区的距离",0,b_endian,16,"m",{0xFFFF:"无效值"}),
+        'd_normal':ProtoField("列车累计走行距离",0,b_endian,32,"cm",None),
+        'd_pos_adj':ProtoField("列车位置校正值",0,b_endian,32,"cm",None),
+        'd_station_mid_pos':ProtoField("站台/股道中心距离",0,b_endian,32,"cm",{0xFFFFFFFF:"无效值"}),
+        'd_stop':ProtoField("本应答器距离运营停车点距离",0,b_endian,15,"q_scale*cm",{32768:"无效值"}),
+        'd_target':ProtoField("目标距离",0,b_endian,32,"cm",None),
+        'd_tsm':ProtoField("前方TSM区的距离",0,b_endian,32,"cm",{0x7FFFFFFF:"TSM无穷远",0xFFFFFFFF:"无TSM区或处于TSM区"}),
+        'd_trackcond':ProtoField("到特殊轨道区段长度的距离",0,b_endian,32,"cm", {0xFFFFFFFF:"无效值"}),
         'l_door_distance':ProtoField("第一对客室门距车头的距离",0,b_endian,16,"cm",None),
         'l_sdu_wheel_size_1':ProtoField("ATP速传1对应轮径值",0,b_endian,16,"mm",None),
         'l_sdu_wheel_size_2':ProtoField("ATP速传2对应轮径值",0,b_endian,16,"mm",None),
         'l_text':ProtoField("文本长度",0,b_endian,8,None,None),
-        'l_trackcond':ProtoField("特殊轨道区段的长度",0xFFFFFFFF,b_endian,32,"cm",None),
+        'l_trackcond':ProtoField("特殊轨道区段的长度",0,b_endian,32,"cm",{0xFFFFFFFF:"无效值"}),
         'l_train':ProtoField("列车长度",0,b_endian,12,"m",None),
         'm_atoerror':ProtoField("ATO故障码",0,b_endian,16,None,None),
         'm_atomode':ProtoField("ATO模式",0,b_endian,4,None,{0:"ATO故障",1:"ATO待机",2:"ATO准备",3:"ATO投入",4:"ATO故障"}),
         'm_ato_control_strategy':ProtoField("ATO 当前在用控车策略",0,b_endian,4,None,{1:"默认策略",2:"快行策略",3:"慢行策略",4:"计划控车"}),
         'm_ato_plan':ProtoField("计划状态",0,b_endian,2,None,{0:"不显示",1:"计划有效",2:"计划无效"}),
         'm_ato_skip':ProtoField("计划通过",0,b_endian,2,None,{0:"不显示",1:"前方通过"}),
-        'm_ato_stop_error':ProtoField("ATO停准误差",0,b_endian,16,"cm",None),
+        'm_ato_stop_error':ProtoField("ATO停准误差",0,b_endian,16,"cm",{-0x8000:"无效值"}),
+        'm_atp_stop_error':ProtoField("ATP停准误差",0,b_endian,16,"cm",{-0x8000:"无效值"}),
         'm_ato_tb':ProtoField("折返状态",0,b_endian,2,None,{0:"不显示",1:"折返允许",2:"司机确认后折返"}),
         'm_ato_tbs':ProtoField("ATO 牵引/制动状态",0,b_endian,2,None,{0:"不显示",1:"牵引",2:"制动",3:"惰行"}),
         'm_ato_time':ProtoField("发车倒计时",0,b_endian,16,"s",None),
-        'm_atp_stop_error':ProtoField("ATP停车误差",0,b_endian,16,"cm",None),
         'm_cab_state':ProtoField("驾驶台激活状态",0,b_endian,2,None,{0:"异常",1:"驾驶室打开",2:"驾驶室关闭"}),
         'm_doormode':ProtoField("门控模式",0,b_endian,2,None,{1:"MM",2:"AM",3:"AA"}),
         'm_doorstatus':ProtoField("车门状态",0,b_endian,2,None,{0:"异常",1:"车门开",2:"车门关"}),
@@ -103,6 +104,7 @@ Atp2atoFieldDic={
         'n_iter':ProtoField("迭代字段",0,b_endian,5,None,None),
         'n_units':ProtoField("列车编组类型",0,b_endian,8,None,{1:"8编组",2:"16编组",3:"17编组", 4:"4编组"}),
         'o_train_pos':ProtoField("经过校正的列车位置",0,b_endian,32,"cm",None),
+        'paddings':ProtoField("预留补空比特",0,b_endian,16,None,None),
         'q_atopermit':ProtoField("ATO通信允许",0,b_endian,2,None,{0:"备用",1:"软允许",2:"无软允许"}),
         'q_ato_hardpermit':ProtoField("ATO硬通信允许",0,b_endian,2,None,{0:"备用",1:"硬允许",2:"无硬允许"}),
         'q_dispaly':ProtoField("显示/删除属性",0,b_endian,1,None,{0:"删除",1:"显示"}),
@@ -117,17 +119,17 @@ Atp2atoFieldDic={
         'q_tsrs':ProtoField("与TSRS的通信命令",0,b_endian,1,None,{0:"断开通信会话",1:"建立通信会话"}),
         't_atp':ProtoField("ATP系统时间",0,b_endian,32,"ms",None),
         't_cutoff_traction':ProtoField("进入分相区前体检输出断主断的时间",0,b_endian,16,"100ms",None),
-        't_day':ProtoField("日期时间-日",0,b_endian,8,None,None),
-        't_year':ProtoField("日期时间-年",0,b_endian,8,None,None),
-        't_month':ProtoField("日期时间-月",0,b_endian,8,None,None),
-        't_hour':ProtoField("日期时间-时",0,b_endian,8,None,None),
-        't_minites':ProtoField("日期时间-分",0,b_endian,8,None,None),
-        't_seconds':ProtoField("日期时间-秒",0,b_endian,8,None,None),
+        't_day':ProtoField("日期时间-日",0,b_endian,8,'day',None),
+        't_year':ProtoField("日期时间-年",0,b_endian,8,'year',None),
+        't_month':ProtoField("日期时间-月",0,b_endian,8,'month',None),
+        't_hour':ProtoField("日期时间-时",0,b_endian,8,'hour',None),
+        't_minutes':ProtoField("日期时间-分",0,b_endian,8,'minute',None),
+        't_seconds':ProtoField("日期时间-秒",0,b_endian,8,'second',None),
         't_middle':ProtoField("过应答器中心ATP系统时间",0,b_endian,32,"ms",None),
         'v_ato_permitted':ProtoField("控车策略",0,b_endian,4,None,{1:"默认策略",2:"快行策略",3:"慢行策略"}),
         'v_normal':ProtoField("列车速度ATP",0,b_endian,16,"cm/s",None),
-        'v_permitted':ProtoField("ATP允许速度",32768,b_endian,16,"cm/s",None),
-        'v_target':ProtoField("目标速度",0,b_endian,16,"cm/s",None),
+        'v_permitted':ProtoField("ATP允许速度",0,b_endian,16,"cm/s",{32768:"无效值"}),
+        'v_target':ProtoField("目标速度",0,b_endian,16,"cm/s", None),
         'x_text':ProtoField("文本",0,b_endian,8,None,None),
         'm_tb_plan':ProtoField("折返计划可用状态", 0, b_endian, 8, None, {0x00:"折返无效", 0x5A:"换端计划", 0xA5:"折返计划"}),
         'q_tb_cabbtn':ProtoField('驾驶台换端按钮',0,b_endian,2, None, {0:"未按下", 1:"按下", 15:"状态异常"}),
@@ -148,15 +150,21 @@ Tsrs2atoFieldDic={
         'l_packet':ProtoField("信息包位数",0,b_endian,13,None,None),
         'q_scale':ProtoField("距离/长度的分辨率 ",0,b_endian,2,None,{0:"10cm",1:"1m",2:"10m"}),
         'nid_lrbg':ProtoField("最近相关应答器组（LRBG）的标识号",24,b_endian,8,None,None),
+        'nid_prvlrbg':ProtoField("上一个LRBG标识号,应答器组间方向未改变的LRBG",24,b_endian,8,None,None),
         'd_lrbg':ProtoField("最后相关应答器组与列车估计前端(在激活的驾驶室侧)之间的距离",0,b_endian,8,None,None),
-        'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,None),
-        'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,None),
+        'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
+        'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
         'l_doubtover':ProtoField("过读误差",0,b_endian,15,None,None),
         'l_doubtunder':ProtoField("欠读误差",0,b_endian,15,None,None),
-        'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,None),
-        'l_traint':ProtoField("安全车长",0,b_endian,15,None,None),
-        'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,None,None),
-        'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,None),
+        'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,{0:"无可用完整性信息",1:"完整性由监控设备确认",2:"完整性由司机确认",3:"完整性丢失"}),
+        'l_traint':ProtoField("安全车长",0,b_endian,15,'m',None),
+        'l_train':ProtoField("列车绝对的真实长度",0,b_endian,12,'m',None),
+        'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,'5km/h',None),
+        'v_maxtrain':ProtoField("列车最大允许速度<考虑了编组中的最大速度",0,b_endian,7,'5km/h',None),
+        'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
+        'm_axleload':ProtoField("轴重,轴重/0.5(0≤轴重≤40时),126(轴重>40时)",0,b_endian,7,None,None),     
+        'm_airtight':ProtoField("存在气密系统，说明列车上是否装有气密系统",0,b_endian,2,None,{0:"未安装"}),     
+        'm_loadinggauge':ProtoField("限届曲线",0,b_endian,8,None,None),     
         'm_mode_c2':ProtoField("ATP模式C2等级",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
         'm_mode_c3':ProtoField("ATP模式C3等级",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
         'm_level':ProtoField("ATP等级",0,b_endian,3,None,{1:"CTCS-2",3:"CTCS-3",4:"CTCS-4"}),
@@ -167,12 +175,15 @@ Tsrs2atoFieldDic={
         'm_ato_control_strategy':ProtoField("ATO 当前在用控车策略",0,b_endian,4,None,{1:"默认策略",2:"快行策略",3:"慢行策略",4:"计划控车"}),
         'm_traintype':ProtoField("列车编组",0,b_endian,8,None,{1:"8节编组列车",2:"16节编组列车",3:"17节编组列车",4:"4节编组列车"}),
         'm_atoerror':ProtoField("ATO错误代码",0,b_endian,8,None,None),
-        'm_waysidetime':ProtoField("地面当前时刻",0,b_endian,32,'s',None),
-        'm_departtime':ProtoField("计划发车时刻",0,b_endian,32,'s',None),
-        'm_arrivaltime':ProtoField("计划到站时刻",0,b_endian,32,'s',None),
-        'm_departtime_2':ProtoField("计划发车时刻",0,b_endian,32,'s',None),
-        'm_arrivaltime_2':ProtoField("计划到站时刻",0,b_endian,32,'s',None),
+        'm_waysidetime':ProtoField("地面当前时刻",0,b_endian,32,'s',{0xFFFFFFFF:"无效值"}),
+        'm_departtime':ProtoField("计划发车时刻",0,b_endian,32,'s',{0xFFFFFFFF:"无效值"}),
+        'm_arrivaltime':ProtoField("计划到站时刻",0,b_endian,32,'s',{0xFFFFFFFF:"无效值"}),
+        'm_departtime_2':ProtoField("计划发车时刻",0,b_endian,32,'s',{0xFFFFFFFF:"无效值"}),
+        'm_arrivaltime_2':ProtoField("计划到站时刻",0,b_endian,32,'s',{0xFFFFFFFF:"无效值"}),
+        'n_iter':ProtoField("包含的数量",0,b_endian,5,None,None),
+        'n_iter_stm':ProtoField("包含STM类型的数量",0,b_endian,5,None,None),
         'nid_stm':ProtoField("本国系统等级",0,b_endian,8,None,None),
+        'nid_stm0':ProtoField("第0个可用的STM类型",0,b_endian,8,None,{3:"CTCS-2级"}),
         'nid_bg':ProtoField("应答器组ID",0,b_endian,24,None,None),
         'nid_driver':ProtoField("司机号",0,b_endian,32,None,None),
         'nid_engine':ProtoField("车载设备CTCS标识",0,b_endian,24,None,None),
@@ -189,6 +200,7 @@ Tsrs2atoFieldDic={
         'nid_arrivaltrack_2':ProtoField("到站股道编号",0,b_endian,24,None,None),
         'nid_tbdeparttrack':ProtoField("自动换端的股道编号/无人折返发车的股道编号,来自C13",0,b_endian,24,None,None),
         'nid_tbarrivaltrack':ProtoField("自动换端的股道编号/无人折返终到的股道编号,来自C13",0,b_endian,24,None,None),
+        'nc_train':ProtoField("列车所属的类型,用于静态速度曲线的计算",0,b_endian,15,None,None),
         'q_sleepsession':ProtoField("睡眠设备的通信管理",0,b_endian,1,None,{0:"忽略",1:"考虑"}),
         'q_stopstatus':ProtoField("停稳停准状态",0,b_endian,4,None,{0:"未停稳",1:"停稳未停准",2:"停稳停准"}),
         'q_tb':ProtoField("立折标志",0,b_endian,2,None,{0:"无折返",1:"原地折返"}),
@@ -246,8 +258,8 @@ TrainCircuitDic={"L码":"前方有3个及以上闭塞分区空闲",
 
 class P0(object):
     __slots__ = ["updateflag","nid_packet","l_packet","q_scale","nid_lrbg","d_lrbg",
-    "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
-    "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3","m_level","nid_stm"]
+    "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length","l_traint","v_train",
+    "q_dirtrain","m_mode_c2","m_mode_c3","m_level","nid_stm"]
     def __init__(self) -> None:
         self.updateflag    = False
         self.nid_packet    = 0
@@ -269,17 +281,16 @@ class P0(object):
         self.nid_stm       = 0
 
 class P1(object):
-    __slots__ = ["updateflag","nid_packet","l_packet","q_scale","nid_lrbg","nid_prvbg","d_lrbg",
-    "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length",
-    "q_length","l_traint","v_train","q_dirtrain","m_mode_c2","m_mode_c3",
-    "m_level","nid_stm"]
+    __slots__ = ["updateflag","nid_packet","l_packet","q_scale","nid_lrbg","nid_prvlrbg","d_lrbg",
+    "q_dirlrbg","q_dlrbg","l_doubtover","l_doubtunder","q_length","l_traint","v_train",
+    "q_dirtrain","m_mode_c2","m_mode_c3","m_level","nid_stm"]
     def __init__(self) -> None:
         self.updateflag    = False
         self.nid_packet    = 1
         self.l_packet      = 0
         self.q_scale       = 0
         self.nid_lrbg      = 0
-        self.nid_prvbg     = 0
+        self.nid_prvlrbg     = 0
         self.d_lrbg        = 0
         self.q_dirlrbg     = 0
         self.q_dlrbg       = 0
@@ -320,7 +331,7 @@ class SP2(object):
         self.d_neu_sec         = 0
         self.m_low_frequency   = 0
         self.q_stopstatus      = 0
-        self.m_atp_stop_error  = 32768
+        self.m_atp_stop_error  = -32768
         self.d_station_mid_pos = 0
         self.d_jz_sig_pos      = 0
         self.d_cz_sig_pos      = 0
@@ -678,7 +689,7 @@ class Atp2atoParse(object):
         obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
         obj.q_scale = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.nid_lrbg = item.fast_get_segment_by_index(item.curBitsIndex, 24)  # NID_LRBG
-        obj.nid_prvbg = item.fast_get_segment_by_index(item.curBitsIndex, 24)  # NID_PRVBG
+        obj.nid_prvlrbg = item.fast_get_segment_by_index(item.curBitsIndex, 24)  # nid_prvlrbg
         obj.d_lrbg = item.fast_get_segment_by_index(item.curBitsIndex, 15)
         obj.q_dirlrbg = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.q_dlrbg = item.fast_get_segment_by_index(item.curBitsIndex, 2)
@@ -732,7 +743,7 @@ class Atp2atoParse(object):
         obj.d_neu_sec = item.fast_get_segment_by_index(item.curBitsIndex, 16) # D_DEU_SEC
         obj.m_low_frequency = item.fast_get_segment_by_index(item.curBitsIndex, 8)
         obj.q_stopstatus = item.fast_get_segment_by_index(item.curBitsIndex, 4)
-        obj.m_atp_stop_error = item.fast_get_segment_by_index(item.curBitsIndex, 16)
+        obj.m_atp_stop_error = item.fast_get_segment_by_index(item.curBitsIndex, 16 , sign=1)
         obj.d_station_mid_pos = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         obj.d_jz_sig_pos = item.fast_get_segment_by_index(item.curBitsIndex, 32)
         obj.d_cz_sig_pos = item.fast_get_segment_by_index(item.curBitsIndex, 32)
@@ -757,7 +768,7 @@ class Atp2atoParse(object):
         except nid_xuser 8bit
         """
         obj.v_normal = item.fast_get_segment_by_index(item.curBitsIndex, 16, sign=1)
-        obj.d_normal = item.fast_get_segment_by_index(item.curBitsIndex, 32)
+        obj.d_normal = item.fast_get_segment_by_index(item.curBitsIndex, 32, sign=1)
         obj.updateflag = True
 
     @staticmethod
@@ -857,7 +868,7 @@ class Atp2atoParse(object):
         obj.m_doormode = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.m_doorstatus = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.m_atoerror = item.fast_get_segment_by_index(item.curBitsIndex, 16)
-        obj.m_ato_stop_error = item.fast_get_segment_by_index(item.curBitsIndex, 16)
+        obj.m_ato_stop_error = item.fast_get_segment_by_index(item.curBitsIndex, 16, sign=1)
         obj.updateflag = True
     
     @staticmethod
@@ -1942,16 +1953,18 @@ class DisplayMsgield(object):
 
     @staticmethod
     def disPlainText(obj=SP134, dateTime=str, txt=QtWidgets.QPlainTextEdit):
+        pureText = ''
         txt.moveCursor(QtGui.QTextCursor.Start)
-        txt.insertPlainText(dateTime+':')
+        txt.insertPlainText(dateTime+':  '+'SP134|')
         if obj.nid_text == 255 and obj.x_text:
-            for ch in obj.x_text:
-                pureText += hex(ch)
+            bytesText = bytes.fromhex(''.join([hex(x)[2:] for x in obj.x_text]))
+            pureText = bytesText.decode('gbk', errors='ignore').strip()
+            txt.insertPlainText('"%s"\n'%pureText)
         else:
             if obj.nid_text in Atp2atoFieldDic["nid_text"].meaning.keys():
                 txt.insertPlainText(':'+Atp2atoFieldDic["nid_text"].meaning[obj.nid_text]+'\n')
             else:
-                txt.insertPlainText(':未知文本\n')
+                txt.insertPlainText('未知文本\n')
 
     @staticmethod
     def transBaliseToDetail(baliseID=int)->str:
@@ -2215,7 +2228,7 @@ class DisplayMsgield(object):
                     else:
                         led.setText(str(value))
         else:
-            print("[ERR]:DisplayMsgield disNameOfLineEdit error key name!")
+            print("[ERR]:DisplayMsgield disNameOfLineEdit error key name!"+keyName)
         led.setCursorPosition(0)
         
     @staticmethod
@@ -2260,9 +2273,8 @@ class DisplayMsgield(object):
                     # 检查是否有含义
                     if value in fieldDic[keyName].meaning.keys():
                         twi.setText(4,intro+fieldDic[keyName].meaning[value])
-                    elif keyName == 'd_tsm': # 含义和特殊值并存
-                        if fieldDic[keyName].unit:
-                            twi.setText(4, intro+str(value)+'('+fieldDic[keyName].unit+')')
+                    elif fieldDic[keyName].unit: # 含义和特殊值并存
+                        twi.setText(4, intro+str(value)+'('+fieldDic[keyName].unit+')')
                     else:
                         brush = QtGui.QBrush(QtGui.QColor(255, 0, 0)) #红色
                         for i in range(1,twi.columnCount()+1):
@@ -2272,6 +2284,8 @@ class DisplayMsgield(object):
                     # 直接处理显示
                     if fieldDic[keyName].unit:
                         twi.setText(4,intro+str(value)+'('+fieldDic[keyName].unit+')')
+                    else:
+                        twi.setText(4,intro+str(value))
             elif keyName == 'updateflag':
                 pass
             elif keyName == 'p44_header':
@@ -2452,7 +2466,7 @@ class DisplayMsgield(object):
             rootMsg.setText(2, '32bits')
             rootMsg.setText(3, str(at2Msg.t_train_ack))
             rootMsg.setText(4, '车载时间戳:取决于被确认消息的时间戳,单位10ms') 
-        elif at2Msg.msgHeader.nid_message in [136,150, 157]:
+        elif at2Msg.msgHeader.nid_message in [136, 129, 150, 157]:
             rootMsg = QtWidgets.QTreeWidgetItem(rootTree)
             # ETCS 包
             for etcsPkt in [at2Msg.p0, at2Msg.p1, at2Msg.p4, at2Msg.p11]:
