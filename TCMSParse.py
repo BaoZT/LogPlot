@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-30 12:06:05
+LastEditTime: 2022-11-11 08:55:09
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -127,6 +127,7 @@ class DisplayMVBField(object):
                         led.setText(str(value))
         else:
             print("[ERR]:disNameOfLineEdit error key name!")
+        led.setCursorPosition(0)
     
     @staticmethod # 解析工具的 名称、数值、解释 3列显示
     def disNameOfTreeWidget(obj, root=QtWidgets.QTreeWidgetItem, fieldDic='dict'):
