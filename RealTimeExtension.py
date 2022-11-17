@@ -67,13 +67,13 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     sduShowSignal = QtCore.pyqtSignal(InerSduInfo)
     mvbShowSignal = QtCore.pyqtSignal(Ato2TcmsCtrl, Ato2TcmsState, Tcms2AtoState)
 
-    def __init__(self, filepath=str, filenamefmt=str, portname=str):
+    def __init__(self, filepath=str, filefmt=str, portname=str):
         threading.Thread.__init__(self, )
         super(QtCore.QObject, self).__init__()
         self.filepath = filepath  # 记录文件路径
         self.logFile = filepath + 'ATO记录中' + str(int(time.time())) + '.txt'  # 纪录写入文件
         self.logBuff = ''
-        self.filenamefmt = filenamefmt  # 文件格式化命名
+        self.filename = self.getFileNameFromFmt(filefmt)  # 文件格式化命名
         self.portname = portname
         self.cfg = ConfigFile()
         # 周期开始时间
@@ -146,8 +146,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
                     time.sleep(0.1)
             # 清空缓存
             self.fileFlush(f)
-        tmp = self.fileRename()
-        os.rename(self.logFile, self.filepath + tmp)
+        os.rename(self.logFile, self.filepath + self.filename)
 
     # 按行写入文件
     def fileWrite(self, line, f):
@@ -166,25 +165,24 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         print("file exit flush!")
 
     # 每次测试完后重命名文件
-    def fileRename(self):
+    def getFileNameFromFmt(self, fmt=str):
         # 保存文件，立即更新文件名
         stuctLocTime = time.localtime(time.time())
-        tmpfilename = self.filenamefmt
         try:
-            tmpfilename = tmpfilename.replace('%Y', str(stuctLocTime.tm_year), 1)
-            tmpfilename = tmpfilename.replace('%M', str(stuctLocTime.tm_mon), 1)
-            tmpfilename = tmpfilename.replace('%D', str(stuctLocTime.tm_mday), 1)
-            tmpfilename = tmpfilename.replace('%h', str(stuctLocTime.tm_hour), 1)
-            tmpfilename = tmpfilename.replace('%m', str(stuctLocTime.tm_min), 1)
-            tmpfilename = tmpfilename.replace('%s', str(stuctLocTime.tm_sec), 1)
-            tmpfilename = tmpfilename.replace('%N', self.portname, 1)
+            fmt = fmt.replace('%Y', str(stuctLocTime.tm_year), 1)
+            fmt = fmt.replace('%M', str(stuctLocTime.tm_mon), 1)
+            fmt = fmt.replace('%D', str(stuctLocTime.tm_mday), 1)
+            fmt = fmt.replace('%h', str(stuctLocTime.tm_hour), 1)
+            fmt = fmt.replace('%m', str(stuctLocTime.tm_min), 1)
+            fmt = fmt.replace('%s', str(stuctLocTime.tm_sec), 1)
+            fmt = fmt.replace('%N', self.portname, 1)
         except Exception as err:
-            tmpfilename = 'ATO' + str(stuctLocTime.tm_year) + str(stuctLocTime.tm_mon) + str(
+            fmt = 'ATO' + str(stuctLocTime.tm_year) + str(stuctLocTime.tm_mon) + str(
                 stuctLocTime.tm_mday) \
                           + str(stuctLocTime.tm_hour) + str(stuctLocTime.tm_min) + str(
                 stuctLocTime.tm_sec) \
                           + self.portname
-        return tmpfilename
+        return fmt
 
     # 处理和绘图
     def lineProcessPaint(self, line):
