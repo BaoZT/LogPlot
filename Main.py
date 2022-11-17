@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: main_fun.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-02 12:23:53
+LastEditTime: 2022-11-17 22:21:37
 '''
 
 import os
@@ -163,10 +163,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tb_ato_IN.horizontalHeader().setVisible(True)
         self.tableWidgetPlan.horizontalHeader().setVisible(True)
         self.tableWidgetTb.horizontalHeader().setVisible(True)
-        #self.tab_atp_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        #self.tab_atp_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        #self.tab_tsrs_ato.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        #self.tab_tsrs_ato.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         # 表逻辑
         self.tableATPBTM.itemClicked.connect(self.btmSelectedInfo)
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
@@ -377,8 +373,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.savePath = self.led_save_path.text() + '\\'  # 更新路径选择窗口内容
                 self.savePath = self.savePath.replace('//', '/')
                 self.savePath = self.savePath.replace('/', '\\')
-                tmpfilename = self.serialCfgDlg.filenameLine.text()
-                self.thPaintWrite = RealPaintWrite(self.savePath, tmpfilename, self.serialHandle.port)  # 文件写入线程
+                fileNameFmt = self.serialCfgDlg.filenameLine.text()
+                self.thPaintWrite = RealPaintWrite(self.savePath, fileNameFmt, self.serialHandle.port)  # 文件写入线程
                 self.thpaint = threading.Thread(target=self.runPaint)  # 绘图线程
                 self.thRead = SerialRead('COMThread', self.serialHandle)  # 串口数据读取解析线程
                 # 链接显示
@@ -739,6 +735,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             AtoKeyInfoDisplay.lineditInerDisplay("remainArrivalTime", rp_obj.remainArrivalTime, self.led_runtime)
             AtoKeyInfoDisplay.lineditInerDisplay("remainDepartTime", rp_obj.remainDepartTime, self.led_plan_coutdown)
             AtoKeyInfoDisplay.lineditInerDisplay("rpUpdateSysTime", rp_obj.rpUpdateSysTime, self.led_plan_updatetime)
+            AtoKeyInfoDisplay.runningPlanStoreTrack(rp_obj.storeTrackFromBalise, rp_obj.storeTrackFromPlan, self.led_rp_iner_track)
             # 增加辅助时间计算显示
             AtoKeyInfoDisplay.displayRpUdpDuration(osTime, rp_obj.rpUpdateSysTime,self.lbl_updateduration)
             # 显示表格
@@ -828,15 +825,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 处理返回结果
         if self.log.get_time_use():
             [t1, t2, isok] = self.log.get_time_use()     # 0=ato控车，1=没有控车,2=没有周期
-            self.showMessage("Info:预处理耗时:" + str(t1) + 's')
+            self.showMessage("Info:预处理耗时:%.2fs"%(t1))
             # 记录中模式有AOR或AOS 或启机行号
             if isok == 0 or isok > 2:
-                self.showMessage("Info:文本计算耗时:" + str(t2) + 's')
+                self.showMessage("Info:文本计算耗时:%.2fs"%(t2))
                 max_c = int(max(self.log.cycle))
                 min_c = int(min(self.log.cycle))
                 self.tagLatestPosIdx = 0  # 每次加载文件后置为最小
                 self.spinBox.setRange(min_c, max_c)
-                self.showMessage("Info:曲线周期数:" + str(max_c - min_c) + ' ' + 'from' + str(min_c) + 'to' + str(max_c))
+                self.showMessage("Info:曲线周期总数:%d个,从%d到%d"%((max_c - min_c),min_c,max_c))
                 self.spinBox.setValue(min_c)
                 self.lbl_date.setText(self.log.cycle_dic[min_c].time)  # 显示起始周期
             elif isok == 1:
@@ -867,7 +864,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if is_ato_control == 0:
                 self.islogLoad = 1  # 记录加载且ATO控车
                 self.actionRealtime.setEnabled(False)
-                # self.actionView.trigger()  # 目前无效果，待完善，目的 用于加载后重置坐标轴
                 self.showMessage('界面准备中...')
                 self.clearAxis()
                 self.winInitAfterLoad()  # 记录加载成功且有控车时，初始化显示一些内容
@@ -904,6 +900,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 用于一些界面加载记录初始化后显示的内容
     def winInitAfterLoad(self):
         trainDataFind = False
+        self.txt_atp2ato_msg.clear()
         self.barDisplay.setBarStat(90, 10, len(self.log.cycle_dic.keys())) # 从95%开始，界面准备占比5%
     
         self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
