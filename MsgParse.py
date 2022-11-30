@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-16 16:28:16
+LastEditTime: 2022-11-19 15:39:45
 '''
 
 
@@ -83,7 +83,7 @@ Atp2atoFieldDic={
         'm_low_frequency':ProtoField("轨道电路低频信息",0,b_endian,8,None,{0x01:"无码",0x00:"H码",0x02:"HU码",0x10:"HB码",0x2A:"L4码",0x2B:"L5码",
         0x25:"U2S码",0x23:"UUS码",0x22:"UU码",0x21:"U码",0x24:"U2码",0x26:"LU码",0x28:"L2码",0x27:"L码",0x29:"L3码"}),
         'm_ms_cmd':ProtoField("ATP断主断命令",0,b_endian,2,None,{1:"ATP断主断",2:"ATP合主断"}),
-        'm_position':ProtoField("公里标",0xFFFFFFFF,b_endian,32,"m",None),
+        'm_position':ProtoField("公里标",0,b_endian,32,"m",{0xFFFFFFFF:"无效值"}),
         'm_session_type':ProtoField("发起GPRS呼叫/断开的原因",0,b_endian,3,None,{0:"来自应答器发起",1:"来自人工选择数据发起",2:"来自人工选择预选ATO发起"}),
         'm_tcms_com':ProtoField("与车辆通信状态",0,b_endian,2,None,{0:"不显示",1:"MVB正常",2:"MVB中断"}),
         'm_tco_state':ProtoField("ATP切牵引状态",0,b_endian,2,"cm",{1:"ATP切牵",2:"ATP未切牵"}),
@@ -159,16 +159,16 @@ Tsrs2atoFieldDic={
         'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,{0:"无可用完整性信息",1:"完整性由监控设备确认",2:"完整性由司机确认",3:"完整性丢失"}),
         'l_traint':ProtoField("安全车长",0,b_endian,15,'m',None),
         'l_train':ProtoField("列车绝对的真实长度",0,b_endian,12,'m',None),
-        'v_train':ProtoField("实际列车速度5km/h",0,b_endian,7,'5km/h',None),
+        'v_train':ProtoField("实际列车速度",0,b_endian,7,'5km/h',None),
         'v_maxtrain':ProtoField("列车最大允许速度<考虑了编组中的最大速度",0,b_endian,7,'5km/h',None),
         'q_dirtrain':ProtoField("相对于LRBG方向的列车运行方向",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
         'm_axleload':ProtoField("轴重,轴重/0.5(0≤轴重≤40时),126(轴重>40时)",0,b_endian,7,None,None),     
         'm_airtight':ProtoField("存在气密系统，说明列车上是否装有气密系统",0,b_endian,2,None,{0:"未安装"}),     
-        'm_loadinggauge':ProtoField("限届曲线",0,b_endian,8,None,None),     
+        'm_loadinggauge':ProtoField("限界曲线",0,b_endian,8,None,None),     
         'm_mode_c2':ProtoField("ATP模式C2等级",0,b_endian,4,None,{1:"待机模式",2:"完全监控",3:"部分监控",4:"反向完全监控",5:"引导模式",6:"应答器故障",7:"目视行车",8:"调车模式",9:"隔离模式",10:"机车信号",11:"休眠模式"}),
         'm_mode_c3':ProtoField("ATP模式C3等级",0,b_endian,4,None,{0:"完全监控",1:"引导模式",2:"目视行车",3:"调车模式",5:"休眠模式",6:"待机模式",7:"冒进防护",8:"冒进后防护",9:"系统故障",10:"隔离模式",13:"SN",14:"退行模式"}),
         'm_level':ProtoField("ATP等级",0,b_endian,3,None,{1:"CTCS-2",3:"CTCS-3",4:"CTCS-4"}),
-        'm_position':ProtoField("公里标",0xFFFFFFFF,b_endian,32,"m",None),
+        'm_position':ProtoField("公里标",0,b_endian,32,"m",{0xFFFFFFFF:"无效值"}),
         'm_doormode':ProtoField("门控模式",0,b_endian,2,None,{1:"MM",2:"AM",3:"AA"}),
         'm_ato_mode':ProtoField("ATO工作模式",0,b_endian,2,None,{0:"非AM模式",1:"AM模式"}),
         'm_doorstatus':ProtoField("车门状态",0,b_endian,2,None,{0:"异常",1:"车门开",2:"车门关"}),
@@ -1890,6 +1890,12 @@ class DisplayMsgield(object):
     atpatoMsgCnt = 0
     tsrsatoMsgCnt = 0
 
+    @classmethod
+    def resetCls(cls):
+        cls.msg_obj = Atp2atoProto()
+        cls.atpatoMsgCnt = 0
+        cls.tsrsatoMsgCnt = 0
+
     @staticmethod
     def disTsmStat(value, lbl=QtWidgets.QLabel, details=False):
         # TSM无穷远 或 TSM区无效时
@@ -1950,6 +1956,39 @@ class DisplayMsgield(object):
             if obj.m_tb_status in Atp2atoFieldDic["m_tb_status"].meaning.keys():
                 txt.insertPlainText(':'+Atp2atoFieldDic["m_tb_status"].meaning[obj.m_tb_status]+'\n')
         cls.msg_obj.sp13_obj.m_tb_status  = obj.m_tb_status
+    
+    @classmethod
+    def disAtpModeChanged(cls, obj=SP2, dateTime=str, txt=QtWidgets.QPlainTextEdit):
+        levelText = ''
+        modeText = ''
+        wirteFlag = False
+        if obj.m_level in Atp2atoFieldDic["m_level"].meaning.keys():
+            levelText = Atp2atoFieldDic["m_level"].meaning[obj.m_level]
+            if obj.m_level == 1:
+                modeText = Atp2atoFieldDic["m_mode_c2"].meaning[obj.m_mode_c2]
+            elif obj.m_level == 3:
+                modeText = Atp2atoFieldDic["m_mode_c3"].meaning[obj.m_mode_c3]
+            else:
+                pass
+        if levelText or modeText:
+            writeStr = '等级模式改变:' + levelText + modeText + '\n'
+        if obj.m_level != cls.msg_obj.sp2_obj.m_level:
+            wirteFlag = True    
+        if obj.m_level == 1 and obj.m_mode_c2 != cls.msg_obj.sp2_obj.m_mode_c2:
+            wirteFlag = True 
+        elif obj.m_level == 3 and obj.m_mode_c3 != cls.msg_obj.sp2_obj.m_mode_c3:
+            wirteFlag = True  
+        else:
+            pass
+        if wirteFlag:
+            txt.moveCursor(QtGui.QTextCursor.Start)
+            if dateTime == '':
+                dateTime = '未知日期时间'
+            txt.insertPlainText(dateTime+':  '+'SP2|')
+            txt.insertPlainText(writeStr)
+        cls.msg_obj.sp2_obj.m_level = obj.m_level
+        cls.msg_obj.sp2_obj.m_mode_c2 = obj.m_mode_c2
+        cls.msg_obj.sp2_obj.m_mode_c3 = obj.m_mode_c3
 
     @staticmethod
     def disPlainText(obj=SP134, dateTime=str, txt=QtWidgets.QPlainTextEdit):
