@@ -26,7 +26,7 @@
    <string>MainWindow</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">font: 9pt &quot;微软雅黑&quot;;</string>
+   <string notr="true">font: 13px &quot;微软雅黑&quot;;</string>
   </property>
   <property name="documentMode">
    <bool>false</bool>
@@ -71,7 +71,7 @@
             <property name="font">
              <font>
               <family>微软雅黑</family>
-              <pointsize>9</pointsize>
+              <pointsize>-1</pointsize>
               <weight>50</weight>
               <italic>false</italic>
               <bold>false</bold>
@@ -122,7 +122,7 @@
                   <property name="font">
                    <font>
                     <family>微软雅黑</family>
-                    <pointsize>9</pointsize>
+                    <pointsize>-1</pointsize>
                     <weight>50</weight>
                     <italic>false</italic>
                     <bold>false</bold>
@@ -1262,13 +1262,16 @@ font : 14px;}</string>
            <number>2</number>
           </property>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="4,3">
+           <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="8,8">
+            <property name="spacing">
+             <number>2</number>
+            </property>
             <item>
              <widget class="QGroupBox" name="groupBox_8">
               <property name="font">
                <font>
                 <family>微软雅黑</family>
-                <pointsize>9</pointsize>
+                <pointsize>-1</pointsize>
                 <weight>50</weight>
                 <italic>false</italic>
                 <bold>false</bold>
@@ -1541,6 +1544,12 @@ background-color: rgb(39, 127, 140);</string>
               <property name="styleSheet">
                <string notr="true">background-color: rgb(243, 243, 243);</string>
               </property>
+              <property name="dragEnabled">
+               <bool>false</bool>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
               <attribute name="horizontalHeaderMinimumSectionSize">
                <number>30</number>
               </attribute>
@@ -1598,7 +1607,10 @@ background-color: rgb(39, 127, 140);</string>
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="4,3">
+           <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="8,8">
+            <property name="spacing">
+             <number>2</number>
+            </property>
             <property name="leftMargin">
              <number>0</number>
             </property>
@@ -1607,7 +1619,7 @@ background-color: rgb(39, 127, 140);</string>
               <property name="font">
                <font>
                 <family>微软雅黑</family>
-                <pointsize>9</pointsize>
+                <pointsize>-1</pointsize>
                 <weight>50</weight>
                 <italic>false</italic>
                 <bold>false</bold>
@@ -1899,12 +1911,18 @@ background-color: rgb(75, 119, 190);</string>
                <string notr="true">background-color: rgb(243, 243, 243);</string>
               </property>
               <attribute name="horizontalHeaderDefaultSectionSize">
-               <number>150</number>
+               <number>80</number>
               </attribute>
               <attribute name="horizontalHeaderMinimumSectionSize">
-               <number>30</number>
+               <number>50</number>
               </attribute>
               <attribute name="horizontalHeaderStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderVisible">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderCascadingSectionResizes">
                <bool>true</bool>
               </attribute>
               <attribute name="verticalHeaderDefaultSectionSize">
@@ -1930,7 +1948,7 @@ background-color: rgb(75, 119, 190);</string>
               </row>
               <row>
                <property name="text">
-                <string>距离停车差值</string>
+                <string>停车距离差值</string>
                </property>
                <property name="font">
                 <font>
@@ -2714,14 +2732,17 @@ font: 9pt &quot;微软雅黑&quot;;</string>
              <string>运行计划</string>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_6">
-             <property name="spacing">
-              <number>2</number>
+             <property name="leftMargin">
+              <number>11</number>
              </property>
              <property name="topMargin">
-              <number>9</number>
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>11</number>
              </property>
              <property name="bottomMargin">
-              <number>9</number>
+              <number>0</number>
              </property>
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -2883,7 +2904,7 @@ background-color: rgb(170, 170, 255);</string>
                <item>
                 <widget class="QLabel" name="lbl_s_track">
                  <property name="text">
-                  <string>当前股道</string>
+                  <string>实际股道</string>
                  </property>
                 </widget>
                </item>
@@ -2916,6 +2937,20 @@ background-color: rgb(170, 170, 255);</string>
                </item>
                <item>
                 <widget class="QLineEdit" name="led_plan_coutdown"/>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_8">
+               <item>
+                <widget class="QLabel" name="lbl_rp_iner_track">
+                 <property name="text">
+                  <string>软件内部暂存股道信息</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="led_rp_iner_track"/>
                </item>
               </layout>
              </item>
@@ -3263,8 +3298,8 @@ background-color: rgb(170, 170, 255);</string>
                 <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'SimSun';&quot;&gt;协议数据&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:13px; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'SimSun'; font-size:9pt;&quot;&gt;协议数据&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -3503,8 +3538,8 @@ p, li { white-space: pre-wrap; }
                 <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;协议数据&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'微软雅黑'; font-size:13px; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;协议数据&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -4741,6 +4776,12 @@ p, li { white-space: pre-wrap; }
              <string>应答器数据</string>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_5">
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
               <layout class="QGridLayout" name="gridLayout_13">
                <item row="0" column="0">
@@ -5790,7 +5831,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>1583</width>
-     <height>26</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_2">

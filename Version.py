@@ -5,7 +5,7 @@ File:
 Date: 2022-08-20 10:37:01
 Desc: 
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-10-28 22:08:24
+LastEditTime: 2022-11-18 15:17:54
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -19,7 +19,7 @@ class VersionInfo(object):
         self.major  = 4  # 主版本-软件进行了大量重写,这些重写使得无法实现向后兼容性。
         self.junior = 0  # 子版本-新功能新版本照顾到了兼容性
         self.build  = 0  # 编译版本-区分平台
-        self.revision = 221028  # 修补版本-内部程序集可以互换
+        self.revision = 221118  # 修补版本-内部程序集可以互换
         self.name = 'LogPlot'
         self.note = 'Beta'
     
@@ -33,7 +33,10 @@ class VersionInfo(object):
         desc = \
         "1.重写了数据处理,使用数据解析实现ATP/MVB信息\n"+\
         "2.重写了显示处理逻辑统一了离线和在线数据控件\n"+\
-        "3.提供了软件配置功能"
+        "3.提供了软件配置功能\n"+\
+        "2022/11/15 修复SP134纯文本显示缺陷"
+        "2022/11/17 修复计划显示错误并补充信息"
+        "2022/11/18 增加等级模式,修复折返计划错误"
         return desc
     
     def getLicenseDescription(self):
