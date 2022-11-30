@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-17 22:20:25
+LastEditTime: 2022-11-18 11:22:44
 '''
 
 import pickle
@@ -373,7 +373,7 @@ class InerRunningPlanParse(object):
         self.cfg.readConfigFile()
     
     def reset(self):
-        self.rpInfo.updateflag = False
+        self.rpInfo = InerRunningPlanInfo()
     
     def rpContentParse(self, content='list'):
         if content and len(content) > 0:
@@ -685,6 +685,7 @@ class AtoKeyInfoDisplay(object):
 
     @staticmethod
     def runningPlanTableDisplay(rpInfo=InerRunningPlanInfo ,table=QtWidgets.QTableWidget):
+        table.clearContents()
         if rpInfo.rpItem0:
             AtoKeyInfoDisplay.runningPlanItemRowDisplay(rpInfo.rpItem0, 0, table)
         if rpInfo.rpItem1:
@@ -1045,7 +1046,10 @@ class AtoKeyInfoDisplay(object):
     def disTurnbackTable(a2tMsg=Ato2tsrsProto, t2aMsg=Tsrs2atoProto, lblTb=QtWidgets.QLabel,tbTable=QtWidgets.QTableWidget):
         if t2aMsg and t2aMsg.c47 and t2aMsg.c47.updateflag:
             tbPlan = t2aMsg.c47
-            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_tbplan"].meaning[tbPlan.m_tbplan])
+            if tbPlan.m_tbplan in Tsrs2atoFieldDic["m_tbplan"].meaning.keys():
+                item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_tbplan"].meaning[tbPlan.m_tbplan])
+            else:
+                item = QtWidgets.QTableWidgetItem("异常值%d"%tbPlan.m_tbplan)
             tbTable.setItem(0, 0, item)
             item = QtWidgets.QTableWidgetItem(str(tbPlan.nid_tbdeparttrack))
             tbTable.setItem(0, 1, item)
@@ -1053,7 +1057,10 @@ class AtoKeyInfoDisplay(object):
             tbTable.setItem(0, 2, item)
             item = QtWidgets.QTableWidgetItem(str(tbPlan.nid_tbarrivaltrack))
             tbTable.setItem(0, 3, item)
-            item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_task"].meaning[tbPlan.m_task])
+            if tbPlan.m_task in Tsrs2atoFieldDic["m_task"].meaning.keys():
+                item = QtWidgets.QTableWidgetItem(Tsrs2atoFieldDic["m_task"].meaning[tbPlan.m_task])
+            else:
+                item = QtWidgets.QTableWidgetItem("异常值%d"%tbPlan.m_task)
             tbTable.setItem(0, 4, item)
 
         if a2tMsg and a2tMsg.c48 and a2tMsg.c48.updateflag:
