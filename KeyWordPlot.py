@@ -1,6 +1,13 @@
 #!/usr/bin/env python
-
 # encoding: utf-8
+'''
+Author: Zhengtang Bao
+Contact: baozhengtang@crscd.com.cn
+File: KeyWordPlot.py
+Desc: 核心绘图显示画板组件
+LastEditors: Zhengtang Bao
+LastEditTime: 2022-11-23 22:15:16
+'''
 
 
 import matplotlib
