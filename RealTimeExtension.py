@@ -70,11 +70,11 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
     def __init__(self, filepath=str, filefmt=str, portname=str):
         threading.Thread.__init__(self, )
         super(QtCore.QObject, self).__init__()
+        self.portname = portname
         self.filepath = filepath  # 记录文件路径
         self.logFile = filepath + 'ATO记录中' + str(int(time.time())) + '.txt'  # 纪录写入文件
         self.logBuff = ''
         self.filename = self.getFileNameFromFmt(filefmt)  # 文件格式化命名
-        self.portname = portname
         self.cfg = ConfigFile()
         # 周期开始时间
         self.cycle_os_time_start = 0
