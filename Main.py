@@ -3,10 +3,10 @@
 '''
 Author: Zhengtang Bao
 Contact: baozhengtang@crscd.com.cn
-File: main_fun.py
+File: Main.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-17 22:21:37
+LastEditTime: 2022-11-30 21:04:42
 '''
 
 import os
@@ -345,6 +345,12 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 实时界面连接或断开按钮
     def btnLinkorBreak(self):
+        self.savePath = self.led_save_path.text() + '\\'  # 更新路径选择窗口内容
+        self.savePath = self.savePath.replace('//', '/')
+        self.savePath = self.savePath.replace('/', '\\')
+        if not os.path.exists(self.savePath):
+            self.showMessage('Info:文件存储路径错误！')
+            return 
         # 串口关闭状态
         if not self.serialHandle.is_open:
             self.cbb_serial.setEnabled(False)
@@ -370,9 +376,6 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif reply == 2097152:
                     pass
             if self.serialHandle.is_open:
-                self.savePath = self.led_save_path.text() + '\\'  # 更新路径选择窗口内容
-                self.savePath = self.savePath.replace('//', '/')
-                self.savePath = self.savePath.replace('/', '\\')
                 fileNameFmt = self.serialCfgDlg.filenameLine.text()
                 self.thPaintWrite = RealPaintWrite(self.savePath, fileNameFmt, self.serialHandle.port)  # 文件写入线程
                 self.thpaint = threading.Thread(target=self.runPaint)  # 绘图线程
@@ -901,8 +904,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def winInitAfterLoad(self):
         trainDataFind = False
         self.txt_atp2ato_msg.clear()
+        DisplayMsgield.resetCls() # 重置显示类
         self.barDisplay.setBarStat(90, 10, len(self.log.cycle_dic.keys())) # 从95%开始，界面准备占比5%
-    
         self.Log("Begin search log key info", __name__, sys._getframe().f_lineno)
         # 搜索离线数据
         for cycle_num in self.log.cycle_dic.keys():
@@ -926,7 +929,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 添加折返变化
             if msg_atp2ato.sp13_obj.updateflag:
                 DisplayMsgield.disTbStatus(msg_atp2ato.sp13_obj, dateTime, self.txt_atp2ato_msg)
-
+            # 等级模式
+            if msg_atp2ato.sp2_obj.updateflag:
+                DisplayMsgield.disAtpModeChanged(msg_atp2ato.sp2_obj, dateTime, self.txt_atp2ato_msg)
         # 显示BTM信息
         self.Log("Begin search btm info", __name__, sys._getframe().f_lineno)
         BtmInfoDisplay.displayOffLineBtmTable(self.log.cycle_dic, self.tableATPBTM)
@@ -1191,6 +1196,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 封装用于在文本框显示字符串
     def showMessage(self, s):
+        s = time.strftime('%Y/%m/%d %H:%M:%S',time.localtime()) +' '+ s
         self.textEdit.append(s)
 
     # 模式转换函数，修改全局模式变量和光标
