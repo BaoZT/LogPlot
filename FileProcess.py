@@ -1,7 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-文件处理模块，用于原始记录预处理和内容分解解析
-
+#!/usr/bin/env python
+# encoding: utf-8
+'''
+Author: Zhengtang Bao
+Contact: baozhengtang@crscd.com.cn
+File: KeyWordPlot.py
+Desc: 文件处理模块，用于原始记录预处理和内容分解解析
+LastEditors: Zhengtang Bao
+LastEditTime: 2022-11-23 22:16:30
+Details:
 本模块提供功能包括文件打开读取，根据预定义的周期类，按照时间周期分解记录生成周期字典，
 并解析关键内容作为周期属性填入，特别地对于曲线绘制方面，使用正则表达式匹配出控车信息
 矩阵，从而能够以统一的序列访问所有控车关键信息。
@@ -13,7 +19,7 @@
 - create_ctrl_cycle_list(self): 创建控车列表矩阵
 - reset_vars(self): 重置所有列表
 
-"""
+'''
 
 
 import sys
@@ -625,7 +631,7 @@ if __name__ == "__main__":
     x = InerRunningPlanInfo()
     #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
     #path = r"C:\Users\baozh\Desktop\sypc_09300932tbout.log"
-    path = r"F:\04-ATO Debug Data\300T+ATO\08_M_L-Serial-COM8-1126174824-序列4-姚家窝铺-新民北.log"
+    path = r"F:\04-ATO Debug Data\SY_CK\长客现场试验\20221117\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log"
     fd  = FileProcess(path)
     cProfile.run('fd.readkeyword(path)')
     x = 0
