@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: KeyWordPlot.py
 Desc: 核心绘图显示画板组件
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-23 22:15:16
+LastEditTime: 2022-12-03 20:46:33
 '''
 
 
@@ -85,9 +85,9 @@ class SnaptoCursor(QtCore.QObject):
             """
         else:
             self.set_cross_hair_visible(True)
-            # 下面是当前鼠标坐标
-            x, y = event.xdata, event.ydata
-            index = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1) # 共用X轴索引
+            # 下面是当前鼠标坐标,舍弃像素精度
+            x, y = int(event.xdata), int(event.ydata)
+            index = np.searchsorted(self.x, x) # 共用X轴索引
             if index == self._last_index:
                 return # still on the same data point. Nothing to do.
             self._last_index = index
@@ -121,7 +121,7 @@ class SnaptoCursor(QtCore.QObject):
 
     # 输入坐标模拟光标移动
     def sim_mouse_move(self, x, y):
-        index = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1) # 共用X轴索引
+        index = np.searchsorted(self.x, x) # 共用X轴索引
         if index == self._last_index:
             return # still on the same data point. Nothing to do.
         self._last_index = index
@@ -693,7 +693,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
 
 
 # 实时画板类定义
-class Figure_Canvas_R(FigureCanvas):
+class RealtimeFigureCanvas(FigureCanvas):
     def __init__(self, parent=None, width=20, height=10, dpi=100):
         self.fig = matplotlib.figure.Figure(figsize=(width, height), dpi=100, frameon=False)
         FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
@@ -786,3 +786,16 @@ class Figure_Canvas_R(FigureCanvas):
         self.draw_idle()
 
 
+# 统计小画板类
+class StatFigureCanvas(FigureCanvas):
+    def __init__(self, parent=None, width=20, height=10, dpi=100):
+        self.fig = matplotlib.figure.Figure(figsize=(width, height), dpi=100, frameon=False)
+        FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
+        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.fig.subplots_adjust(top=0.97, bottom=0.18, left=0.15, right=0.98, hspace=0.10, wspace=0.25)
+        self.mainAx = self.fig.add_subplot(111)  # 画速度曲线
+        self.setParent(parent)
+    
+    def plotHist(self, arrayList='list'):
+        self.mainAx.hist(arrayList, bins=20, linewidth=0.5, edgecolor="white")
