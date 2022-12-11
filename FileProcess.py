@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: KeyWordPlot.py
 Desc: 文件处理模块，用于原始记录预处理和内容分解解析
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-23 22:16:30
+LastEditTime: 2022-12-03 17:41:56
 Details:
 本模块提供功能包括文件打开读取，根据预定义的周期类，按照时间周期分解记录生成周期字典，
 并解析关键内容作为周期属性填入，特别地对于曲线绘制方面，使用正则表达式匹配出控车信息
@@ -30,7 +30,7 @@ import numpy as np
 from PyQt5 import QtCore
 import cProfile
 from ConfigInfo import ConfigFile
-from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, ProgressBarDisplay
+from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, InerValueStatsHandler, InerValueStatsRst, ProgressBarDisplay
 from MsgParse import Ato2tsrsParse, Ato2tsrsProto, Atp2atoParse, Atp2atoProto, Tsrs2atoParse, Tsrs2atoProto
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState 
 
@@ -143,6 +143,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.filename = file_path_in.split("/")[-1]
         # 最近时间
         self.latestTime = ''
+        # 统计结果
+        self.statisticHandle = InerValueStatsHandler()
+        self.cycleStat = InerValueStatsRst()
+        self.atpTimeStat = InerValueStatsRst()
 
     def run(self):
         try:
@@ -214,6 +218,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
             print("Read line num %d"%self.file_lines_count)
             try:
                 ret = self.create_cycle_dic_dync(log)
+                self.cycleIntvlStatistics()
             except IndexError as err:
                 print(err)
         return ret
@@ -258,7 +263,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
         # 重置ATO-TSRS消息
         self.ato2tsrsParser.resetMsg()
         self.tsrs2atoParser.resetMsg()
-
 
     # <核心函数>
     # 使用自动迭代获取结果并记录周期偏移字节
@@ -423,6 +427,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 msg_line = match[0]
                 c.msg_atp2ato = pickle.loads(pickle.dumps(self.atp2atoParser.msgParse(msg_line)))
                 c.atp2atoRawBytes = self.atp2atoParser.rawBytes
+                self.atpTimeStatistics(c.msg_atp2ato.t_msg_atp, c.cycle_num, self.atpTimeStat) # 每周期可能多条固此处分析
                 self.msg_atp_ato_signal.emit((c.msg_atp2ato,c.time, c.cycle_num))
         elif '[O->P]' in line:
             match = self.cfg.reg_config.pat_o2p.findall(line)
@@ -539,7 +544,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         ret = 2  # 用于标记创建结果,2=无周期无结果，1=有周期无控车，0=有周期有控车
         self.bar.setBarStat(70, 10, len(self.cycle_dic.keys()))
         # 遍历周期
-        if len(self.cycle_dic.keys()) != 0:
+        if self.cycle_dic.keys():
             for ctrl_item in self.cycle_dic.keys():
                 if self.cycle_dic[ctrl_item].control:  # 如果该周期中有控车信息
                     self.cycle = np.append(self.cycle, self.cycle_dic[ctrl_item].cycle_num)  # 获取周期号
@@ -609,7 +614,6 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 ret = 1
         return ret
 
- 
     # 进度条处理函数
     def barRun(self):
         percent = self.bar.barMovingCompute()
@@ -617,6 +621,27 @@ class FileProcess(threading.Thread, QtCore.QObject):
             self.bar_show_signal.emit(percent)
         else:
             pass
+
+    # 统计内容处理
+    def atpTimeStatistics(self, val=int, cycleNum=int, obj=InerValueStatsRst):
+        deltaAtpTime = (val - obj.getBaseVal()) if obj.getBaseVal() else None
+        if deltaAtpTime:
+            self.statisticHandle.statsProcess(deltaAtpTime, cycleNum, self.atpTimeStat)
+        else:
+            pass
+        self.atpTimeStat.updateBaseVal(val)
+
+
+    def cycleIntvlStatistics(self):
+        delataCycleIntvl = 0
+        keyList = self.cycle_dic.keys()
+        if keyList:
+            for k in keyList:
+                # 计算系统实践偏差
+                obj = self.cycle_dic[k]
+                if (obj.ostime_end != 0) and (obj.ostime_start != 0):
+                    delataCycleIntvl = obj.ostime_end - obj.ostime_start
+                    self.statisticHandle.statsProcess(delataCycleIntvl, obj.cycle_num, self.cycleStat)
 
     # 打印函数
     def Log(self, msg=str, fun=str, lino=int):
@@ -631,7 +656,8 @@ if __name__ == "__main__":
     x = InerRunningPlanInfo()
     #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
     #path = r"C:\Users\baozh\Desktop\sypc_09300932tbout.log"
-    path = r"F:\04-ATO Debug Data\SY_CK\长客现场试验\20221117\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log"
+    #path = r"F:\04-ATO Debug Data\SY_CK\长客现场试验\20221117\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log"
+    path = r"F:\04-ATO Debug Data\300T+ATO\M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log"
     fd  = FileProcess(path)
     cProfile.run('fd.readkeyword(path)')
     x = 0
