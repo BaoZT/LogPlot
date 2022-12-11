@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: Main.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-30 21:04:42
+LastEditTime: 2022-12-11 10:27:34
 '''
 
 import os
@@ -20,7 +20,7 @@ import xlwt
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 import FileProcess
-from KeyWordPlot import CurveFigureCanvas, SnaptoCursor, Figure_Canvas_R
+from KeyWordPlot import CurveFigureCanvas, SnaptoCursor, RealtimeFigureCanvas, StatFigureCanvas
 from LogMainWin import Ui_MainWindow
 from MiniWinCollection import MVBPortDlg, SerialDlg, MVBParserDlg, ATPParserDlg, TSRSParseDlg, UTCTransferDlg, RealTimePlotDlg, CtrlMeasureDlg, \
     Cyclewindow, TrainComMeasureDlg, C3ATOTransferDlg
@@ -28,7 +28,7 @@ from TcmsParse import MVBParse,Ato2TcmsCtrl,Ato2TcmsState,Tcms2AtoState,DisplayM
 from MsgParse import Atp2atoParse, Atp2atoProto, Atp2atoFieldDic, DisplayMsgield, TrainCircuitDic
 from RealTimeExtension import SerialRead, RealPaintWrite
 from ConfigInfo import ConfigFile
-from MainWinDisplay import AtoInerDic, BtmInfoDisplay,AtoKeyInfoDisplay, InerIoInfo, InerRunningPlanInfo, InerSduInfo, ProgressBarDisplay
+from MainWinDisplay import AtoInerDic, BtmInfoDisplay,AtoKeyInfoDisplay, InerIoInfo, InerRunningPlanInfo, InerSduInfo, InerValueStatsRst, ProgressBarDisplay
 from Version import VersionInfo
 
 # 主界面类
@@ -81,8 +81,15 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ctrlMeasureStatus = 0  # 控车曲线测量状态，0=初始态，1=测量起始态，2=进行中 ,3=测量终止态
         # 在线绘图
         lr = QtWidgets.QVBoxLayout(self.mainOnlineWidget)
-        self.spReal = Figure_Canvas_R(self.mainOnlineWidget)
+        self.spReal = RealtimeFigureCanvas(self.mainOnlineWidget)
         lr.addWidget(self.spReal)  # 必须创造布局并且加入才行
+        # 统计绘图
+        ls = QtWidgets.QVBoxLayout(self.cycleStatWidget)
+        self.spcycleIntvlStat = StatFigureCanvas(self.cycleStatWidget)
+        ls.addWidget(self.spcycleIntvlStat)
+        lsp = QtWidgets.QVBoxLayout(self.atpStatWidget)
+        self.spAtpIntvlStat = StatFigureCanvas(self.atpStatWidget)
+        lsp.addWidget(self.spAtpIntvlStat)
         # MVB解析面板
         self.mvbParserPage = MVBParse()
         # ATP解析面板
@@ -444,7 +451,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         stoppoint       = result[5]
         atp2ato_msg     = result[6]
         tcms2ato_stat   = result[7]
-        time_statictics = result[8]
+        timeStatictics  = result[8]
         a2tMsg          = result[9]
         t2aMsg          = result[10]
         # 显示到侧面
@@ -455,7 +462,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.atoDmiShowByMsg(atp2ato_msg)
         self.atpTrainDataShowByMsg(atp2ato_msg)
         self.atpBtmShowByMsg(dateTime, atp2ato_msg)
-        self.atoCyleTimeStatistics(time_statictics)
+        self.atoCyleTimeStatistics(timeStatictics)
         AtoKeyInfoDisplay.disTurnbackTable(a2tMsg, t2aMsg, self.lbl_ato_tbstatus, self.tableWidgetTb)
         # 停车误差显示
         if scCtrl and atp2ato_msg: 
@@ -474,13 +481,23 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         del result
 
     # 显示时间统计信息
-    def atoCyleTimeStatistics(self,time_statictics):
-        if time_statictics:
-            self.lbl_mean_slot_rtn.setText(str(round(time_statictics[0],1))+'ms')
-            self.lbl_max_slot_rtn.setText(str(time_statictics[1])+'ms')
-            self.lbl_max_slot_cycle_rtn.setText(str(time_statictics[2]))
-            self.lbl_min_slot_rtn.setText(str(time_statictics[3])+'ms')
-            self.lbl_slot_count_rtn.setText(str(time_statictics[4]))
+    def atoCyleTimeStatistics(self,stat=InerValueStatsRst):
+        if stat:
+            self.lbl_mean_slot_rtn.setText(('%.3f'%stat.meanVal)+'ms')
+            self.lbl_max_slot_rtn.setText(str(stat.maxVal)+'ms')
+            self.lbl_max_slot_cycle_rtn.setText(str(stat.maxCycle))
+            self.lbl_min_slot_rtn.setText(str(stat.minVal)+'ms')
+            self.lbl_slot_count_rtn.setText(str(stat.count))
+
+    # 显示ATP时间统计信息
+    def atpTimeStatistics(self,stat=InerValueStatsRst):
+        if stat:
+            self.lbl_mean_atp_slot_rtn.setText(('%.3f'%stat.meanVal)+'ms')
+            self.lbl_max_atp_slot_rtn.setText(str(stat.maxVal)+'ms')
+            self.lbl_max_atp_cycle_rtn.setText(str(stat.maxCycle))
+            self.lbl_min_atp_slot_rtn.setText(str(stat.minVal)+'ms')
+            self.lbl_min_atp_cycle_rtn.setText(str(stat.minCycle))
+            self.lbl_atp_slot_cnt_rtn.setText(str(stat.count))
 
     # 显示通用信息SP2/SP13/SP138/SP8
     def atpCommonInfoShowByMsg(self, msg_obj=Atp2atoProto, time=str):
@@ -935,7 +952,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 显示BTM信息
         self.Log("Begin search btm info", __name__, sys._getframe().f_lineno)
         BtmInfoDisplay.displayOffLineBtmTable(self.log.cycle_dic, self.tableATPBTM)
-
+        # 绘制统计信息
+        self.atoCyleTimeStatistics(self.log.cycleStat)
+        self.spcycleIntvlStat.plotHist(self.log.cycleStat.arrayValue)
+        self.atpTimeStatistics(self.log.atpTimeStat)
+        self.spAtpIntvlStat.plotHist(self.log.atpTimeStat.arrayValue)
         # 显示IO信息
         self.Log("Begin search IO info", __name__, sys._getframe().f_lineno)
         self.setIoContentAfterLoad()
