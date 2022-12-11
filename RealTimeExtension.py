@@ -34,8 +34,8 @@ class SerialRead(threading.Thread, QtCore.QObject):
             # 有数据就读取
             try:
                 lineBytes = self.handle.read_until()  # 串口设置，测试时注释 默认终止符\n
-            except UnicodeDecodeError as err:
-                print("serial read unicode error!")
+            except Exception as err:
+                self.setThreadEnabled(False)
             # 若队列未满，则继续加入:
             if not workQueue.full():
                 workQueue.put(pickle.loads(pickle.dumps(lineBytes)), block=False, timeout=0.1)   # 必须读到数据
@@ -54,7 +54,6 @@ class SerialRead(threading.Thread, QtCore.QObject):
             self.handle.cancel_read()
             time.sleep(0.1)
             self.handle.reset_input_buffer()
-            self.handle.flush()
             self.handle.close()
         else:
             pass
