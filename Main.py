@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: Main.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-11 10:27:34
+LastEditTime: 2022-12-11 10:46:53
 '''
 
 import os
@@ -857,7 +857,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.spinBox.setValue(min_c)
                 self.lbl_date.setText(self.log.cycle_dic[min_c].time)  # 显示起始周期
             elif isok == 1:
-                self.showMessage("Info:文本计算耗时:" + str(t2) + 's')
+                self.showMessage("Info:文本计算耗时:%.2fs"%(t2))
                 self.showMessage("Info:ATO没有控车！")
                 max_c = int(max(self.log.cycle_dic.keys()))
                 min_c = int(min(self.log.cycle_dic.keys()))
