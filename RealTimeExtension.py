@@ -6,7 +6,7 @@ import time
 import numpy as np
 from PyQt5 import QtCore
 import serial
-from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse
+from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, InerValueStatsHandler, InerValueStatsRst
 from MsgParse import Ato2tsrsParse, Atp2atoParse, Tsrs2atoParse
 from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
 from ConfigInfo import ConfigFile
@@ -97,7 +97,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.rpInfoObj   = None
         self.ioInfoObj   = None
         # 静态变量
-        self.cycleNumStr = '0'
+        self.cycleNumStart = '0'
         self.count = 0
         self.last_mean = 0
         self.max_slot_cycle = 0
@@ -108,7 +108,11 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         self.fsm = []
         self.sc_ctrl = []
         self.stoppoint = []
-        self.time_statictics = ()
+        self.timeStatictics = ()
+        # 实时监控
+        self.cycleStat = InerValueStatsRst()
+        self.atpTimeStat = InerValueStatsRst()
+        self.statisticHandle = InerValueStatsHandler()
 
     def newCyclePreProcess(self):
         # 创建周期后应重置ATP/ATO解析模块解析结果
@@ -213,7 +217,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 所有匹配模板
         match = self.cfg.reg_config.pat_cycle_start.findall(line)
         if match:
-            self.cycleNumStr = match[0][1]
+            self.cycleNumStart = int(match[0][1])
             self.cycle_os_time_start = int(match[0][0])  # 当周期系统开始时间
             # 新的周期时重置之前的变量
             self.newCyclePreProcess()
@@ -221,7 +225,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
             match = self.cfg.reg_config.pat_cycle_end.findall(line)
             if match:
                 self.cycle_os_time_end = int(match[0][0])  # 当周期系统结束时间
-                self.time_statictics = self.staticticsCycleTime(match[0][1])
+                self.timeStatictics = self.staticticsCycleTime(int(match[0][1]))
                 update_flag = True
             else:
                 match = self.cfg.reg_config.pat_time.findall(line)
@@ -262,9 +266,9 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 发射信号
         if update_flag == True:
             # 生成信号结果
-            result = (self.cycle_os_time_start, self.cycleNumStr, self.timeContentStr, 
+            result = (self.cycle_os_time_start, self.cycleNumStart, self.timeContentStr, 
             self.fsm, self.sc_ctrl, self.stoppoint,
-            self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.time_statictics,
+            self.atp2atoParser.msg_obj,self.mvbParser.tcms2ato_state_obj, self.timeStatictics,
             self.ato2tsrsParser.msg_obj, self.tsrs2atoParser.msg_obj)
             self.patShowSignal.emit(pickle.loads(pickle.dumps(result)))
             del result
@@ -310,7 +314,7 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         # 发送信号
         if self.ioInfoParser.ioInfo.updateflagIn == True or self.ioInfoParser.ioInfo.updateflagOut:
             self.ioInfoObj =  pickle.loads(pickle.dumps(self.ioInfoParser.ioInfo))
-            self.ioShowSignal.emit(self.cycleNumStr, self.timeContentStr, self.ioInfoObj)
+            self.ioShowSignal.emit(self.cycleNumStart, self.timeContentStr, self.ioInfoObj)
             updateflag = True
         else:
             pass
@@ -353,20 +357,13 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         return updateflag
 
     # 统计ATO周期的运行时间, None不更新
-    def staticticsCycleTime(self, cycle_num):
-        if int(cycle_num) != int(self.cycleNumStr):
+    def staticticsCycleTime(self, cycleNum=int):
+        if cycleNum != self.cycleNumStart:
             return None
         else:
-            curr_slot = (self.cycle_os_time_end - self.cycle_os_time_start)
-            self.count = self.count + 1
-            self.mean_slot = self.last_mean + ((curr_slot - self.last_mean)/self.count)
-            self.last_mean = self.mean_slot
-            if curr_slot > self.max_slot:
-                self.max_slot = curr_slot
-                self.max_slot_cycle = int(cycle_num)
-            if curr_slot < self.min_slot:
-                self.min_slot = curr_slot
-        
-        return (self.mean_slot, self.max_slot, self.max_slot_cycle, self.min_slot, self.count)
+            curSlot = (self.cycle_os_time_end - self.cycle_os_time_start)
+            self.statisticHandle.statsProcess(curSlot, cycleNum, self.cycleStat)
+
+        return self.cycleStat
             
 
