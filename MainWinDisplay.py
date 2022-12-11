@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-18 11:22:44
+LastEditTime: 2022-12-03 19:39:02
 '''
 
 import pickle
@@ -136,6 +136,7 @@ StateMachineDic={
     35:'LAST'
 
 }
+
 class BtmInfoDisplay(object):
     # 作为类属性全局的
     btmCycleList = []
@@ -565,16 +566,25 @@ class InerSduInfoParse(object):
                     self.sduInfo.updateflag = False
         return self.sduInfo
 
-class InerValueStats(object):
+class InerValueStatsRst(object):
+    __slots__ = ["__baseVal","lastMeanVal", "count", "maxCycle", "minCycle", "maxVal", "meanVal", "minVal",
+    "arrayValue"]
     def __init__(self) -> None:
-        self.count = 0
+        self.__baseVal = None
         self.lastMeanVal = 0
+        self.count = 0
         self.maxCycle = 0
         self.minCycle = 0
         self.maxVal = 0
         self.meanVal = 0
-        self.minVal = 0
-        self.updateflag = False
+        self.minVal = 0xFFFFFFFF
+        self.arrayValue = []
+    
+    def updateBaseVal(self, val=int):
+        self.__baseVal = val
+    
+    def getBaseVal(self):
+        return self.__baseVal
     
 class InerValueStatsHandler(object):
 
@@ -582,8 +592,9 @@ class InerValueStatsHandler(object):
         self.curCycleNum = 0
         self.baseVal = 0
 
-    def statsProcess(value=int, cycleNum=int, obj=InerValueStats):
-        obj.count = obj + 1
+    @staticmethod
+    def statsProcess(value=int, cycleNum=int, obj=InerValueStatsRst):
+        obj.count +=  1
         obj.meanVal = obj.lastMeanVal + ((value - obj.lastMeanVal)/obj.count)
         obj.lastMeanVal = obj.meanVal
         if value > obj.maxVal:
@@ -591,15 +602,9 @@ class InerValueStatsHandler(object):
             obj.maxCycle = cycleNum
         if value < obj.minVal:
             obj.minVal = value
+            obj.minCycle = cycleNum
+        obj.arrayValue.append(value)
     
-    def cycleTimeGetValue(self, baseVal=int, curCycleNum=int):
-        if curCycleNum == self.curCycleNum:
-            delta = baseVal - self.baseVal
-            self.baseVal = baseVal
-            self.curCycleNum = curCycleNum
-            return delta
-        else:
-            return None
 
 class AtoKeyInfoDisplay(object):
     # 类变量 描述当前IO表格的行号
@@ -681,7 +686,7 @@ class AtoKeyInfoDisplay(object):
 
     @staticmethod
     def runningPlanStoreTrack(fromBalise=int, fromPlan=int, led=QtWidgets.QLineEdit):
-        led.setText(str(fromBalise)+'/来自应答器;'+str(fromPlan)+'/来自计划')
+        led.setText(str(fromBalise)+'(来自应答器) | '+str(fromPlan)+'(来自计划)')
 
     @staticmethod
     def runningPlanTableDisplay(rpInfo=InerRunningPlanInfo ,table=QtWidgets.QTableWidget):
