@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-19 15:39:45
+LastEditTime: 2022-12-03 08:55:15
 '''
 
 
@@ -55,7 +55,7 @@ Atp2atoFieldDic={
         'd_normal':ProtoField("列车累计走行距离",0,b_endian,32,"cm",None),
         'd_pos_adj':ProtoField("列车位置校正值",0,b_endian,32,"cm",None),
         'd_station_mid_pos':ProtoField("站台/股道中心距离",0,b_endian,32,"cm",{0xFFFFFFFF:"无效值"}),
-        'd_stop':ProtoField("本应答器距离运营停车点距离",0,b_endian,15,"q_scale*cm",{32768:"无效值"}),
+        'd_stop':ProtoField("本应答器距离运营停车点距离",0,b_endian,15,"q_scale",{32768:"无效值"}),
         'd_target':ProtoField("目标距离",0,b_endian,32,"cm",None),
         'd_tsm':ProtoField("前方TSM区的距离",0,b_endian,32,"cm",{0x7FFFFFFF:"TSM无穷远",0xFFFFFFFF:"无TSM区或处于TSM区"}),
         'd_trackcond':ProtoField("到特殊轨道区段长度的距离",0,b_endian,32,"cm", {0xFFFFFFFF:"无效值"}),
@@ -151,11 +151,15 @@ Tsrs2atoFieldDic={
         'q_scale':ProtoField("距离/长度的分辨率 ",0,b_endian,2,None,{0:"10cm",1:"1m",2:"10m"}),
         'nid_lrbg':ProtoField("最近相关应答器组（LRBG）的标识号",24,b_endian,8,None,None),
         'nid_prvlrbg':ProtoField("上一个LRBG标识号,应答器组间方向未改变的LRBG",24,b_endian,8,None,None),
-        'd_lrbg':ProtoField("最后相关应答器组与列车估计前端(在激活的驾驶室侧)之间的距离",0,b_endian,8,None,None),
+        'd_tsr':ProtoField("到临时限速区段的距离",0,b_endian,15,"q_scale",None),
+        'd_lrbg':ProtoField("最后相关应答器组与列车估计前端(在激活的驾驶室侧)之间的距离",0,b_endian,8,"q_scale",None),
         'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
+        'q_front':ProtoField("允许运行速度出口对车头车尾的有效性",0,b_endian,1,None,{0:"由车载设备决定头尾有效性",1:"头有效进入降速段"}),
         'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
-        'l_doubtover':ProtoField("过读误差",0,b_endian,15,None,None),
-        'l_doubtunder':ProtoField("欠读误差",0,b_endian,15,None,None),
+        'l_doubtover':ProtoField("过读误差",0,b_endian,15,"q_scale",None),
+        'l_doubtunder':ProtoField("欠读误差",0,b_endian,15,"q_scale",None),
+        'l_tsr':ProtoField("临时限速区段的长度",0,b_endian,15,"q_scale",None),
+        'l_tsrarea':ProtoField("临时限速有效区段的长度",0,b_endian,15,"q_scale",None),
         'q_length':ProtoField("列车完整性状态",0,b_endian,2,None,{0:"无可用完整性信息",1:"完整性由监控设备确认",2:"完整性由司机确认",3:"完整性丢失"}),
         'l_traint':ProtoField("安全车长",0,b_endian,15,'m',None),
         'l_train':ProtoField("列车绝对的真实长度",0,b_endian,12,'m',None),
@@ -214,7 +218,8 @@ Tsrs2atoFieldDic={
         'm_tbstatus':ProtoField("当前换端折返状态",0,b_endian,8,None,{0x00:"非自动折返状态",0x01:"原地自动折返状态",
         0x03:"站后自动折返准备状态",0x04:"站后自动折返状态", 0x07:"站后自动折返成功", 0x08:"原地自动折返成功",
         0x09:"站后自动折返失败", 0x0A:"原地自动折返失败", 0x0B:"站后自动换端成功", 0x0C:"站后自动换端失败",
-        0x0D:"原地自动折返准备状态"})
+        0x0D:"原地自动折返准备状态"}),
+        'v_tsr':ProtoField("临时限速的限制速度",0,b_endian,7,'5km/h',None),
 }
 
 TrainToGroundMsgDic={
@@ -1064,14 +1069,14 @@ class C45(object):
     """
     6.5.7	信息包CTCS-45:ATO运行计划报告
     """
-    __slots__ = ["updateflag","p44_header","nid_xuser", "l_packet", "nid_depaturetrack","m_departtime",
+    __slots__ = ["updateflag","p44_header","nid_xuser", "l_packet", "nid_departtrack","m_departtime",
     "nid_arrivaltrack","m_arrivaltime","m_task","m_skip"]    
     def __init__(self) -> None:
         self.updateflag = False
         self.p44_header = P44A2tHeader()
         self.nid_xuser  = 45
         self.l_packet   = 0
-        self.nid_depaturetrack = 0
+        self.nid_departtrack = 0
         self.m_departtime = 0
         self.nid_arrivaltrack = 0
         self.m_arrivaltime= 0
@@ -1477,6 +1482,7 @@ class Tsrs2atoParse(object):
                 nid_xuser = item.get_segment_by_index(item.curBitsIndex, 9)
                 # 根据ID选择子包
                 if nid_xuser == 2:
+                    self.msg_obj.c2 = C2()
                     Tsrs2atoParse.c2Parse(item, self.msg_obj.c2,objP44Header)
                 elif nid_xuser == 12:
                     self.msg_obj.c12 = C12()
@@ -1543,7 +1549,7 @@ class Tsrs2atoParse(object):
         obj.updateflag = True
 
     @staticmethod
-    def c12Parse(item, obj=C12, p44Header=P44T2aHeader):
+    def c2Parse(item, obj=C2, p44Header=P44T2aHeader):
         """
         except nid_xuser 9bit
         """
@@ -1552,12 +1558,18 @@ class Tsrs2atoParse(object):
         # 子包 9bit nid_xuser已经解析
         obj.q_dir = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
-        obj.q_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 1)
-        obj.nid_c = item.fast_get_segment_by_index(item.curBitsIndex, 10)
-        obj.nid_tsrs = item.fast_get_segment_by_index(item.curBitsIndex, 14)
-        obj.nid_radio_h = item.fast_get_segment_by_index(item.curBitsIndex, 32)
-        obj.nid_radio_l = item.fast_get_segment_by_index(item.curBitsIndex, 32)
-        obj.q_sleepsession = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.q_scale = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.l_tsrarea = item.fast_get_segment_by_index(item.curBitsIndex, 15)
+        obj.d_tsr = item.fast_get_segment_by_index(item.curBitsIndex, 15)
+        obj.l_tsr = item.fast_get_segment_by_index(item.curBitsIndex, 15)
+        obj.q_front = item.fast_get_segment_by_index(item.curBitsIndex, 1)
+        obj.v_tsr = item.fast_get_segment_by_index(item.curBitsIndex, 7)
+        obj.n_iter = item.fast_get_segment_by_index(item.curBitsIndex, 5)
+        for i in range(obj.n_iter):
+            obj.d_tsr_list.append(item.fast_get_segment_by_index(item.curBitsIndex, 15))
+            obj.l_tsr_list.append(item.fast_get_segment_by_index(item.curBitsIndex, 15))
+            obj.q_front_list.append(item.fast_get_segment_by_index(item.curBitsIndex, 1))
+            obj.v_tsr_list.append(item.fast_get_segment_by_index(item.curBitsIndex, 7))
         obj.updateflag = True
 
     @staticmethod
@@ -1585,7 +1597,6 @@ class Tsrs2atoParse(object):
         obj.m_task_2 = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.m_skip_2 = item.fast_get_segment_by_index(item.curBitsIndex, 2)
         obj.updateflag = True
-
 
     @staticmethod
     def c42Parse(item, obj=C42, p44Header=P44T2aHeader):
@@ -1856,7 +1867,7 @@ class Ato2tsrsParse(object):
         obj.p44_header.l_packet = p44Header.l_packet
         # 子包 9bit nid_xuser已经解析
         obj.l_packet = item.fast_get_segment_by_index(item.curBitsIndex, 13)
-        obj.nid_depaturetrack = item.get_segment_by_index(item.curBitsIndex, 24)
+        obj.nid_departtrack = item.get_segment_by_index(item.curBitsIndex, 24)
         obj.m_departtime = item.get_segment_by_index(item.curBitsIndex, 32)
         obj.nid_arrivaltrack = item.get_segment_by_index(item.curBitsIndex, 24)
         obj.m_arrivaltime = item.get_segment_by_index(item.curBitsIndex, 32)
