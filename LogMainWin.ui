@@ -71,7 +71,7 @@
             <property name="font">
              <font>
               <family>微软雅黑</family>
-              <pointsize>-1</pointsize>
+              
               <weight>50</weight>
               <italic>false</italic>
               <bold>false</bold>
@@ -122,7 +122,7 @@
                   <property name="font">
                    <font>
                     <family>微软雅黑</family>
-                    <pointsize>-1</pointsize>
+                    
                     <weight>50</weight>
                     <italic>false</italic>
                     <bold>false</bold>
@@ -308,7 +308,7 @@ font : 14px;}</string>
                   <property name="font">
                    <font>
                     <family>微软雅黑</family>
-                    <pointsize>-1</pointsize>
+                    
                     <weight>50</weight>
                     <italic>false</italic>
                     <bold>false</bold>
@@ -401,7 +401,7 @@ font : 14px;}</string>
                   <property name="font">
                    <font>
                     <family>微软雅黑</family>
-                    <pointsize>-1</pointsize>
+                    
                     <weight>50</weight>
                     <italic>false</italic>
                     <bold>false</bold>
@@ -451,7 +451,7 @@ font : 14px;}</string>
                   <property name="font">
                    <font>
                     <family>微软雅黑</family>
-                    <pointsize>-1</pointsize>
+                    
                     <weight>50</weight>
                     <italic>false</italic>
                     <bold>false</bold>
@@ -1251,7 +1251,7 @@ font : 14px;}</string>
          <string notr="true"/>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>6</number>
         </property>
         <widget class="QWidget" name="page_ctrl">
          <layout class="QVBoxLayout" name="verticalLayout_24" stretch="20,30,5,0,30,1,50">
@@ -1271,7 +1271,7 @@ font : 14px;}</string>
               <property name="font">
                <font>
                 <family>微软雅黑</family>
-                <pointsize>-1</pointsize>
+                
                 <weight>50</weight>
                 <italic>false</italic>
                 <bold>false</bold>
@@ -1619,7 +1619,7 @@ background-color: rgb(39, 127, 140);</string>
               <property name="font">
                <font>
                 <family>微软雅黑</family>
-                <pointsize>-1</pointsize>
+                
                 <weight>50</weight>
                 <italic>false</italic>
                 <bold>false</bold>
@@ -1920,7 +1920,7 @@ background-color: rgb(75, 119, 190);</string>
                <bool>true</bool>
               </attribute>
               <attribute name="verticalHeaderVisible">
-               <bool>true</bool>
+               <bool>false</bool>
               </attribute>
               <attribute name="verticalHeaderCascadingSectionResizes">
                <bool>true</bool>
@@ -3005,6 +3005,15 @@ background-color: rgb(170, 170, 255);</string>
               <width>0</width>
               <height>200</height>
              </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>微软雅黑</family>
+              
+              <weight>50</weight>
+              <italic>false</italic>
+              <bold>false</bold>
+             </font>
             </property>
             <property name="lineWidth">
              <number>2</number>
@@ -5066,7 +5075,13 @@ p, li { white-space: pre-wrap; }
          </layout>
         </widget>
         <widget class="QWidget" name="page_Statistic">
-         <layout class="QVBoxLayout" name="verticalLayout_15">
+         <layout class="QVBoxLayout" name="verticalLayout_15" stretch="10,2,6,5">
+          <property name="topMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
           <item>
            <widget class="QGroupBox" name="groupBox_2">
             <property name="styleSheet">
@@ -5075,11 +5090,172 @@ p, li { white-space: pre-wrap; }
             <property name="title">
              <string>车辆网络响应时延</string>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_57">
+            <layout class="QHBoxLayout" name="horizontalLayout_41">
              <item>
               <widget class="QPushButton" name="btn_mvb_delay_plot">
                <property name="text">
                 <string>离线响应图形绘制</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_12">
+            <property name="styleSheet">
+             <string notr="true">font: 9pt &quot;微软雅黑&quot;;</string>
+            </property>
+            <property name="title">
+             <string>ATP消息间隔监测</string>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="2,1">
+             <property name="topMargin">
+              <number>2</number>
+             </property>
+             <property name="bottomMargin">
+              <number>2</number>
+             </property>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_18">
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_17">
+                 <item>
+                  <widget class="QLabel" name="lbl_mean_atp_slot">
+                   <property name="text">
+                    <string>消息平均间隔：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_mean_atp_slot_rtn">
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_35">
+                 <item>
+                  <widget class="QLabel" name="lbl_max_atp_slot">
+                   <property name="text">
+                    <string>消息最大间隔：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_max_atp_slot_rtn">
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_36">
+                 <item>
+                  <widget class="QLabel" name="lbl_max_atp_cycle">
+                   <property name="text">
+                    <string>最大间隔周期：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_max_atp_cycle_rtn">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_37">
+                 <item>
+                  <widget class="QLabel" name="lbl_min_atp_slot">
+                   <property name="text">
+                    <string>最短消息间隔：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_min_atp_slot_rtn">
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_40">
+                 <item>
+                  <widget class="QLabel" name="lbl_min_atp_cycle">
+                   <property name="text">
+                    <string>最短间隔周期：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_min_atp_cycle_rtn">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_38">
+                 <item>
+                  <widget class="QLabel" name="lbl_atp_slot_cnt">
+                   <property name="text">
+                    <string>统计间隔总数：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_atp_slot_cnt_rtn">
+                   <property name="text">
+                    <string>ms</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QWidget" name="atpStatWidget" native="true">
+               <property name="minimumSize">
+                <size>
+                 <width>300</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">background-color: rgb(255, 230, 109);</string>
                </property>
               </widget>
              </item>
@@ -5100,7 +5276,13 @@ p, li { white-space: pre-wrap; }
             <property name="title">
              <string>ATO周期运行监测</string>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_59">
+            <layout class="QHBoxLayout" name="horizontalLayout_59" stretch="2,1">
+             <property name="topMargin">
+              <number>2</number>
+             </property>
+             <property name="bottomMargin">
+              <number>2</number>
+             </property>
              <item>
               <layout class="QVBoxLayout" name="verticalLayout_35">
                <item>
@@ -5217,7 +5399,7 @@ p, li { white-space: pre-wrap; }
               </layout>
              </item>
              <item>
-              <widget class="QWidget" name="widget_3" native="true">
+              <widget class="QWidget" name="cycleStatWidget" native="true">
                <property name="minimumSize">
                 <size>
                  <width>300</width>
