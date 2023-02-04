@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-11-11 08:55:09
+LastEditTime: 2023-01-17 12:44:28
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -248,6 +248,13 @@ class Tcms2AtoState(object):
         self.man_door_permit = 0
         self.no_permit_ato_state = 0
 
+
+class MVBParseContentException(Exception):  # 解析内容异常
+    def __init__(self, line=str, port=int, len=int):
+        self.mvbLine = line
+        self.len = len
+        self.port = port
+
 class MVBParse(object):
 
     def __init__(self):
@@ -276,7 +283,7 @@ class MVBParse(object):
         
         strByteLen = len(mvb_line)/2
         # 获取MVB端口,至少16字节数据
-        if (len(mvb_line)%2 == 0) and strByteLen > 4:
+        if (len(mvb_line)%2 == 0) and strByteLen >= 20:
             port = int(mvb_line[6:8] + mvb_line[4:6], 16)
             try:
                 mvbData = BytesStream(mvb_line)
@@ -289,11 +296,11 @@ class MVBParse(object):
                     pass
                     self.parseTcms2AtoState(mvbData, self.tcms2ato_state_obj)
                 else:
-                    print("[MVB]err mvb line:"+mvb_line)
+                    raise MVBParseContentException(mvb_line, port, strByteLen)
             except Exception as err:
-                print("err mvb line"+mvb_line)
+                raise MVBParseContentException(mvb_line, port, strByteLen)
         else:
-            pass
+            raise MVBParseContentException(mvb_line, port, strByteLen)
             
         return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
 
