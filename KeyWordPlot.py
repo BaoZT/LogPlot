@@ -6,22 +6,25 @@ Contact: baozhengtang@crscd.com.cn
 File: KeyWordPlot.py
 Desc: 核心绘图显示画板组件
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-03 20:46:33
+LastEditTime: 2023-01-17 10:39:22
 '''
 
 
-import matplotlib
+import matplotlib.style
+import matplotlib as mpl
 import matplotlib.figure as matfig
 from PyQt5 import QtCore, QtWidgets
+from ConfigInfo import ConfigFile
 from FileProcess import FileProcess
 import RealTimeExtension
 import numpy as np
-matplotlib.use("Qt5Agg")  # 声明使用QT5
-matplotlib.rcParams['xtick.direction'] = 'in'
-matplotlib.rcParams['ytick.direction'] = 'in'
-matplotlib.rcParams['axes.unicode_minus'] = False        # 解决Matplotlib绘图中，负号不正常显示问题
-matplotlib.rcParams['font.sans-serif'] = ['SimHei']     # 解决matplotlib绘图，汉字显示不正常的问题
+mpl.use("Qt5Agg")  # 声明使用QT5
+mpl.rcParams['xtick.direction'] = 'in'
+mpl.rcParams['ytick.direction'] = 'in'
+mpl.rcParams['axes.unicode_minus'] = False       # 解决Matplotlib绘图中，负号不正常显示问题
+mpl.rcParams['font.sans-serif'] = ['SimHei']     # 解决matplotlib绘图，汉字显示不正常的问题
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.gridspec import GridSpec
 from matplotlib.collections import LineCollection
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
@@ -34,7 +37,7 @@ class SnaptoCursor(QtCore.QObject):
     move_signal = QtCore.pyqtSignal(int)        # 带一个参数的信号
     sim_move_singal = QtCore.pyqtSignal(int)    # 模拟手动挪动光标
 
-    def __init__(self, ax, x, y, axAux=None, xAux=None, yAux=None):
+    def __init__(self, ax, x, y, axAuxs=None, xAuxs=None):
         super(SnaptoCursor, self).__init__()
         self.ax = ax
         self.ax.set_xlim(x[0], x[len(x)-1])  # 默认与不带光标统一的显示范围
@@ -49,18 +52,18 @@ class SnaptoCursor(QtCore.QObject):
         self.nearest_index = 0
         self._last_index = None
         # 辅助光标 
-        if axAux: 
-            self.axAux = axAux
-            self.axAux.set_xlim(xAux[0], xAux[len(x)-1])  # 默认与不带光标统一的显示范围
-            self.lxAux = self.axAux.axhline(color='k', linewidth=0.8, ls='dashdot')  # the horiz line, now only keep vert
-            self.lyAux = self.axAux.axvline(color='k', linewidth=0.8, ls='dashdot')  # the vert line
-            self.xAux = x
-            self.yAux = y
-            # 辅助光标点
-            self.data_xAux = 0
-            self.data_yAux = 0
+        if axAuxs and type(axAuxs)==list and xAuxs and type(xAuxs)==list:
+            self.axAuxs = axAuxs
+            self.xAuxs = xAuxs
+            self.lxAuxs = []
+            self.lyAuxs = []
+            if len(axAuxs) == len(xAuxs):
+                for idx in range(len(axAuxs)):
+                    self.axAuxs[idx].set_xlim(xAuxs[idx][0], xAuxs[idx][len(x)-1])  # 默认与不带光标统一的显示范围
+                    self.lyAuxs.append(self.axAuxs[idx].axvline(color='k', linewidth=0.8, ls='dashdot'))  # the vert line
+                    self.lxAuxs.append(self.axAuxs[idx].axhline(color='k', linewidth=0.8, ls='dashdot'))  # the vert line
         else:
-            self.yAux = np.array([])
+            pass
 
     def get_cursor_data(self):
         return self.data_x,self.data_y
@@ -86,68 +89,58 @@ class SnaptoCursor(QtCore.QObject):
         else:
             self.set_cross_hair_visible(True)
             # 下面是当前鼠标坐标,舍弃像素精度
-            x, y = int(event.xdata), int(event.ydata)
-            index = np.searchsorted(self.x, x) # 共用X轴索引
+            xdot, ydot = int(event.xdata), int(event.ydata)
+            index = np.searchsorted(self.x, xdot, side='left') # 共用X轴索引
             if index == self._last_index:
                 return # still on the same data point. Nothing to do.
             self._last_index = index
             # update record data and index for return
-            self.data_x = x
-            self.data_y = y
+            self.data_x = xdot
+            self.data_y = ydot
             self.nearest_index = index
             # nearest data 这是数据
-            x = self.x[index]
-            y = self.y[index]
-            # 辅助光标
-            if self.yAux.any():
-                yAux = self.yAux[index]
-            else:
-                yAux = None
+            xdata = self.x[index]
+            ydata = self.y[index]
             # update the line positions
             if cursor_track_flag == 1:          # 看标志追踪
                 y = self.y[index]
-                self.lx.set_ydata(y)
-                self.ly.set_xdata(x)
+                self.lx.set_ydata(ydata)
+                self.ly.set_xdata(xdata)
                 self.ax.figure.canvas.draw()
                 # 辅助光标
-                if yAux:
-                    self.lxAux.set_ydata(yAux)
-                    self.lyAux.set_xdata(x)  # 共用X轴索引
-                    self.axAux.figure.canvas.draw()
+                if self.xAuxs:
+                    for idx in range(len(self.xAuxs)):
+                        self.lyAuxs[idx].set_xdata(xdata)  # 共用X轴索引
+                        self.axAuxs[idx].figure.canvas.draw()
                 # 发射信号
                 self.move_signal.emit(index)  # 发射信号索引
             else:
                 pass
 
     # 输入坐标模拟光标移动
-    def sim_mouse_move(self, x, y):
-        index = np.searchsorted(self.x, x) # 共用X轴索引
+    def sim_mouse_move(self, xdot, ydot):
+        index = np.searchsorted(self.x, xdot, side='left') # 共用X轴索引
         if index == self._last_index:
             return # still on the same data point. Nothing to do.
         self._last_index = index
         # update record data and index for return
-        self.data_x = x
-        self.data_y = y
+        self.data_x = xdot
+        self.data_y = ydot
         self.nearest_index = index
         # nearest data 这是数据
-        x = self.x[index]
-        y = self.y[index]
-        # 辅助光标
-        if self.yAux.any():
-            yAux = self.yAux[index]
-        else:
-            yAux = None
+        xdata = self.x[index]
+        ydata = self.y[index]
         # update the line positions
         if cursor_track_flag == 0:          # 看标志追踪
-            y = self.y[index]
-            self.lx.set_ydata(y)
-            self.ly.set_xdata(x)
+            ydata = self.y[index]
+            self.lx.set_ydata(ydata)
+            self.ly.set_xdata(xdata)
             self.ax.figure.canvas.draw()
             # 辅助光标
-            if yAux:
-                self.lxAux.set_ydata(yAux)
-                self.lyAux.set_xdata(x)  # 共用X轴索引
-                self.axAux.figure.canvas.draw()
+            if self.xAuxs:
+                for idx in range(len(self.xAuxs)):
+                    self.lyAuxs[idx].set_xdata(xdata)  # 共用X轴索引
+                    self.axAuxs[idx].figure.canvas.draw()
         # 发射信号
         self.sim_move_singal.emit(index)  # 发射信号索引
 
@@ -174,6 +167,8 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
     lock_signal = QtCore.pyqtSignal(int)  # 这个参数用于提醒锁定光标
 
     def __init__(self, parent=None, width=20, height=10, dpi=100, sharedAxes=None):
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
         self.fig = matfig.Figure(figsize=(width, height), dpi=100, frameon=False)  # 创建一个Figure，注意：该Figure为
                                                                                 # matplotlib下的figure，不是matplotlib
                                                                                 # pyplot下面的figure
@@ -181,7 +176,12 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         if sharedAxes:
             self.mainAxes = self.fig.add_subplot(111, sharex=sharedAxes)
         else:
-            self.mainAxes = self.fig.add_subplot(111)
+            if self.cfg.base_config.project == 'ZZW':
+                gs = GridSpec(4, 4, figure=self.fig)
+                self.mainAxes = self.fig.add_subplot(gs[0:3,:])  # 大图主轴绘制核心曲线
+                self.mainAxesII = self.fig.add_subplot(gs[-1,:],sharex=self.mainAxes) # 辅图主轴绘制机车辅助信息
+            else:
+                self.mainAxes = self.fig.add_subplot(111)  # 大图主轴绘制核心曲线
         super().__init__(self.fig)    # 初始化父类函数,这是Python3的风格，且super不带参数
         self.setParent(parent)
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -206,39 +206,27 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogVS(self, ob=FileProcess, mod=int, cmd=int):
-        if mod == 1:
-            if cmd == 0:   # 位置速度曲线
-                self.mainAxes.plot(ob.s, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
-            else:           # 周期速度曲线
-                self.mainAxes.plot(ob.cycle, ob.v_ato, markersize=1.2, marker='.', color='deeppink', label="ATO当前速度", linewidth=1)
-        else:
-            if cmd == 0:
-                self.mainAxes.plot(ob.s, ob.v_ato, color='deeppink', label="ATO当前速度", linewidth=1)
-            else:
-                p1 = self.mainAxes.plot(ob.cycle, ob.v_ato, color='deeppink', label="ATO当前速度", linewidth=1)
+        x = ob.s if cmd == 0 else ob.cycle
+        mks,mk = [1.2, '.'] if mod == 1 else [None, None]
+        self.mainAxes.plot(x, ob.v_ato, markersize=mks, marker=mk, color='deeppink', label="ATO当前速度", linewidth=1)
+        if self.cfg.base_config.project == 'ZZW':
+            self.plotLogWindPressure(ob, cmd)
+            self.plotLogWindPressureCord()
 
     # 对命令于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogVcmdv(self, ob=FileProcess, mod=int, cmd=int):
-        if mod == 1:
-            if cmd == 0:    # 位置速度曲线
-                self.mainAxes.plot(ob.s, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
-            else:
-                self.mainAxes.plot(ob.cycle, ob.cmdv, marker='.', markersize=1.2, color='green', label="ATO命令速度", linewidth=1)
-        else:
-            if cmd == 0:
-                self.mainAxes.plot(ob.s, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
-            else:
-                self.mainAxes.plot(ob.cycle, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
+        x = ob.s if cmd == 0 else ob.cycle
+        self.mainAxes.fill_between(ob.cycle, ob.v_ato, ob.cmdv,color='green', alpha=.05, linewidth=0)
+        self.mainAxes.plot(x, ob.cmdv, color='green', label="ATO命令速度", linewidth=1)
 
     # 绘制ATP命令速度曲线（含义改变但名称保留）
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogVceil(self, ob=FileProcess, cmd=int):
-        if cmd == 0:
-            self.mainAxes.plot(ob.s, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
-        else:
-            self.mainAxes.plot(ob.cycle, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
+        x = ob.s if cmd == 0 else ob.cycle
+        self.mainAxes.fill_between(x, ob.v_ato, ob.ceilv, color='orange',alpha=.05, linewidth=0)
+        self.mainAxes.plot(x, ob.ceilv, color='orange', label="ATP命令速度", linewidth=1)
 
     # 绘制ATP命令速度曲线（含义改变但名称保留）
     # cmd : 1=周期速度曲线 0=位置速度曲线
@@ -252,10 +240,9 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
     # mod : 1=标注模式 0=浏览模式
     # cmd : 1=周期速度曲线 0=位置速度曲线
     def plotLogVatpPmt(self, ob=FileProcess, mod=int, cmd=int):
-        if cmd == 0:  # 位置速度曲线
-            self.mainAxes.plot(ob.s, ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
-        else:  # 周期速度曲线
-            self.mainAxes.plot(ob.cycle,ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
+        x = ob.s if cmd == 0 else ob.cycle
+        self.mainAxes.fill_between(x, ob.v_ato, ob.atp_permit_v, color='b', alpha=.1, linewidth=0)
+        self.mainAxes.plot(x,ob.atp_permit_v, color='b', label="ATP允许速度", linewidth=1)
 
     # 绘制级位曲线
     # cmd : 1=周期速度曲线 0=位置速度曲线
@@ -264,6 +251,22 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             self.twinAxes.plot(ob.s, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
         else:
             self.twinAxes.plot(ob.cycle, ob.level, color='crimson', label='ATO输出级位', linewidth=0.5)
+
+    # 绘制大闸小闸减压量
+    def plotLogWindPressure(self,ob=FileProcess, cmd=int):
+        x = ob.s if cmd == 0 else ob.cycle
+        self.mainAxesII.plot(x,ob.prs_full_brake, color='red', label="大闸减压量", linewidth=1)
+        self.mainAxesII.plot(x,ob.prs_single_brake, color='green', label="小闸减压量", linewidth=1)
+
+    # 绘制大闸小闸减压量
+    def plotLogWindPressureCord(self):
+        if self.mainAxesII.get_legend():
+            pass
+        elif self.mainAxesII.get_lines():
+            self.mainAxesII.legend(loc='upper left')
+        self.mainAxesII.set_ylabel('减压量kPa', fontdict={'fontsize': 10})
+        self.mainAxesII.figure.canvas.draw()
+        self.mainAxesII.grid(visible=True,which='both',color='k', linestyle='-', linewidth=0.05)
 
     # 绘制速度坐标轴相关信息
     def plotMainSpeedCord(self, ob=FileProcess, cmd=int, x_lim="tuple", y_lim="tuple"):
@@ -461,11 +464,16 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
             str_ramp = '车头实际坡度:%d ‰\n'%ramp
             str_adj_ramp = '等效坡度:%d ‰\n' % adj_ramp
             str_delta_v = '相邻速度差:%d cm/s'%delta_v
+            if self.cfg.base_config.project == 'ZZW':
+                str_prs_brake = '\n大闸:%dkPa,小闸:%dkPa'%(ob.prs_full_brake[pos_idx], ob.prs_single_brake[pos_idx])
+            else:
+                str_prs_brake = ''
 
             str_show = str_atppmt_ato_err + str_atocmd_ato_err + str_atpcmd_ato_err \
                     + str_stoppos_curpos_err + str_targetpos_curpos_err \
                     + str_ramp + str_adj_ramp \
-                    + str_delta_v
+                    + str_delta_v \
+                    + str_prs_brake
 
             str_spd_sig = ob.cycle_dic[ob.cycle[pos_idx]].time+'\n'\
                         + '列车速度：%dcm/s'%ob.v_ato[pos_idx]+'\n'\
@@ -506,7 +514,7 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
                 if 1 == text_pos_type:
                     self.bubbleCtrl = self.mainAxes.text(bubble_x, bubble_y, str_show,  fontsize=10, verticalalignment='top', bbox=props_bubble)
                 elif 0 == text_pos_type:
-                    self.bubbleCtrl = self.mainAxes.text(0.78, 0.95, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
+                    self.bubbleCtrl = self.mainAxes.text(0.805, 0.94, str_show, transform=self.mainAxes.transAxes, fontsize=10, verticalalignment='top',
                                     bbox=props_bubble)
                 else:
                     pass

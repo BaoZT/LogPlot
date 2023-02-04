@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: KeyWordPlot.py
 Desc: 文件处理模块，用于原始记录预处理和内容分解解析
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-03 17:41:56
+LastEditTime: 2023-01-17 14:46:24
 Details:
 本模块提供功能包括文件打开读取，根据预定义的周期类，按照时间周期分解记录生成周期字典，
 并解析关键内容作为周期属性填入，特别地对于曲线绘制方面，使用正则表达式匹配出控车信息
@@ -32,7 +32,7 @@ import cProfile
 from ConfigInfo import ConfigFile
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, InerValueStatsHandler, InerValueStatsRst, ProgressBarDisplay
 from MsgParse import Ato2tsrsParse, Ato2tsrsProto, Atp2atoParse, Atp2atoProto, Tsrs2atoParse, Tsrs2atoProto
-from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState 
+from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, MVBParseContentException, Tcms2AtoState 
 
 
 # 周期类定义
@@ -91,7 +91,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
     'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level','ceilv', 
     'atp_permit_v','statmachine','v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',
     'skip', 'mtask', 'platform', 'stoperr','stop_error', 'cycle_dic','time_use', 'file_lines_count',
-    'file_path', 'filename', 'latestTime']
+    'prs_full_brake','prs_single_brake','file_path', 'filename', 'latestTime']
 
     # constructors
     def __init__(self, file_path_in):
@@ -130,8 +130,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.skip = np.array([], dtype=np.uint8)
         self.mtask = np.array([], dtype=np.uint8)
         self.platform = np.array([], dtype=np.uint8)
-        self.stoperr = -32768
-        self.stop_error = []
+        self.stop_error = np.array([], dtype=np.int8)
+        self.prs_full_brake = np.array([], dtype=np.uint16) # 全列制动减压量大闸
+        self.prs_single_brake = np.array([], dtype=np.uint16) # 单机车制动减压量小闸
         # 文件读取结果
         self.cycle_dic = {}
         # 读取耗时
@@ -200,8 +201,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
         self.skip = np.array([], dtype=np.uint8)
         self.mtask = np.array([], dtype=np.uint8)
         self.platform = np.array([], dtype=np.uint8)
-        self.stoperr = -32768
-        self.stop_error = list()
+        self.stop_error = np.array([], dtype=np.int8)
+        self.prs_full_brake = np.array([], dtype=np.uint16) # 全列制动减压量大闸
+        self.prs_single_brake = np.array([], dtype=np.uint16) # 单机车制动减压量小闸
         # 文件读取结果
         self.cycle_dic = dict()
         # 读取耗时
@@ -453,7 +455,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
         elif 'MVB[' in line:
             match = self.cfg.reg_config.pat_mvb.findall(line)
             if match:
-                [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = pickle.loads(pickle.dumps(self.mvbParser.parseProtocol(match[0])))
+                try:
+                    [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = pickle.loads(pickle.dumps(self.mvbParser.parseProtocol(match[0])))
+                except MVBParseContentException as err:
+                    pass
         elif 'v&p' in line:
             c.sduInfo =  pickle.loads(pickle.dumps(self.sduParser.sduInfoStringParse(line, c.ostime_start)))
         elif '[RP' in line:
@@ -592,6 +597,10 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 # 通过办客
                 self.skip = mat[:, 19]
                 self.mtask = mat[:, 20]
+                # 大小闸减压量-针对机车
+                if self.cfg.base_config.project == 'ZZW':
+                    self.prs_full_brake = mat[:, 21]
+                    self.prs_single_brake = mat[:, 22]
                 print('Slip Ctrl Matrix')
                 self.bar_show_signal.emit(81)
                 # 计算加速度
@@ -655,9 +664,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
 if __name__ == "__main__":
     x = InerRunningPlanInfo()
     #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
-    #path = r"C:\Users\baozh\Desktop\sypc_09300932tbout.log"
+    path = r"C:\Users\baozh\Desktop\200612-LMCB-Serial-COM14-20221120125139(1).log"
     #path = r"F:\04-ATO Debug Data\SY_CK\长客现场试验\20221117\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log"
-    path = r"F:\04-ATO Debug Data\300T+ATO\M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log"
+    #path = r"F:\04-ATO Debug Data\300T+ATO\M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log"
     fd  = FileProcess(path)
     cProfile.run('fd.readkeyword(path)')
     x = 0
