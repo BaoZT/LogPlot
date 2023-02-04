@@ -7,7 +7,7 @@ File: MsgParse
 Date: 2022-07-10 15:13:50
 Desc: 本文件用于消息记录中的ATP-ATO,ATO-TSRS功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-03 08:55:15
+LastEditTime: 2023-02-04 10:23:17
 '''
 
 
@@ -156,6 +156,7 @@ Tsrs2atoFieldDic={
         'q_dirlrbg':ProtoField("相对于LRGB方向的列车取向(激活驾驶室的位置取向)",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
         'q_front':ProtoField("允许运行速度出口对车头车尾的有效性",0,b_endian,1,None,{0:"由车载设备决定头尾有效性",1:"头有效进入降速段"}),
         'q_dlrbg':ProtoField("指出列车估计前端位于LRBG哪一侧",0,b_endian,2,None,{0:"反向",1:"正向",2:"位置",3:"备用"}),
+        'q_status':ProtoField("SoM位置报告状态",0,b_endian,2,None,{0:"位置无效",1:"位置有效",2:"位置未知",3:"备用"}),
         'l_doubtover':ProtoField("过读误差",0,b_endian,15,"q_scale",None),
         'l_doubtunder':ProtoField("欠读误差",0,b_endian,15,"q_scale",None),
         'l_tsr':ProtoField("临时限速区段的长度",0,b_endian,15,"q_scale",None),
@@ -975,7 +976,7 @@ class Atp2atoParse(object):
 
 
 class Ato2tsrsProto(object):
-    __slots__ = ["msgHeader", "t_train_ack", "p0", "p1", "p4", "p11","c44", "c45", "c46", "c48", "c50"]
+    __slots__ = ["msgHeader", "t_train_ack", "q_status", "p0", "p1", "p4", "p11","c44", "c45", "c46", "c48", "c50"]
     def __init__(self) -> None:
         """
         车到地消息M129/M136/M146/M150/M154/M155/M156/M157/M159
@@ -983,6 +984,8 @@ class Ato2tsrsProto(object):
         self.msgHeader = A2tMsgHeader()
         # M146使用确认的时间戳
         self.t_train_ack = None
+        # M157使用的位置状态
+        self.q_status = None
         # M136/157位置报告
         self.p0  = None
         self.p1  = None
@@ -1706,6 +1709,7 @@ class Ato2tsrsParse(object):
         elif nid_msg == 156:
             pass
         elif nid_msg == 157:
+            self.msg_obj.q_status = item.fast_get_segment_by_index(item.curBitsIndex, 2)
             self.msg157PktsParse(item, self.msg_obj.msgHeader.l_message)
         elif nid_msg == 159:
             pass
@@ -1754,7 +1758,7 @@ class Ato2tsrsParse(object):
                 Atp2atoParse.sp1Parse(item,self.msg_obj.p1)
             elif nid_packet == 4:
                 self.msg_obj.p4 = P4()
-                Atp2atoParse.p4Parse(item,self.msg_obj.p4)
+                Ato2tsrsParse.p4Parse(item,self.msg_obj.p4)
             else:
                 pass
 
@@ -1948,7 +1952,35 @@ class DisplayMsgield(object):
         lbl.setText(expressStr)
 
     @staticmethod
-    def disTbRelatedBtn(cabBtn=int, wsdBtn=int, stBtn=int, dateTime=str, txt=QtWidgets.QPlainTextEdit):
+    def disChangedAtpatoInfo(msgObj=Atp2atoProto, dateTime=str, txt=QtWidgets.QPlainTextEdit):
+        # 添加折返相关按钮信息
+        if msgObj.sp138_obj.updateflag:
+            DisplayMsgield.disTbRelatedBtn(msgObj.sp138_obj, dateTime, txt)
+        # 添加纯文本信息
+        if msgObj.sp134_obj.updateflag:
+            DisplayMsgield.disPlainText(msgObj.sp134_obj, dateTime, txt)
+        # 添加折返变化
+        if msgObj.sp13_obj.updateflag:
+            DisplayMsgield.disTbStatus(msgObj.sp13_obj, dateTime, txt)
+        # 等级模式
+        if msgObj.sp2_obj.updateflag:
+            DisplayMsgield.disAtpModeChanged(msgObj.sp2_obj, dateTime, txt)
+        # 列车数据 BTM位置
+        if msgObj.sp5_obj.updateflag:
+            DisplayMsgield.disTrainDataChanged(msgObj.sp5_obj, dateTime, txt)
+
+    @classmethod
+    def disTrainDataChanged(cls, obj=SP5, dateTime=str, txt=QtWidgets.QPlainTextEdit):
+        if obj.btm_antenna_position != cls.msg_obj.sp5_obj.btm_antenna_position:
+            txt.moveCursor(QtGui.QTextCursor.Start)
+            txt.insertPlainText(dateTime+':  '+'SP5|')
+            writeStr = Atp2atoFieldDic["btm_antenna_position"].name + str(obj.btm_antenna_position) +'('+Atp2atoFieldDic["btm_antenna_position"].unit+')\n'
+            txt.insertPlainText(writeStr)
+        cls.msg_obj.sp5_obj.btm_antenna_position = obj.btm_antenna_position 
+
+    @staticmethod
+    def disTbRelatedBtn(obj=SP138, dateTime=str, txt=QtWidgets.QPlainTextEdit):
+        cabBtn, wsdBtn, stBtn = obj.q_tb_cabbtn, obj.q_tb_wsdbtn, obj.q_startbtn
         if cabBtn + wsdBtn + stBtn > 0:
             txt.moveCursor(QtGui.QTextCursor.Start)
             txt.insertPlainText(dateTime+':  '+'SP138|')
@@ -1965,7 +1997,7 @@ class DisplayMsgield(object):
             txt.moveCursor(QtGui.QTextCursor.Start)
             txt.insertPlainText(dateTime+':  '+'SP13|')
             if obj.m_tb_status in Atp2atoFieldDic["m_tb_status"].meaning.keys():
-                txt.insertPlainText(':'+Atp2atoFieldDic["m_tb_status"].meaning[obj.m_tb_status]+'\n')
+                txt.insertPlainText(Atp2atoFieldDic["m_tb_status"].meaning[obj.m_tb_status]+'\n')
         cls.msg_obj.sp13_obj.m_tb_status  = obj.m_tb_status
     
     @classmethod
@@ -2024,7 +2056,7 @@ class DisplayMsgield(object):
         station     = (baliseID & 0x003F00)>>8
         balise      = (baliseID & 0x0000FF)
         strBalise     = ("(%d-%d-%d-%d)"%(majorRegion,subRegion,station,balise))
-        strBaliseInfo = ("大区编号%d-"%majorRegion)+("分区编号%d-"%subRegion)+("车车站编号%d-"%station)+("应答器编号%d"%balise) 
+        strBaliseInfo = ("大区编号%d-"%majorRegion)+("分区编号%d-"%subRegion)+("车站编号%d-"%station)+("应答器编号%d"%balise) 
         return strBalise, strBaliseInfo      
 
     @classmethod
@@ -2256,7 +2288,7 @@ class DisplayMsgield(object):
                     led.setText(Atp2atoFieldDic[keyName].meaning[value])
                 # 检查是否有单位
                 elif Atp2atoFieldDic[keyName].unit:
-                    led.setText(str(value)+' '+Atp2atoFieldDic[keyName].unit)
+                    led.setText(str(value)+'('+Atp2atoFieldDic[keyName].unit+')')
                 else:
                     led.setStyleSheet("background-color: rgb(255, 0, 0);")
                     led.setText('异常%d' % value)
@@ -2274,7 +2306,7 @@ class DisplayMsgield(object):
                     led.setText(ipStr)
                 else:
                     if Atp2atoFieldDic[keyName].unit:
-                        led.setText(str(value)+Atp2atoFieldDic[keyName].unit)
+                        led.setText(str(value)+'('+Atp2atoFieldDic[keyName].unit+')')
                     else:
                         led.setText(str(value))
         else:
@@ -2464,6 +2496,13 @@ class DisplayMsgield(object):
             msgTree.setText(2, '24bits')
             msgTree.setText(3, str(msg.msgHeader.nid_engine))
             msgTree.setText(4, '车载设备车体标识')
+
+            if msg.q_status:
+                msgTree = QtWidgets.QTreeWidgetItem(root)
+                msgTree.setText(1,"Q_STATUS")
+                msgTree.setText(2, '2bits')
+                msgTree.setText(3, str(msg.q_status))
+                msgTree.setText(4, 'SoM位置报告状态,'+Tsrs2atoFieldDic['q_status'].meaning[msg.q_status])                
 
     @staticmethod
     def disNameOfMsgTsrs2atoTreeWidget(t2aMsg=Tsrs2atoProto, rootTree=QtWidgets.QTreeWidgetItem, fieldDic='dict', nomBrush=QtGui.QBrush):
