@@ -20,7 +20,7 @@ from C3atoRecordTranslator import Ui_Dialog as C3ATOTransferWin
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBFieldDic, MVBParse, Tcms2AtoState, DisplayMVBField
+from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBFieldDic, MVBParse, MVBParseContentException, Tcms2AtoState, DisplayMVBField
 from PyQt5 import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from KeyWordPlot import SnaptoCursor
@@ -246,24 +246,37 @@ class MVBParserDlg(QtWidgets.QMainWindow, ParserWin):
         logicon = QtGui.QIcon()
         logicon.addPixmap(QtGui.QPixmap(":IconFiles/MVBParser.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(logicon)
-        self.setWindowTitle(u'MVB协议解析')
+        # 配置信息
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
+        # 加载解析器
+        self.setWindowTitle(u'MVB协议解析'+self.getMVBPortInfo())
         self.parser = MVBParse()
         self.actionParse.triggered.connect(self.parseMVB)
         self.a2tCtrl = Ato2TcmsCtrl()
         self.a2tStat = Ato2TcmsState()
         self.t2aStat = Tcms2AtoState()
-       
+
+        # 获取MVB端口展示信息
+    def getMVBPortInfo(self):
+        mvbPortInfoStr = ' | 端口信息 ATOCtrl:'+str(self.cfg.mvb_config.ato2tcms_ctrl_port) + \
+        ',ATOState:' + str(self.cfg.mvb_config.ato2tcms_state_port) + \
+        ',TCMSState:' + str(self.cfg.mvb_config.tcms2ato_state_port)
+        return mvbPortInfoStr
+
     def parseMVB(self):
+        errReport = ''
         inputLine = self.textEdit.toPlainText()
         try:
             mvbLine = re.sub('\s+', '', inputLine)
             self.parser.resetPacket()
             [self.a2tCtrl,self.a2tStat, self.t2aStat] = self.parser.parseProtocol(mvbLine)
             self.showParserRst(self.a2tCtrl,self.a2tStat, self.t2aStat)
-        except Exception as err:
+        except MVBParseContentException as err:
+            errReport = 'port:%d,len:%d'%(err.port, err.len)
             reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                       "错误",
-                                                      "注意:数据异常或非16进制数据",
+                                                      "注意:数据异常或MVB端口号错误,"+errReport,
                                                       QtWidgets.QMessageBox.Yes)
 
     def showParserRst(self, a2t_ctrl=Ato2TcmsCtrl, a2tStat=Ato2TcmsState, t2aStat=Tcms2AtoState):
@@ -714,7 +727,10 @@ class TrainComMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
                     elif 'MVB[' in line:# 前提条件
                         match = self.cfg.reg_config.pat_mvb.findall(line)
                         if match:
-                            [self.a2tCtrl, nouse, self.t2aStat] = self.mvbParser.parseProtocol(match[0])
+                            try:
+                                [self.a2tCtrl, nouse, self.t2aStat] = self.mvbParser.parseProtocol(match[0])
+                            except MVBParseContentException as err:
+                                print('mvb parse err[%d]:%s'%(err.port,err.mvbLine))
                     else:
                         pass
 

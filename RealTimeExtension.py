@@ -8,7 +8,7 @@ from PyQt5 import QtCore
 import serial
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, InerValueStatsHandler, InerValueStatsRst
 from MsgParse import Ato2tsrsParse, Atp2atoParse, Tsrs2atoParse
-from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, Tcms2AtoState
+from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, MVBParseContentException, Tcms2AtoState
 from ConfigInfo import ConfigFile
 
 _sentinel = object()                                 # Object that signals shutdown
@@ -326,8 +326,12 @@ class RealPaintWrite(threading.Thread, QtCore.QObject):
         if 'MVB[' in line:
             match = self.cfg.reg_config.pat_mvb.findall(line)
             if match:
-                [a2tCtrl, a2tStat, t2aStat ] = self.mvbParser.parseProtocol(match[0])
-                updateflag = True
+                try:
+                    [a2tCtrl, a2tStat, t2aStat ] = self.mvbParser.parseProtocol(match[0])
+                    updateflag = True
+                except MVBParseContentException as err:
+                    updateflag = False
+                    print('mvb parse err[%d]:%s'%(err.port,err.mvbLine))
                 # 当匹配成功时拷贝
                 if self.mvbParser.ato2tcms_ctrl_obj.updateflag or \
                     self.mvbParser.ato2tcms_state_obj.updateflag or \
