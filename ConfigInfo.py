@@ -5,7 +5,7 @@
 @Date: 2020-06-29 20:45:25
 @Desc: Provide base simp agent Defination
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-09-19 21:57:54
+LastEditTime: 2022-12-22 16:24:13
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -120,7 +120,17 @@ class MonitorConfig(object):
         self.max_tract_level  = 20   # 最大牵引级位
         self.max_brake_level  = 7    # 最大制动级位
 
-class ConfigFile(object):
+class SingMetaClass(type):
+    def __call__(self, *args, **kwargs):
+        """
+        self : class Singleton
+        """
+        if not hasattr(self, "ins"):
+            insObject = super(__class__, self).__call__(*args, **kwargs)
+            setattr(self, "ins", insObject)
+        return getattr(self, "ins")
+
+class ConfigFile(object, metaclass=SingMetaClass):
     __slots__ = ["hd","base_config", "mvb_config", "reg_config","monitor_config"]
     
     def __init__(self, comment_prefixes='#') -> None:
