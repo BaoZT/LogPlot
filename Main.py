@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: Main.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-11 10:46:53
+LastEditTime: 2023-01-10 11:19:22
 '''
 
 import os
@@ -170,6 +170,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tb_ato_IN.horizontalHeader().setVisible(True)
         self.tableWidgetPlan.horizontalHeader().setVisible(True)
         self.tableWidgetTb.horizontalHeader().setVisible(True)
+        self.tb_ctrl_stoppoint.verticalHeader().setVisible(True)
         # 表逻辑
         self.tableATPBTM.itemClicked.connect(self.btmSelectedInfo)
         self.tableATPBTM.itemDoubleClicked.connect(self.btmSelectedCursorGo)
@@ -931,24 +932,14 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 预先设置 设置列车数据
             msg_atp2ato = self.log.cycle_dic[cycle_num].msg_atp2ato
             dateTime = self.log.cycle_dic[cycle_num].time
-            # 添加折返相关按钮信息
-            if msg_atp2ato.sp138_obj.updateflag:
-                sp138 = msg_atp2ato.sp138_obj
-                DisplayMsgield.disTbRelatedBtn(sp138.q_tb_cabbtn, sp138.q_tb_wsdbtn, sp138.q_startbtn, dateTime, self.txt_atp2ato_msg)
             # 添加列车数据
             if (not trainDataFind) and msg_atp2ato.sp5_obj.updateflag:
                 self.atpTrainDataShowByMsg(self.log.cycle_dic[cycle_num].msg_atp2ato)
                 AtoKeyInfoDisplay.lableFieldDisplay("n_units",msg_atp2ato.sp5_obj.n_units, Atp2atoFieldDic, self.lbl_trainlen)
                 trainDataFind = True
-            # 添加纯文本信息
-            if msg_atp2ato.sp134_obj.updateflag:
-                DisplayMsgield.disPlainText(msg_atp2ato.sp134_obj, dateTime, self.txt_atp2ato_msg)
-            # 添加折返变化
-            if msg_atp2ato.sp13_obj.updateflag:
-                DisplayMsgield.disTbStatus(msg_atp2ato.sp13_obj, dateTime, self.txt_atp2ato_msg)
-            # 等级模式
-            if msg_atp2ato.sp2_obj.updateflag:
-                DisplayMsgield.disAtpModeChanged(msg_atp2ato.sp2_obj, dateTime, self.txt_atp2ato_msg)
+            # 添加其他变化
+            DisplayMsgield.disChangedAtpatoInfo(msg_atp2ato, dateTime, self.txt_atp2ato_msg)
+            
         # 显示BTM信息
         self.Log("Begin search btm info", __name__, sys._getframe().f_lineno)
         BtmInfoDisplay.displayOffLineBtmTable(self.log.cycle_dic, self.tableATPBTM)
@@ -1208,6 +1199,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             if self.islogLoad == 1:
                 self.sp.mainAxes.clear()
+                if self.cfg.base_config.project == 'ZZW':
+                    self.sp.mainAxesII.clear()
                 self.sp.twinAxes.clear()
                 self.spAux.mainAxes.clear()
                 self.spAux.twinAxes.clear()
@@ -1289,12 +1282,19 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def tagCursorCreate(self):
         # 标注模式
         if self.curWinMode == 1 and 0 == self.isCursorCreated:
-            if self.curveCordType == 0:
-                self.cursorVato = SnaptoCursor(self.sp.mainAxes, self.log.s, self.log.v_ato, 
-                                               self.spAux.mainAxes, self.log.s, self.log.v_ato)  # 初始化一个光标
+            # 基础同步光标轴
+            xAuxArrayList = [self.log.s] if self.curveCordType == 0 else [self.log.cycle]
+            axAuxList = [self.spAux.mainAxes]
+            # 主轴X轴
+            xList = self.log.s if self.curveCordType == 0 else self.log.cycle
+            # 根据配置增加跟随光标轴
+            if self.cfg.base_config.project == 'ZZW':
+                axAuxList.append(self.sp.mainAxesII)
+                xAuxArrayList = xAuxArrayList * 2
             else:
-                self.cursorVato = SnaptoCursor(self.sp.mainAxes, self.log.cycle, self.log.v_ato,
-                                               self.spAux.mainAxes, self.log.cycle, self.log.v_ato)  # 初始化一个光标
+                pass
+
+            self.cursorVato = SnaptoCursor(self.sp.mainAxes, xList, self.log.v_ato, axAuxList, xAuxArrayList)  # 初始化一个光标
             self.cursorVato.resetCursorPlot()
             self.Log("Link Signal to Tag Cursor", __name__, sys._getframe().f_lineno)
             self.cid1 = self.sp.mpl_connect('motion_notify_event', self.cursorVato.mouse_move)
