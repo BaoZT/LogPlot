@@ -9,7 +9,7 @@
 @time: 2018/4/20 14:56
 @desc: 本文件用于MVB解析功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2023-01-17 12:44:28
+LastEditTime: 2023-06-17 15:01:13
 '''
 
 from PyQt5 import  QtWidgets,QtGui
@@ -171,6 +171,11 @@ class DisplayMVBField(object):
                 print("[ERR]:disNameOfTreeWidget error key name!"+keyName)
         root.setExpanded(True)
 
+    @staticmethod # 显示端口信息
+    def disTextOfGroupTitle(gp=QtWidgets.QGroupBox, port=int):
+        gp.setTitle(gp.title() + ' [端口' + str(port) + ']')
+
+
 class Ato2TcmsCtrl(object):
     __slots__ = ["frame_header_send","frame_seq","frame_port","ato_heartbeat","ato_valid",
     "track_brake_cmd","track_value","brake_value","keep_brake_on","open_left_door",'ato_tb_light',
@@ -255,6 +260,12 @@ class MVBParseContentException(Exception):  # 解析内容异常
         self.len = len
         self.port = port
 
+class MVBParsePortException(Exception):  # 解析端口异常
+    def __init__(self, line=str, port=int, len=int):
+        self.mvbLine = line
+        self.len = len
+        self.port = port
+
 class MVBParse(object):
 
     def __init__(self):
@@ -284,23 +295,32 @@ class MVBParse(object):
         strByteLen = len(mvb_line)/2
         # 获取MVB端口,至少16字节数据
         if (len(mvb_line)%2 == 0) and strByteLen >= 20:
-            port = int(mvb_line[6:8] + mvb_line[4:6], 16)
+            port = int(mvb_line[6:8] + mvb_line[4:6], 16)        
+            mvbData = BytesStream(mvb_line)
+            # 校核端口
+            if port == self.cfg.mvb_config.ato2tcms_ctrl_port or \
+            port == self.cfg.mvb_config.ato2tcms_state_port or \
+            port == self.cfg.mvb_config.tcms2ato_state_port :
+                pass
+            else:
+                raise MVBParsePortException(mvb_line, port, strByteLen)
             try:
-                mvbData = BytesStream(mvb_line)
                 # 查询端口解析并核对包长
-                if strByteLen >= 20 and port == self.cfg.mvb_config.ato2tcms_ctrl_port:
-                    self.parseAto2TcmsCtrl(mvbData,self.ato2tcms_ctrl_obj)
-                elif strByteLen >= 20 and port == self.cfg.mvb_config.ato2tcms_state_port:
-                    self.parseAto2TcmsState(mvbData,self.ato2tcms_state_obj)
-                elif strByteLen >= 36 and port == self.cfg.mvb_config.tcms2ato_state_port:
-                    pass
-                    self.parseTcms2AtoState(mvbData, self.tcms2ato_state_obj)
+                if port == self.cfg.mvb_config.ato2tcms_ctrl_port:
+                    if strByteLen >= 20:
+                        self.parseAto2TcmsCtrl(mvbData,self.ato2tcms_ctrl_obj)
+                elif port == self.cfg.mvb_config.ato2tcms_state_port:
+                    if strByteLen >= 20:
+                        self.parseAto2TcmsState(mvbData,self.ato2tcms_state_obj)
+                elif port == self.cfg.mvb_config.tcms2ato_state_port:
+                    if strByteLen >= 36:
+                        self.parseTcms2AtoState(mvbData, self.tcms2ato_state_obj)
                 else:
-                    raise MVBParseContentException(mvb_line, port, strByteLen)
+                    pass
             except Exception as err:
                 raise MVBParseContentException(mvb_line, port, strByteLen)
         else:
-            raise MVBParseContentException(mvb_line, port, strByteLen)
+            pass # 基本校验不通过 可能打印错误
             
         return (self.ato2tcms_ctrl_obj, self.ato2tcms_state_obj, self.tcms2ato_state_obj)
 
