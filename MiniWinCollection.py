@@ -556,6 +556,7 @@ class MeasureFigureCanvas(FigureCanvas):
 
 # 控车测量设置类
 class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
+    INVTL = 100 # 加速度计算的基本时间单位100ms
 
     # 初始化，获取加载后的处理信息
     def __init__(self, parent=None, logObj=FileProcess.FileProcess):
@@ -573,6 +574,8 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.setWindowIcon(logicon)
         self.setWindowTitle(u'ATO曲线测量器')
         self.resize(800, 500)
+        self.cfg = ConfigFile()
+        self.cfg.readConfigFile()
 
     # 设置加速度显示表
     def accTableFormat(self):
@@ -596,7 +599,15 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         [idx_start, idx_end] = self.setSegmentIdx(idx_start, idx_end)
 
         # 获取所有周期对应的系统时间作为时间轴-将系统时间改为百毫秒
-        time_HMS_list = [self.log.cycle_dic[idx].ostime_start/100 for idx in self.log.cycle[idx_start:idx_end]]
+        if 0 == self.cfg.monitor_config.cycle_intvl:
+            time_HMS_list = [self.log.cycle_dic[idx].ostime_start/CtrlMeasureDlg.INVTL for idx in self.log.cycle[idx_start:idx_end]]
+        elif self.cfg.monitor_config.cycle_intvl > 0:
+            fakeNum = len(self.log.cycle[idx_start:idx_end])
+            intval = int(self.cfg.monitor_config.cycle_intvl/CtrlMeasureDlg.INVTL)
+            time_HMS_list = list(range(0,fakeNum*intval, intval))
+        else:
+            pass
+        
         y_vato_list = self.log.v_ato[idx_start:idx_end]
         y_atppmtv_list = self.log.atp_permit_v[idx_start:idx_end]
         y_atocmdv_list = self.log.cmdv[idx_start:idx_end]
@@ -620,7 +631,14 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         s_sim = self.log.s[idx_end] - self.log.s[idx_start]
         v_sim = self.log.v_ato[idx_end] - self.log.v_ato[idx_start]
         # 计算拟合的加速度 将单位转换为百毫秒-这样100ms/200ms等周期均可适应
-        time_HMS_list = [self.log.cycle_dic[idx].ostime_start/100 for idx in self.log.cycle[idx_start:idx_end]]
+        if 0 == self.cfg.monitor_config.cycle_intvl:
+            time_HMS_list = [self.log.cycle_dic[idx].ostime_start/CtrlMeasureDlg.INVTL for idx in self.log.cycle[idx_start:idx_end]]
+        elif self.cfg.monitor_config.cycle_intvl > 0:
+            fakeNum = len(self.log.cycle[idx_start:idx_end])
+            intval = int(self.cfg.monitor_config.cycle_intvl/CtrlMeasureDlg.INVTL)
+            time_HMS_list = list(range(0,fakeNum*intval, intval))
+        else:
+            pass
         [a_sim, p_sim] = self.getEstimateAcc(time_HMS_list, y_list)  # 一次多项式拟合，相当于线性拟合
 
         return [v_sim, s_sim, a_sim, x_list, time_HMS_list, y_list, p_sim]
@@ -649,8 +667,12 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         # 计算表格
         acc_all = self.computeAllAccEstimate(idx_start, idx_end)
         # 测量时间
-        interval = self.log.cycle_dic[self.log.cycle[idx_end]].ostime_start-self.log.cycle_dic[self.log.cycle[idx_start]].ostime_start
-
+        if 0 == self.cfg.monitor_config.cycle_intvl:
+            intervalStr = '实际测量时间'
+            interval = self.log.cycle_dic[self.log.cycle[idx_end]].ostime_start-self.log.cycle_dic[self.log.cycle[idx_start]].ostime_start
+        else:
+            intervalStr = '伪造测量时间'
+            interval = self.cfg.monitor_config.cycle_intvl * len(self.log.cycle[idx_start:idx_end])
         item_name = ['ATP允许速度', 'ATP命令速度', 'ATO命令速度', '实际速度']
         item_unit = ['cm/s^2', 'cm/s^2', 'cm/s^2', 'cm/s^2']
         for idx, name in enumerate(item_name):
@@ -667,7 +689,7 @@ class CtrlMeasureDlg(QtWidgets.QMainWindow, MeasureWin):
         self.sp.ax.plot(x_time_HMS_list, y_list_sim, color='purple')
         self.sp.ax.plot(x_time_HMS_list, y_list, color='deeppink', marker='.', markersize=0.2)
         str_asim = '拟合加速度:%.*fcm/s^2\n' % (2, a_sim)
-        str_cycle_num = '测量时间:%.*fs\n' % (2, interval / 1000) # 转换为秒
+        str_cycle_num = '%s:%.*fs\n' % (intervalStr, 2, interval / 1000) # 转换为秒
         str_s_sim = 'ATO走行距离:%dcm\n' % int(s_sim)
         str_v_sim = 'ATO速度变化:%dcm/s' % (v_sim)
 
