@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: Main.py
 Desc: 本文件功能集成的主框架
 LastEditors: Zhengtang Bao
-LastEditTime: 2023-01-10 11:19:22
+LastEditTime: 2023-06-18 15:11:19
 '''
 
 import os
@@ -156,6 +156,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionPLAN.triggered.connect(self.updateEventPointType)
         self.actionWL.triggered.connect(self.updateEventPointType)
         self.actionRealTimePlot.triggered.connect(self.showRealtimePlotSet)
+        self.actionAelog.triggered.connect(self.updateCheckableView)
         # 右边侧栏显示
         self.btn_ato.clicked.connect(self.showOffRight_ATO)
         self.btn_plan.clicked.connect(self.showOffRight_PLAN)
@@ -201,13 +202,13 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.CBatpcmdv.stateChanged.connect(self.realtimeLineChoose)
         self.CBlevel.stateChanged.connect(self.realtimeLineChoose)
         self.CBcmdv.stateChanged.connect(self.realtimeLineChoose)
-
         # 如果初始界面实时
         self.fileOpen.setDisabled(True)  # 设置文件读取不可用
         self.cyclewin = Cyclewindow()
         self.cfg = ConfigFile()
         self.cfg.readConfigFile()
         self.led_save_path.setText(self.cfg.base_config.save_path)
+        self.txt_aelog.setVisible(True)
         self.show()
 
     # 事件处理函数，打开文件读取并初始化界面
@@ -268,6 +269,10 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.stackedWidget_RightCol.setCurrentWidget(self.page_ctrl)
         self.fileOpen.setEnabled(True)  # 设置文件读取可用
         self.bindOfflineCurve(True)
+        # 更新MVB端口显示
+        DisplayMVBField.disTextOfGroupTitle(self.gp_ato2tcms_ctrl, self.cfg.mvb_config.ato2tcms_ctrl_port)
+        DisplayMVBField.disTextOfGroupTitle(self.gp_ato2tcms_status, self.cfg.mvb_config.ato2tcms_state_port)
+        DisplayMVBField.disTextOfGroupTitle(self.gp_tcms2ato, self.cfg.mvb_config.tcms2ato_state_port)
         self.curInterface = 1
 
     # 绑定离线绘图
@@ -488,7 +493,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lbl_max_slot_rtn.setText(str(stat.maxVal)+'ms')
             self.lbl_max_slot_cycle_rtn.setText(str(stat.maxCycle))
             self.lbl_min_slot_rtn.setText(str(stat.minVal)+'ms')
-            self.lbl_slot_count_rtn.setText(str(stat.count))
+            self.lbl_slot_count_rtn.setText(str(stat.count)+'个')
 
     # 显示ATP时间统计信息
     def atpTimeStatistics(self,stat=InerValueStatsRst):
@@ -498,7 +503,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.lbl_max_atp_cycle_rtn.setText(str(stat.maxCycle))
             self.lbl_min_atp_slot_rtn.setText(str(stat.minVal)+'ms')
             self.lbl_min_atp_cycle_rtn.setText(str(stat.minCycle))
-            self.lbl_atp_slot_cnt_rtn.setText(str(stat.count))
+            self.lbl_atp_slot_cnt_rtn.setText(str(stat.count)+'个')
 
     # 显示通用信息SP2/SP13/SP138/SP8
     def atpCommonInfoShowByMsg(self, msg_obj=Atp2atoProto, time=str):
@@ -832,6 +837,9 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.log.end_result_signal.connect(self.LogProcessResult)
         self.log.msg_atp_ato_signal.connect(self.msgAtp2atoTabShow)
         self.log.msg_tsrs_ato_signal.connect(self.msgTsrsatoTabShow)
+        self.log.err_show_signal.connect(self.showMessage)
+        self.log.aelog_show_signal.connect(self.txt_aelog.appendPlainText)
+        self.txt_aelog.clear()
         # 读取文件
         self.Log('Preprocess file path!', __name__, sys._getframe().f_lineno)
         self.log.start()  # 启动记录读取线程,run函数不能有返回值
@@ -886,7 +894,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.islogLoad = 1  # 记录加载且ATO控车
                 self.actionRealtime.setEnabled(False)
                 self.showMessage('界面准备中...')
-                self.clearAxis()
+                self.clearAxis(clearCmd=2)
                 self.winInitAfterLoad()  # 记录加载成功且有控车时，初始化显示一些内容
                 self.CBvato.setChecked(True)
                 self.CBramp.setChecked(True)
@@ -905,7 +913,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.actionRealtime.setEnabled(True)
                 reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
                                                           "解析错误",
-                                                          "注意: 遇到未知解析错误导致中断，请将记录发送开发人员进行诊断定位!",
+                                                          "注意: 错误导致中断，请看提示或将记录发送开发人员诊断定位!",
                                                           QtWidgets.QMessageBox.Yes)
             else:
                 reply = QtWidgets.QMessageBox.information(self,  # 使用infomation信息框
@@ -972,6 +980,11 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 界面初始化后，加载显示IO信息，参考应答器显示
     def setIoContentAfterLoad(self):
+        # 重置表格
+        AtoKeyInfoDisplay.curTableInRowNum = 0
+        AtoKeyInfoDisplay.curTableOutRowNum = 0
+        self.tb_ato_IN.clearContents()
+        self.tb_ato_OUT.clearContents()
         # 搜索IO信息
         for idx in self.log.cycle_dic.keys():
             cycleObj = self.log.cycle_dic[idx]
@@ -1110,7 +1123,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             y_monitor = self.sp.mainAxes.get_ylim()
             if self.CBvato.isChecked() or self.CBcmdv.isChecked() or self.CBatppmtv.isChecked() \
                     or self.CBatpcmdv.isChecked() or self.CBlevel.isChecked() or self.CBramp.isChecked() or self.CBstate.isChecked():
-                self.clearAxis()
+                self.clearAxis(clearCmd=1)
                 self.Log("Mode Change recreate the paint", __name__, sys._getframe().f_lineno)
                 # 清除光标重新创建
                 if self.curWinMode == 1:
@@ -1158,7 +1171,7 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     self.CBstate.setChecked(False)
             else:
-                self.clearAxis()
+                self.clearAxis(clearCmd=1)
             self.sp.plotMainSpeedCord(self.log, self.curveCordType, x_monitor, y_monitor)
             self.spAux.plotMainRampCord(self.log, self.curveCordType)
         else:
@@ -1194,19 +1207,23 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.sp.set_event_info_plot(event_dict, self.log.cycle_dic, self.log.s, self.log.cycle)
             self.updateUpCure()
 
-    # 清除图像和轴相关内容，画板清屏
-    def clearAxis(self):
-        try:
-            if self.islogLoad == 1:
-                self.sp.mainAxes.clear()
-                if self.cfg.base_config.project == 'ZZW':
-                    self.sp.mainAxesII.clear()
-                self.sp.twinAxes.clear()
-                self.spAux.mainAxes.clear()
-                self.spAux.twinAxes.clear()
+    # 可选显示控件
+    def updateCheckableView(self):
+        if self.actionAelog.isChecked():
+            self.txt_aelog.setVisible(True)
+        else:
+            self.txt_aelog.setVisible(False)
+
+    # 清除图像和轴相关内容
+    def clearAxis(self, clearCmd=int):
+        '''clearCmd:1=交互绘图清除,2=全部清除'''
+        if self.islogLoad == 1:
+            if clearCmd == 1 or clearCmd == 2:
                 self.sp.plotReset()
-        except Exception as err:
-            print(err)
+                self.spAux.plotReset()
+            if clearCmd == 2:
+                self.spcycleIntvlStat.plotReset()
+                self.spAtpIntvlStat.plotReset()
 
     # 封装用于在文本框显示字符串
     def showMessage(self, s):
@@ -1352,7 +1369,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # 封装工具栏函数，显示画板初始状态，清除曲线
     def homeShow(self):
-        self.clearAxis()
+        self.textEdit.append('显示画板初始状态\n')
+        self.clearAxis(clearCmd=1)
         self.resetAllCheckbox()
         self.CBvato.setChecked(True)
         self.CBramp.setChecked(True)
@@ -1366,8 +1384,8 @@ class Mywindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # 关闭当前绘图
     def closeFigure(self, evt):
         if self.islogLoad == 1:
-            self.textEdit.append('Close Log Plot\n')
-            self.clearAxis()
+            self.textEdit.append('关闭当前文件绘图\n')
+            self.clearAxis(clearCmd=2)
             self.islogLoad = 0
             self.actionRealtime.setEnabled(True)
             self.sp.draw()
