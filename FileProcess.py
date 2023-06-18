@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: KeyWordPlot.py
 Desc: 文件处理模块，用于原始记录预处理和内容分解解析
 LastEditors: Zhengtang Bao
-LastEditTime: 2023-01-17 14:46:24
+LastEditTime: 2023-06-18 14:55:26
 Details:
 本模块提供功能包括文件打开读取，根据预定义的周期类，按照时间周期分解记录生成周期字典，
 并解析关键内容作为周期属性填入，特别地对于曲线绘制方面，使用正则表达式匹配出控车信息
@@ -32,7 +32,7 @@ import cProfile
 from ConfigInfo import ConfigFile
 from MainWinDisplay import InerIoInfo, InerIoInfoParse, InerRunningPlanInfo, InerRunningPlanParse, InerSduInfo, InerSduInfoParse, InerValueStatsHandler, InerValueStatsRst, ProgressBarDisplay
 from MsgParse import Ato2tsrsParse, Ato2tsrsProto, Atp2atoParse, Atp2atoProto, Tsrs2atoParse, Tsrs2atoProto
-from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, MVBParseContentException, Tcms2AtoState 
+from TcmsParse import Ato2TcmsCtrl, Ato2TcmsState, MVBParse, MVBParseContentException, MVBParsePortException, Tcms2AtoState 
 
 
 # 周期类定义
@@ -87,6 +87,8 @@ class FileProcess(threading.Thread, QtCore.QObject):
     end_result_signal = QtCore.pyqtSignal(bool)
     msg_atp_ato_signal = QtCore.pyqtSignal(tuple)
     msg_tsrs_ato_signal = QtCore.pyqtSignal(tuple)
+    err_show_signal = QtCore.pyqtSignal(str)
+    aelog_show_signal = QtCore.pyqtSignal(str)
     __slots__ = ['daemon','atp2atoParser','rpParser', 'mvbParser','sduParser', 'ioParser', 
     'cycle', 's', 'v_ato', 'a', 'cmdv', 'level', 'real_level', 'output_level','ceilv', 
     'atp_permit_v','statmachine','v_target', 'targetpos', 'stoppos', 'ma', 'ramp', 'adjramp',
@@ -171,6 +173,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
             self.time_use = [t1, t2, isok]
             # 发送结束信号
             self.end_result_signal.emit(True)
+        except MVBParsePortException as err:
+            errInfo = 'MVB解析端口:%d与配置文件不一致!'%err.port
+            self.err_show_signal.emit(errInfo)
+            self.end_result_signal.emit(True)
+        except MVBParsePortException as err:
+            pass
         except Exception as err:
             print('err in log process! ')
             self.Log(err, __name__, sys._getframe().f_lineno)
@@ -377,9 +385,9 @@ class FileProcess(threading.Thread, QtCore.QObject):
                 # 初期设计只有搜索尾部时解析,但MVB数据在周期外因此需要持续解析
                 if content_search_state == 2 or content_search_state == 1:
                     ret = 1                          # 有周期!!!
-                    if not self.match_log_packet_content(c, line):
+                    if not self.match_log_basic_content(c, line):
                         # 每一行只能有一种结果，当无数据包，才继续
-                        self.match_log_basic_content(c, line)
+                        self.match_log_packet_content(c, line)           
                 else:
                     pass # 属于文件开始、结尾或重新统计残损周期，不记录丢弃
 
@@ -412,7 +420,12 @@ class FileProcess(threading.Thread, QtCore.QObject):
                     if match:
                         c.control = match[0]
                     else:
-                        ret = 0
+                        match = self.cfg.reg_config.pat_aelog.findall(line)
+                        if match:
+                            aelog = '\n'.join(match).strip()
+                            self.aelog_show_signal.emit(c.time+' '+aelog)
+                        else:
+                            ret = 0
         return ret
 
     # <待完成>根据构建模板，对字符串分解后周期数据包进行填充
@@ -455,10 +468,7 @@ class FileProcess(threading.Thread, QtCore.QObject):
         elif 'MVB[' in line:
             match = self.cfg.reg_config.pat_mvb.findall(line)
             if match:
-                try:
-                    [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = pickle.loads(pickle.dumps(self.mvbParser.parseProtocol(match[0])))
-                except MVBParseContentException as err:
-                    pass
+                [c.a2t_ctrl, c.a2t_stat, c.t2a_stat] = pickle.loads(pickle.dumps(self.mvbParser.parseProtocol(match[0])))
         elif 'v&p' in line:
             c.sduInfo =  pickle.loads(pickle.dumps(self.sduParser.sduInfoStringParse(line, c.ostime_start)))
         elif '[RP' in line:
@@ -664,11 +674,13 @@ class FileProcess(threading.Thread, QtCore.QObject):
 if __name__ == "__main__":
     x = InerRunningPlanInfo()
     #path = r"F:\04-ATO Debug Data\SYLOG\ATO2022828105649COM14.txt"
-    path = r"C:\Users\baozh\Desktop\200612-LMCB-Serial-COM14-20221120125139(1).log"
+    path = r"C:\Users\baozh\Desktop\ATO2023510104627COM7.txt"
     #path = r"F:\04-ATO Debug Data\SY_CK\长客现场试验\20221117\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log\200611L_20221117135011（9.乙-甲-Z1-甲II-SJG）.log"
     #path = r"F:\04-ATO Debug Data\300T+ATO\M_L-Serial-COM6-1126170040-序列3-黑山北-阜新.log"
     fd  = FileProcess(path)
-    cProfile.run('fd.readkeyword(path)')
+    fd.readkeyword(path)
+    # 效率分析
+    #cProfile.run('fd.readkeyword(path)')
     x = 0
     '''
     with open(path, 'r', encoding='gbk', errors='ignore', newline='') as f:  # notepad++默认是ANSI编码,简洁且自带关闭

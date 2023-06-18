@@ -5,7 +5,7 @@
 @Date: 2020-06-29 20:45:25
 @Desc: Provide base simp agent Defination
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-22 16:24:13
+LastEditTime: 2023-06-18 13:23:32
 '''
 #!/usr/bin/env python
 # encoding: utf-8
@@ -35,10 +35,10 @@ class MVBConfig(object):
 class RegConfig(object):
     __slots__ = ['section_name', 'reg_cycle_end', 'reg_cycle_start', 'reg_time', 'reg_fsm','reg_ctrl',
     'reg_stoppoint','reg_p2o','reg_o2p','reg_t2a','reg_a2t','reg_mvb','reg_io_in','reg_io_out','reg_ato_sdu',
-    'reg_atp_sdu','reg_rp1','reg_rp2','reg_rp2_cntent','reg_rp3','reg_rp4',
+    'reg_atp_sdu','reg_rp1','reg_rp2','reg_rp2_cntent','reg_rp3','reg_rp4','reg_aelog',
     'pat_cycle_end', 'pat_cycle_start', 'pat_time', 'pat_fsm','pat_ctrl',
     'pat_stoppoint','pat_p2o','pat_o2p','pat_t2a','pat_a2t','pat_mvb','pat_io_in','pat_io_out','pat_ato_sdu',
-    'pat_atp_sdu','pat_rp1','pat_rp2','pat_rp2_cntent','pat_rp3','pat_rp4']
+    'pat_atp_sdu','pat_rp1','pat_rp2','pat_rp2_cntent','pat_rp3','pat_rp4', 'pat_aelog']
     def __init__(self) -> None:
         self.section_name = "RegexInfo"
         # 周期
@@ -73,6 +73,8 @@ class RegConfig(object):
         self.reg_rp2_cntent = '\[RP2-(\d+)\](\d+),(\d+),(-?\d+),(-?\d+),(-?\d+),(-?\d+),(\d),(\d)'
         self.reg_rp3 = '\[RP3\](\d),(\d),(-?\d+),(-?\d+),(\d)'
         self.reg_rp4 = '\[RP4\](\d),(-?\d+),(-?\d+),(\d),(\d)'
+        # 铁电日志
+        self.reg_aelog = 'File Name:\w+.\w+,Line No:\d+,Failure No:\w+,msg:\(\w+?\s?\w+\)\s[^F]*'
         self.updatePattern()
 
     def updatePattern(self):
@@ -107,10 +109,12 @@ class RegConfig(object):
         self.pat_rp2_cntent =  compile(self.reg_rp2_cntent)
         self.pat_rp3 =  compile(self.reg_rp3)
         self.pat_rp4 =  compile(self.reg_rp4)
+        # 铁电日志
+        self.pat_aelog = compile(self.reg_aelog)
 
 
 class MonitorConfig(object):
-    __slots__ = ['section_name','sdu_spd_fault_th',"sdu_dis_fault_th", "max_tract_level", "max_brake_level"]
+    __slots__ = ['section_name','sdu_spd_fault_th',"sdu_dis_fault_th", "max_tract_level", "max_brake_level", "cycle_intvl"]
     def __init__(self) -> None:
         self.section_name = "MonitorInfo"
         # 测速测距判断信息
@@ -119,6 +123,8 @@ class MonitorConfig(object):
         # 牵引制动级位监控
         self.max_tract_level  = 20   # 最大牵引级位
         self.max_brake_level  = 7    # 最大制动级位
+        # 周期时长配置
+        self.cycle_intvl      = 0    # 当为0时默认采用系统时间计算，否则直接采用配置值计算,单位ms
 
 class SingMetaClass(type):
     def __call__(self, *args, **kwargs):
@@ -149,6 +155,7 @@ class ConfigFile(object, metaclass=SingMetaClass):
         self.hd.set(self.monitor_config.section_name,"sdu_dis_fault_th",str(self.monitor_config.sdu_dis_fault_th))
         self.hd.set(self.monitor_config.section_name,"max_tract_level",str(self.monitor_config.max_tract_level))
         self.hd.set(self.monitor_config.section_name,"max_brake_level",str(self.monitor_config.max_brake_level))
+        self.hd.set(self.monitor_config.section_name,"cycle_intvl",str(self.monitor_config.cycle_intvl))
 
     def __writeBaseSection(self):
         if self.hd.has_section(self.base_config.section_name):
@@ -195,6 +202,7 @@ class ConfigFile(object, metaclass=SingMetaClass):
         self.hd.set(self.reg_config.section_name,"pat_rp2_cntent",self.reg_config.reg_rp2_cntent)
         self.hd.set(self.reg_config.section_name,"pat_rp3",self.reg_config.reg_rp3)
         self.hd.set(self.reg_config.section_name,"pat_rp4",self.reg_config.reg_rp4)
+        self.hd.set(self.reg_config.section_name,"pat_aelog",self.reg_config.reg_aelog)
             
 
     def __readBaseSection(self):
@@ -234,6 +242,7 @@ class ConfigFile(object, metaclass=SingMetaClass):
             self.reg_config.reg_rp2_cntent = self.hd.get(self.reg_config.section_name,"pat_rp2_cntent")
             self.reg_config.reg_rp3 = self.hd.get(self.reg_config.section_name,"pat_rp3")
             self.reg_config.reg_rp4 = self.hd.get(self.reg_config.section_name,"pat_rp4")
+            self.reg_config.reg_aelog = self.hd.get(self.reg_config.section_name,"pat_aelog")
             self.reg_config.updatePattern()
         else:
             self.__writeRegSection()
@@ -244,6 +253,7 @@ class ConfigFile(object, metaclass=SingMetaClass):
                 self.monitor_config.sdu_spd_fault_th = self.hd.getint(self.monitor_config.section_name,"sdu_spd_fault_th")
                 self.monitor_config.max_tract_level = self.hd.getint(self.monitor_config.section_name,"max_tract_level")
                 self.monitor_config.max_brake_level = self.hd.getint(self.monitor_config.section_name,"max_brake_level")
+                self.monitor_config.cycle_intvl = self.hd.getint(self.monitor_config.section_name,"cycle_intvl")
             else:
                 self.__writeMonitorSection()
 
