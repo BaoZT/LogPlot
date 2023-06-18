@@ -7,7 +7,7 @@ File: MainWinDisplay
 Date: 2022-07-25 20:09:57
 Desc: 主界面关键数据处理及显示功能
 LastEditors: Zhengtang Bao
-LastEditTime: 2022-12-03 19:39:02
+LastEditTime: 2023-06-16 18:37:26
 '''
 
 import pickle
@@ -510,13 +510,13 @@ class InerIoInfoParse(object):
         else: 
             match = self.cfg.reg_config.pat_io_out.findall(line)
             if match:
-                if match[0] == 'OPEN L':
+                if match[0][0] == 'OPEN L':
                     self.ioInfo.doorOpenLeftOut = 1
-                elif match[0] == 'CLOSE_L':
+                elif match[0][1] == 'CLOSE L':
                     self.ioInfo.doorCloseLeftOut = 1
-                elif match[0] == 'OPEN_R':
+                elif match[0][0] == 'OPEN R':
                     self.ioInfo.doorOpenRightOut = 1
-                elif match[0] == 'CLOSE_R':
+                elif match[0][1] == 'CLOSE R':
                     self.ioInfo.doorCloseRightOut = 1
                 else:
                     pass
@@ -755,45 +755,59 @@ class AtoKeyInfoDisplay(object):
                 tableIn.setRowCount(AtoKeyInfoDisplay.curTableInRowNum + deltaRowAdd)
 
                 if ioObj.doorCloseLeftBtnIn == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'关左门按钮', ioObj.doorCloseLeftBtnIn,tableIn)
+                    colDef = QtGui.QColor(252, 157, 154)
+                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'关左门按钮', ioObj.doorCloseLeftBtnIn,tableIn, colDef)
                 if ioObj.doorOpenLeftBtnIn == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开左门按钮', ioObj.doorOpenLeftBtnIn,tableIn)
+                    colDef = QtGui.QColor(249, 205, 173)
+                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开左门按钮', ioObj.doorOpenLeftBtnIn,tableIn, colDef)
                 if ioObj.doorCloseRightBtnIn == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'关右门按钮', ioObj.doorCloseRightBtnIn,tableIn)
+                    colDef = QtGui.QColor(200, 200, 169)
+                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'关右门按钮', ioObj.doorCloseRightBtnIn,tableIn, colDef)
                 if ioObj.doorOpenRightBtnIn == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开右门按钮', ioObj.doorOpenRightBtnIn,tableIn)
+                    colDef = QtGui.QColor(252, 157, 154)
+                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开右门按钮', ioObj.doorOpenRightBtnIn,tableIn, colDef)
             if ioObj.updateflagOut:
                 # 首先计算本输出次添加的行数
                 deltaRowAdd = ioObj.doorCloseLeftOut + ioObj.doorOpenLeftOut + ioObj.doorOpenRightOut + ioObj.doorCloseRightOut
                 tableOut.setRowCount(AtoKeyInfoDisplay.curTableOutRowNum + deltaRowAdd)
                 if ioObj.doorCloseLeftOut == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'关左门命令', ioObj.doorCloseLeftOut,tableOut)
+                    colDef = QtGui.QColor(153, 77, 82)
+                    AtoKeyInfoDisplay.addIoOutItem(cycleNumStr, timeContentStr,'关左门命令', ioObj.doorCloseLeftOut,tableOut, colDef)
                 if ioObj.doorOpenLeftOut == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开左门命令', ioObj.doorOpenLeftOut,tableOut)
+                    colDef = QtGui.QColor(217, 116, 43)
+                    AtoKeyInfoDisplay.addIoOutItem(cycleNumStr, timeContentStr,'开左门命令', ioObj.doorOpenLeftOut,tableOut, colDef)
                 if ioObj.doorOpenRightOut == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'关右门命令', ioObj.doorOpenRightOut,tableOut)
+                    colDef = QtGui.QColor(230, 180, 80)
+                    AtoKeyInfoDisplay.addIoOutItem(cycleNumStr, timeContentStr,'关右门命令', ioObj.doorOpenRightOut,tableOut, colDef)
                 if ioObj.doorCloseRightOut == 1:
-                    AtoKeyInfoDisplay.addIoInItem(cycleNumStr, timeContentStr,'开右门命令', ioObj.doorCloseRightOut,tableOut)
+                    colDef = QtGui.QColor(227, 230, 195)
+                    AtoKeyInfoDisplay.addIoOutItem(cycleNumStr, timeContentStr,'开右门命令', ioObj.doorCloseRightOut,tableOut, colDef)
     
     @staticmethod
-    def addIoInItem(cycleNumStr=str, timeContentStr=str, name=str, value=int, table=QtWidgets.QTableWidget):
-       
+    def addIoInItem(cycleNumStr=str, timeContentStr=str, name=str, value=int, table=QtWidgets.QTableWidget, colDef=QtGui.QColor):
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 0, AtoKeyInfoDisplay.createCustomTableItem(timeContentStr.split(" ")[1]))
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 1, AtoKeyInfoDisplay.createCustomTableItem(cycleNumStr))
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 2, AtoKeyInfoDisplay.createCustomTableItem(name))
         table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 3, AtoKeyInfoDisplay.createCustomTableItem(str(value)))
+        for col in range(4):
+            tmp = table.item(AtoKeyInfoDisplay.curTableInRowNum, col)
+            if tmp:
+                tmp.setBackground(colDef)
         AtoKeyInfoDisplay.curTableInRowNum += 1
-    
     @staticmethod
-    def addIoOutItem(cycleNumStr=str, timeContentStr=str, name=str, value=int, table=QtWidgets.QTableWidget):
-        table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 0, AtoKeyInfoDisplay.createCustomTableItem(timeContentStr.split(" ")[1]))
-        table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 1, AtoKeyInfoDisplay.createCustomTableItem(cycleNumStr))
-        table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 2, AtoKeyInfoDisplay.createCustomTableItem(name))
-        table.setItem(AtoKeyInfoDisplay.curTableInRowNum, 3, AtoKeyInfoDisplay.createCustomTableItem(str(value)))
+    def addIoOutItem(cycleNumStr=str, timeContentStr=str, name=str, value=int, table=QtWidgets.QTableWidget, colDef=QtGui.QColor):
+        table.setItem(AtoKeyInfoDisplay.curTableOutRowNum, 0, AtoKeyInfoDisplay.createCustomTableItem(timeContentStr.split(" ")[1]))
+        table.setItem(AtoKeyInfoDisplay.curTableOutRowNum, 1, AtoKeyInfoDisplay.createCustomTableItem(cycleNumStr))
+        table.setItem(AtoKeyInfoDisplay.curTableOutRowNum, 2, AtoKeyInfoDisplay.createCustomTableItem(name))
+        table.setItem(AtoKeyInfoDisplay.curTableOutRowNum, 3, AtoKeyInfoDisplay.createCustomTableItem(str(value)))
+        for col in range(4):
+            tmp = table.item(AtoKeyInfoDisplay.curTableOutRowNum, col)
+            if tmp:
+                tmp.setBackground(colDef)
         AtoKeyInfoDisplay.curTableOutRowNum += 1
 
     @staticmethod
-    def createCustomTableItem(content=str):
+    def createCustomTableItem(content=str, brush=QtGui.QColor):
         item = QtWidgets.QTableWidgetItem(content)
         item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
         return item
