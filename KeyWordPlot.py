@@ -6,7 +6,7 @@ Contact: baozhengtang@crscd.com.cn
 File: KeyWordPlot.py
 Desc: 核心绘图显示画板组件
 LastEditors: Zhengtang Bao
-LastEditTime: 2023-01-17 10:39:22
+LastEditTime: 2023-06-17 12:31:02
 '''
 
 
@@ -93,6 +93,8 @@ class SnaptoCursor(QtCore.QObject):
             index = np.searchsorted(self.x, xdot, side='left') # 共用X轴索引
             if index == self._last_index:
                 return # still on the same data point. Nothing to do.
+            if index > len(self.x):
+                return # behind the last one
             self._last_index = index
             # update record data and index for return
             self.data_x = xdot
@@ -122,6 +124,8 @@ class SnaptoCursor(QtCore.QObject):
         index = np.searchsorted(self.x, xdot, side='left') # 共用X轴索引
         if index == self._last_index:
             return # still on the same data point. Nothing to do.
+        if index > len(self.x):
+            return # behind the last one
         self._last_index = index
         # update record data and index for return
         self.data_x = xdot
@@ -173,6 +177,11 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
                                                                                 # matplotlib下的figure，不是matplotlib
                                                                                 # pyplot下面的figure
         self.fig.subplots_adjust(top=0.952, bottom=0.095, left=0.064, right=0.954, hspace=0.17, wspace=0.25)
+        super().__init__(self.fig)    # 初始化父类函数,这是Python3的风格，且super不带参数
+        self.setParent(parent)
+        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.hasMainAxesII = False
         if sharedAxes:
             self.mainAxes = self.fig.add_subplot(111, sharex=sharedAxes)
         else:
@@ -180,12 +189,9 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
                 gs = GridSpec(4, 4, figure=self.fig)
                 self.mainAxes = self.fig.add_subplot(gs[0:3,:])  # 大图主轴绘制核心曲线
                 self.mainAxesII = self.fig.add_subplot(gs[-1,:],sharex=self.mainAxes) # 辅图主轴绘制机车辅助信息
+                self.hasMainAxesII = True
             else:
                 self.mainAxes = self.fig.add_subplot(111)  # 大图主轴绘制核心曲线
-        super().__init__(self.fig)    # 初始化父类函数,这是Python3的风格，且super不带参数
-        self.setParent(parent)
-        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        FigureCanvas.updateGeometry(self)
         self.twinAxes = self.mainAxes.twinx()
         # 气泡绘制
         self.bubbleCtrl = None
@@ -198,9 +204,15 @@ class CurveFigureCanvas(FigureCanvas):   # 通过继承FigureCanvas类，使得�
         self.wayside_plot_dic = {}
 
     def plotReset(self):
+        # 主辅轴清除
+        self.mainAxes.clear()
+        self.twinAxes.clear()
         # 气泡绘制
         self.bubbleCtrl = None
         self.bubbleType = None
+        # 联动轴
+        if self.hasMainAxesII:
+            self.mainAxesII.clear()
 
     # 对于速度绘制区分模式，标注模式下绘点，否则直连线
     # mod : 1=标注模式 0=浏览模式
@@ -801,9 +813,12 @@ class StatFigureCanvas(FigureCanvas):
         FigureCanvas.__init__(self, self.fig)  # 初始化父类函数
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
-        self.fig.subplots_adjust(top=0.97, bottom=0.18, left=0.15, right=0.98, hspace=0.10, wspace=0.25)
+        self.fig.subplots_adjust(top=0.99, bottom=0.18, left=0.15, right=0.98, hspace=0.10, wspace=0.25)
         self.mainAx = self.fig.add_subplot(111)  # 画速度曲线
         self.setParent(parent)
     
     def plotHist(self, arrayList='list'):
         self.mainAx.hist(arrayList, bins=20, linewidth=0.5, edgecolor="white")
+        
+    def plotReset(self):
+        self.mainAx.clear()
